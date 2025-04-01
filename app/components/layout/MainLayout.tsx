@@ -1,28 +1,27 @@
+// app/components/layout/MainLayout.tsx
 import { ReactNode } from "react";
+import { checkAuth } from "@/app/lib/auth/server";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 
-type MainLayoutProps = {
-  children: ReactNode;
-  userRole?: string;
-  userName?: string;
-  userEmail?: string;
-};
-
-export default function MainLayout({
+export default async function MainLayout({
   children,
-  userRole = "admin",
-  userName = "Admin User",
-  userEmail = "admin@ims.edu",
-}: MainLayoutProps) {
+}: {
+  children: ReactNode;
+}) {
+  // Check if user is authenticated
+  const session = await checkAuth({ required: true });
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar userRole={userRole} userName={userName} userEmail={userEmail} />
+    <div className="flex h-screen bg-gray-50">
+      <Sidebar />
 
-      <div className="lg:pl-64">
-        <Header userName={userName} />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Header user={session?.user} />
 
-        <main className="py-6 px-4 sm:px-6 lg:px-8">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-4 md:p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -1,182 +1,138 @@
 "use client";
-import { useState } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/app/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   HomeIcon,
-  UserGroupIcon,
+  UsersIcon,
   AcademicCapIcon,
+  BookOpenIcon,
   BuildingLibraryIcon,
-  ChartBarIcon,
   Cog6ToothIcon,
-  ArrowLeftOnRectangleIcon,
-  Bars3Icon,
-  XMarkIcon,
+  ChartBarIcon,
+  FolderIcon,
+  CalendarIcon,
 } from "@heroicons/react/24/outline";
-import { classNames } from "@/app/lib/utils";
-import { ComponentType } from "react";
+import { useAuth, UserRole } from "@/app/providers/auth-provider";
 
-type NavItem = {
-  name: string;
-  href: string;
-  icon: ComponentType<{ className?: string }>;
-  roles: string[];
-};
-
-const navigation: NavItem[] = [
+// Define sidebar items with required roles
+const sidebarItems = [
   {
-    name: "Dashboard",
+    title: "Dashboard",
     href: "/dashboard",
     icon: HomeIcon,
-    roles: ["admin", "faculty", "hod", "student"],
+    roles: ["admin", "hod", "faculty", "staff", "student"],
   },
   {
-    name: "Faculty",
+    title: "Faculty",
     href: "/faculty",
-    icon: UserGroupIcon,
-    roles: ["admin", "hod"],
+    icon: UsersIcon,
+    roles: ["admin", "hod", "faculty", "staff", "student"],
   },
   {
-    name: "Students",
+    title: "Students",
     href: "/students",
     icon: AcademicCapIcon,
-    roles: ["admin", "faculty", "hod"],
+    roles: ["admin", "hod", "faculty", "staff"],
   },
   {
-    name: "Departments",
+    title: "Courses",
+    href: "/courses",
+    icon: BookOpenIcon,
+    roles: ["admin", "hod", "faculty", "staff", "student"],
+  },
+  {
+    title: "Departments",
     href: "/departments",
     icon: BuildingLibraryIcon,
     roles: ["admin", "hod"],
   },
   {
-    name: "Reports",
+    title: "Reports",
     href: "/reports",
     icon: ChartBarIcon,
     roles: ["admin", "hod"],
   },
   {
-    name: "Settings",
+    title: "Resources",
+    href: "/resources",
+    icon: FolderIcon,
+    roles: ["admin", "hod", "faculty", "staff", "student"],
+  },
+  {
+    title: "Calendar",
+    href: "/calendar",
+    icon: CalendarIcon,
+    roles: ["admin", "hod", "faculty", "staff", "student"],
+  },
+  {
+    title: "Settings",
     href: "/settings",
     icon: Cog6ToothIcon,
     roles: ["admin", "hod"],
   },
 ];
 
-export default function Sidebar({
-  userRole = "admin",
-  userName = "Admin User",
-  userEmail = "admin@ims.edu",
-}: {
-  userRole?: string;
-  userName?: string;
-  userEmail?: string;
-}) {
+export function Sidebar() {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
 
-  const filteredNavigation = navigation.filter((item) =>
-    item.roles.includes(userRole)
+  // Filter sidebar items based on user role
+  const filteredItems = sidebarItems.filter(
+    (item) => user && item.roles.includes(user.role as UserRole)
   );
 
   return (
-    <>
-      {/* Mobile sidebar toggle */}
-      <div className="lg:hidden fixed top-0 left-0 z-40 w-full bg-indigo-600 p-2">
-        <button
-          type="button"
-          className="text-white p-2 rounded-md focus:outline-none"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
+    <div className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r bg-white lg:flex">
+      <div className="flex h-16 items-center border-b px-6">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 font-semibold"
         >
-          {sidebarOpen ? (
-            <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-          ) : (
-            <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-          )}
-          <span className="sr-only">Open sidebar</span>
-        </button>
+          <span>IMS Portal</span>
+        </Link>
       </div>
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-gray-600 bg-opacity-75 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar for mobile and desktop */}
-      <div
-        className={classNames(
-          "fixed top-0 left-0 z-40 h-full w-64 transform transition-transform duration-300 ease-in-out bg-gradient-to-b from-indigo-700 to-purple-800 shadow-lg",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 bg-indigo-800">
-            <h1 className="text-xl font-bold text-white">IMS Portal</h1>
-          </div>
-
-          {/* User profile */}
-          <div className="px-4 py-6 border-b border-indigo-500/30">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                  {userName.charAt(0)}
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className="text-base font-medium text-white">{userName}</p>
-                <p className="text-sm font-medium text-indigo-200">
-                  {userRole.charAt(0).toUpperCase() + userRole.slice(1)}
-                </p>
-                <p className="text-xs text-indigo-300">{userEmail}</p>
-              </div>
+      <ScrollArea className="flex-1 overflow-auto py-2">
+        <nav className="flex flex-col gap-1 px-2">
+          {filteredItems.map((item) => (
+            <Button
+              key={item.href}
+              variant="ghost"
+              className={cn(
+                "flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100",
+                pathname.startsWith(item.href) &&
+                  "bg-gray-100 font-semibold text-gray-900"
+              )}
+              asChild
+            >
+              <Link href={item.href}>
+                <item.icon className="h-5 w-5" />
+                {item.title}
+              </Link>
+            </Button>
+          ))}
+        </nav>
+      </ScrollArea>
+      {user && (
+        <div className="border-t p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-medium">
+              {user.name ? user.name.charAt(0) : user.username.charAt(0)}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">
+                {user.name || user.username}
+              </span>
+              <span className="text-xs text-gray-500 capitalize">
+                {user.role}
+              </span>
             </div>
           </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {filteredNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={classNames(
-                  pathname === item.href
-                    ? "bg-indigo-800 text-white"
-                    : "text-indigo-100 hover:bg-indigo-600",
-                  "group flex items-center px-2 py-2 text-base font-medium rounded-md transition-all duration-200"
-                )}
-              >
-                <item.icon
-                  className={classNames(
-                    pathname === item.href
-                      ? "text-indigo-200"
-                      : "text-indigo-300 group-hover:text-indigo-200",
-                    "mr-3 flex-shrink-0 h-6 w-6"
-                  )}
-                  aria-hidden="true"
-                />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Logout button */}
-          <div className="p-4 border-t border-indigo-500/30">
-            <button
-              className="w-full flex items-center px-2 py-2 text-base font-medium rounded-md text-indigo-100 hover:bg-indigo-600 transition-all duration-200"
-              onClick={() => console.log("Logout clicked")}
-            >
-              <ArrowLeftOnRectangleIcon
-                className="mr-3 flex-shrink-0 h-6 w-6 text-indigo-300"
-                aria-hidden="true"
-              />
-              Sign Out
-            </button>
-          </div>
         </div>
-      </div>
-    </>
+      )}
+    </div>
   );
 }
