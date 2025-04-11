@@ -12,7 +12,7 @@ import {
 } from "recharts";
 
 type DepartmentBarChartProps = {
-  data: {
+  data?: {
     department: string;
     count: number;
   }[];
@@ -28,7 +28,7 @@ export default function DepartmentBarChart({
   height = 300,
 }: DepartmentBarChartProps) {
   // Transform data for the chart
-  const chartData = data.map((item) => ({
+  const chartData = data?.map((item) => ({
     name: item.department,
     [dataKey]: item.count,
   }));

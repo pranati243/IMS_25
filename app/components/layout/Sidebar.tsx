@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/app/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -16,77 +16,25 @@ import {
   FolderIcon,
   CalendarIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth, UserRole } from "@/app/providers/auth-provider";
 
-// Define sidebar items with required roles
+// Sidebar items - all visible during development
 const sidebarItems = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: HomeIcon,
-    roles: ["admin", "hod", "faculty", "staff", "student"],
-  },
-  {
-    title: "Faculty",
-    href: "/faculty",
-    icon: UsersIcon,
-    roles: ["admin", "hod", "faculty", "staff", "student"],
-  },
-  {
-    title: "Students",
-    href: "/students",
-    icon: AcademicCapIcon,
-    roles: ["admin", "hod", "faculty", "staff"],
-  },
-  {
-    title: "Courses",
-    href: "/courses",
-    icon: BookOpenIcon,
-    roles: ["admin", "hod", "faculty", "staff", "student"],
-  },
-  {
-    title: "Departments",
-    href: "/departments",
-    icon: BuildingLibraryIcon,
-    roles: ["admin", "hod"],
-  },
-  {
-    title: "Reports",
-    href: "/reports",
-    icon: ChartBarIcon,
-    roles: ["admin", "hod"],
-  },
-  {
-    title: "Resources",
-    href: "/resources",
-    icon: FolderIcon,
-    roles: ["admin", "hod", "faculty", "staff", "student"],
-  },
-  {
-    title: "Calendar",
-    href: "/calendar",
-    icon: CalendarIcon,
-    roles: ["admin", "hod", "faculty", "staff", "student"],
-  },
-  {
-    title: "Settings",
-    href: "/settings",
-    icon: Cog6ToothIcon,
-    roles: ["admin", "hod"],
-  },
+  { title: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { title: "Faculty", href: "/faculty", icon: UsersIcon },
+  { title: "Students", href: "/students", icon: AcademicCapIcon },
+  { title: "Courses", href: "/courses", icon: BookOpenIcon },
+  { title: "Departments", href: "/departments", icon: BuildingLibraryIcon },
+  { title: "Reports", href: "/reports", icon: ChartBarIcon },
+  { title: "Resources", href: "/resources", icon: FolderIcon },
+  { title: "Calendar", href: "/calendar", icon: CalendarIcon },
+  { title: "Settings", href: "/settings", icon: Cog6ToothIcon },
 ];
 
-export function Sidebar() {
+export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
-
-  // Filter sidebar items based on user role
-  const filteredItems = sidebarItems.filter(
-    (item) => user && item.roles.includes(user.role as UserRole)
-  );
 
   return (
-    <div className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r bg-white lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r bg-white lg:flex">
       <div className="flex h-16 items-center border-b px-6">
         <Link
           href="/dashboard"
@@ -97,7 +45,7 @@ export function Sidebar() {
       </div>
       <ScrollArea className="flex-1 overflow-auto py-2">
         <nav className="flex flex-col gap-1 px-2">
-          {filteredItems.map((item) => (
+          {sidebarItems.map((item) => (
             <Button
               key={item.href}
               variant="ghost"
@@ -116,23 +64,17 @@ export function Sidebar() {
           ))}
         </nav>
       </ScrollArea>
-      {user && (
-        <div className="border-t p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-medium">
-              {user.name ? user.name.charAt(0) : user.username.charAt(0)}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">
-                {user.name || user.username}
-              </span>
-              <span className="text-xs text-gray-500 capitalize">
-                {user.role}
-              </span>
-            </div>
+      <div className="border-t p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-medium">
+            A
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">Development Admin</span>
+            <span className="text-xs text-gray-500 capitalize">admin</span>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    </aside>
   );
 }

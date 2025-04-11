@@ -37,7 +37,11 @@ const notifications = [
   },
 ];
 
-export default function Header({ userName = "Admin User" }) {
+export default function Header(user: {
+  name: string;
+  role: string;
+  email: string;
+}) {
   const [showNotifications, setShowNotifications] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -107,7 +111,7 @@ export default function Header({ userName = "Admin User" }) {
             <Menu.Button className="flex items-center gap-x-4 text-sm font-medium text-gray-900 focus:outline-none">
               <span className="sr-only">Open user menu</span>
               <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
-                {userName.charAt(0)}
+                {user.name.charAt(0)}
               </div>
             </Menu.Button>
             <Transition
