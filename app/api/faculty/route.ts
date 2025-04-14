@@ -71,35 +71,30 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      F_name,
-      F_dept,
-      Email,
-      Phone_Number,
-      Current_Designation,
-      Highest_Degree,
-    } = body;
+    const { F_name, F_dept } = body;
+
+    if (!F_name || !F_dept) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Name and department are required",
+        },
+        { status: 400 }
+      );
+    }
 
     // Insert into faculty table
-    const facultyResult = (await query(
-      "INSERT INTO faculty (F_name, F_dept) VALUES (?, ?)",
+    const result = await query(
+      `
+      INSERT INTO faculty (F_name, F_dept)
+      VALUES (?, ?)
+    `,
       [F_name, F_dept]
-    )) as InsertResult;
-
-    const F_id = facultyResult.insertId;
-
-    // Insert into faculty_details table
-    await query(
-      `INSERT INTO faculty_details 
-       (F_ID, Email, Phone_Number, Current_Designation, Highest_Degree, Date_of_Joining) 
-       VALUES (?, ?, ?, ?, ?, CURDATE())`,
-      [F_id, Email, Phone_Number, Current_Designation, Highest_Degree]
     );
 
     return NextResponse.json({
       success: true,
-      message: "Faculty added successfully",
-      data: { F_id },
+      F_id: result.insertId,
     });
   } catch (error) {
     console.error("Error adding faculty:", error);

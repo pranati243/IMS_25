@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, Search, Filter, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
 // import { getDepartmentStyle } from "@/app/lib/theme";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -146,10 +147,12 @@ export default function FacultyPage() {
               Browse and search faculty members across all departments
             </p>
           </div>
-          <Button className="flex items-center gap-2 shrink-0">
-            <Plus className="w-4 h-4" />
-            Add Faculty
-          </Button>
+          <Link href="/faculty/add">
+            <Button className="flex items-center gap-2 shrink-0">
+              <Plus className="w-4 h-4" />
+              Add Faculty
+            </Button>
+          </Link>
         </div>
 
         {/* Search and filters */}

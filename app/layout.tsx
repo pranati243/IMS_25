@@ -2,6 +2,16 @@
 import { AuthProvider } from "./providers/auth-provider";
 import { ThemeProvider } from "./providers/theme-provider";
 import "./globals.css";
+import { Toaster } from "sonner";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "IMS",
+  description: "Institute Management System",
+};
 
 export default function RootLayout({
   children,
@@ -10,12 +20,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className={inter.className}>
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             {children}
           </ThemeProvider>
         </AuthProvider>
+        <Toaster 
+          position="top-right"
+          expand={true}
+          richColors
+          closeButton
+        />
       </body>
     </html>
   );

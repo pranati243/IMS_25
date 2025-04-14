@@ -1,6 +1,9 @@
 import { getDepartmentStyle, commonStyles } from "@/app/lib/theme";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit } from "lucide-react";
+import Link from "next/link";
 
 interface FacultyCardProps {
   faculty: {
@@ -31,32 +34,43 @@ export function FacultyCard({
         style={{ backgroundColor: departmentStyle.primary }}
       />
       <div className="p-5 space-y-4">
-        <div className="flex items-start space-x-4">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-semibold flex-shrink-0"
-            style={{ backgroundColor: departmentStyle.primary }}
-          >
-            {faculty.F_name.charAt(0)}
-          </div>
-          <div className="min-w-0 flex-1">
-            {" "}
-            {/* This ensures text wrapping */}
-            <h3 className="font-medium text-gray-900 truncate">
-              {faculty.F_name}
-            </h3>
-            <p className="text-sm text-gray-500 truncate">
-              {faculty.Current_Designation}
-            </p>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
             <div
-              className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-              style={{
-                backgroundColor: departmentStyle.light,
-                color: departmentStyle.dark,
-              }}
+              className="w-12 h-12 rounded-full flex items-center justify-center text-white text-lg font-semibold flex-shrink-0"
+              style={{ backgroundColor: departmentStyle.primary }}
             >
-              {faculty.F_dept}
+              {faculty.F_name.charAt(0)}
+            </div>
+            <div className="min-w-0 flex-1">
+              {" "}
+              {/* This ensures text wrapping */}
+              <h3 className="font-medium text-gray-900 truncate">
+                {faculty.F_name}
+              </h3>
+              <p className="text-sm text-gray-500 truncate">
+                {faculty.Current_Designation}
+              </p>
+              <div
+                className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                style={{
+                  backgroundColor: departmentStyle.light,
+                  color: departmentStyle.dark,
+                }}
+              >
+                {faculty.F_dept}
+              </div>
             </div>
           </div>
+          <Link href={`/faculty/edit/${faculty.F_id}`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </Link>
         </div>
 
         <div className="space-y-2 text-sm">
