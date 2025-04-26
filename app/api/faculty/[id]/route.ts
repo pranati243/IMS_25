@@ -6,6 +6,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = params.id;
+
     // Get faculty and faculty details
     const faculty = await query(
       `
@@ -16,7 +18,7 @@ export async function GET(
       LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
       WHERE f.F_id = ?
     `,
-      [params.id]
+      [id]
     );
 
     if (!faculty || !faculty[0]) {
@@ -48,6 +50,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const id = params.id;
     const body = await request.json();
     const {
       F_name,
@@ -74,7 +77,7 @@ export async function PUT(
       SET F_name = ?, F_dept = ?
       WHERE F_id = ?
     `,
-      [F_name, F_dept, params.id]
+      [F_name, F_dept, id]
     );
 
     // Update faculty_details table
@@ -111,7 +114,7 @@ export async function PUT(
         Current_Designation,
         Date_of_Birth,
         Nature_of_Association,
-        params.id,
+        id,
       ]
     );
 
@@ -130,4 +133,4 @@ export async function PUT(
       { status: 500 }
     );
   }
-} 
+}

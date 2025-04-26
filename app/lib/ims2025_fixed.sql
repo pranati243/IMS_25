@@ -28,7 +28,7 @@ SET time_zone = "+00:00";
 --
 
 CREATE TABLE `department` (
-  `Department_ID` int NOT NULL,
+  `Department_ID` int NOT NULL AUTO_INCREMENT,
   `Department_Name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -108,7 +108,7 @@ INSERT INTO `faculty` (`F_id`, `F_name`, `F_dept`) VALUES
 --
 
 CREATE TABLE `faculty_contributions` (
-  `Contribution_ID` int NOT NULL,
+  `Contribution_ID` int NOT NULL AUTO_INCREMENT,
   `F_ID` bigint NOT NULL,
   `Contribution_Type` varchar(255) NOT NULL,
   `Description` text NOT NULL,
@@ -221,7 +221,7 @@ INSERT INTO `faculty_professional_body` (`SrNo`, `Professional_Body_ID`, `F_ID`,
 --
 
 CREATE TABLE `faculty_resource_person` (
-  `Resource_Person_ID` int NOT NULL,
+  `Resource_Person_ID` int NOT NULL AUTO_INCREMENT,
   `F_ID` bigint NOT NULL,
   `Program_Type` varchar(255) DEFAULT NULL,
   `Program_Name` varchar(255) DEFAULT NULL,
@@ -243,4 +243,151 @@ CREATE TABLE `faculty_resource_person` (
 -- Dumping data for table `faculty_resource_person`
 --
 
-INSERT INTO `faculty_resource_person`
+INSERT INTO `faculty_resource_person` (`Resource_Person_ID`, `F_ID`, `Program_Type`, `Program_Name`, `Event_Date`, `Event_Duration`, `Location`, `Event_Mode`, `Organized_By`, `Faculty_Role`, `Topics_Covered`, `Certificate_Issued`, `Certificate_Upload`, `Remarks`, `Event_Status`, `Faculty_Name`) VALUES
+(1, 101, 'Workshop', 'AI & Machine Learning', '2024-02-15', '3 Days', 'IIT Bombay', 'Offline', 'IIT Bombay', 'Keynote Speaker', 'Deep Learning, Neural Networks, AI Ethics', 1, NULL, 'Highly appreciated by participants', 'Completed', 'Dr. Amit Sharma'),
+(2, 102, 'Conference', 'Cloud Computing Trends', '2023-11-10', '2 Days', 'NIT Trichy', 'Offline', 'NIT Trichy', 'Session Chair', 'Cloud Security, Serverless Computing', 1, NULL, 'Session was interactive and informative', 'Completed', 'Dr. Richa Patel'),
+(3, 103, 'Seminar', 'Future of Cybersecurity', '2024-03-22', '1 Day', 'Online', 'Online', 'IEEE India', 'Guest Lecturer', 'Cyber Threats, Blockchain Security', 1, NULL, 'Attended by 500+ students and researchers', 'Completed', 'Dr. Rajesh Kumar'),
+(4, 104, 'Webinar', 'IoT and Smart Cities', '2023-09-18', '2 Hours', 'Online', 'Online', 'ACM Chapter', 'Speaker', 'IoT Applications, 5G, Smart City Challenges', 1, NULL, 'Engaging session with Q&A', 'Completed', 'Dr. Neha Verma'),
+(5, 105, 'Faculty Development Program', 'Big Data & Analytics', '2023-07-05', '5 Days', 'IISc Bangalore', 'Offline', 'IISc Bangalore', 'Trainer', 'Hadoop, Spark, Data Pipelines', 1, NULL, 'Hands-on sessions were well received', 'Completed', 'Dr. Sandeep Rao'),
+(6, 104, 'Guest Lecture', 'Renewable Energy Systems', '2024-01-12', '1 Day', 'IIT Delhi', 'Offline', 'IIT Delhi', 'Resource Person', 'Solar Power, Wind Energy, Green Technologies', 1, NULL, 'Very informative for students', 'Completed', 'Dr. Meena Joshi');
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `department`
+--
+ALTER TABLE `department`
+  ADD PRIMARY KEY (`Department_ID`);
+
+--
+-- Indexes for table `department_details`
+--
+ALTER TABLE `department_details`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `Department_Code` (`Department_Code`),
+  ADD UNIQUE KEY `Email_ID` (`Email_ID`),
+  ADD UNIQUE KEY `Department_Phone_Number` (`Department_Phone_Number`),
+  ADD KEY `Department_ID` (`Department_ID`),
+  ADD KEY `HOD_ID` (`HOD_ID`);
+
+--
+-- Indexes for table `faculty`
+--
+ALTER TABLE `faculty`
+  ADD PRIMARY KEY (`F_id`);
+
+--
+-- Indexes for table `faculty_contributions`
+--
+ALTER TABLE `faculty_contributions`
+  ADD PRIMARY KEY (`Contribution_ID`),
+  ADD KEY `F_ID` (`F_ID`);
+
+--
+-- Indexes for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  ADD PRIMARY KEY (`Sr_No`),
+  ADD UNIQUE KEY `Email` (`Email`),
+  ADD UNIQUE KEY `Phone_Number` (`Phone_Number`),
+  ADD UNIQUE KEY `PAN_Number` (`PAN_Number`),
+  ADD UNIQUE KEY `Aadhaar_Number` (`Aadhaar_Number`),
+  ADD KEY `F_ID` (`F_ID`);
+
+--
+-- Indexes for table `faculty_professional_body`
+--
+ALTER TABLE `faculty_professional_body`
+  ADD PRIMARY KEY (`SrNo`),
+  ADD UNIQUE KEY `Membership_Number` (`Membership_Number`),
+  ADD UNIQUE KEY `Unique_ID` (`Unique_ID`),
+  ADD KEY `F_ID` (`F_ID`);
+
+--
+-- Indexes for table `faculty_resource_person`
+--
+ALTER TABLE `faculty_resource_person`
+  ADD PRIMARY KEY (`Resource_Person_ID`),
+  ADD KEY `F_ID` (`F_ID`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `department`
+--
+ALTER TABLE `department`
+  MODIFY `Department_ID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
+
+--
+-- AUTO_INCREMENT for table `department_details`
+--
+ALTER TABLE `department_details`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `faculty_contributions`
+--
+ALTER TABLE `faculty_contributions`
+  MODIFY `Contribution_ID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  MODIFY `Sr_No` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `faculty_professional_body`
+--
+ALTER TABLE `faculty_professional_body`
+  MODIFY `SrNo` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT for table `faculty_resource_person`
+--
+ALTER TABLE `faculty_resource_person`
+  MODIFY `Resource_Person_ID` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `department_details`
+--
+ALTER TABLE `department_details`
+  ADD CONSTRAINT `department_details_ibfk_1` FOREIGN KEY (`Department_ID`) REFERENCES `department` (`Department_ID`) ON DELETE CASCADE,
+  ADD CONSTRAINT `department_details_ibfk_2` FOREIGN KEY (`HOD_ID`) REFERENCES `faculty` (`F_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `faculty_contributions`
+--
+ALTER TABLE `faculty_contributions`
+  ADD CONSTRAINT `faculty_contributions_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `faculty_details`
+--
+ALTER TABLE `faculty_details`
+  ADD CONSTRAINT `faculty_details_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `faculty_professional_body`
+--
+ALTER TABLE `faculty_professional_body`
+  ADD CONSTRAINT `faculty_professional_body_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `faculty_resource_person`
+--
+ALTER TABLE `faculty_resource_person`
+  ADD CONSTRAINT `faculty_resource_person_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */; 

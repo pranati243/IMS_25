@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   PieChart,
   Pie,
@@ -18,9 +18,15 @@ type ChartData = {
   color: string;
 };
 
+type DepartmentData = {
+  department: string;
+  count: number;
+};
+
 type DepartmentDistributionChartProps = {
   dataKey?: "faculty" | "students";
   height?: number;
+  data?: DepartmentData[];
 };
 
 // Custom label render props type
@@ -53,12 +59,34 @@ const getShortName = (name: string): string => {
 export default function DepartmentDistributionChart({
   dataKey = "faculty",
   height = 300,
+  data,
 }: DepartmentDistributionChartProps) {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If data is provided directly, use it
+    if (data && data.length > 0) {
+      const transformedData = data.map((item) => {
+        const department = item.department;
+        const count = item.count || 0;
+        const departmentStyle = getDepartmentStyle(department);
+
+        return {
+          name: department,
+          shortName: getShortName(department),
+          value: count,
+          color: departmentStyle.primary,
+        };
+      });
+
+      setChartData(transformedData);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise fetch data from API as before
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -79,7 +107,11 @@ export default function DepartmentDistributionChart({
 
         // Transform API data to chart format with colors based on dataKey
         const transformedData = departmentStats.map(
-          (item: any, index: number) => {
+          (item: {
+            Department_Name: string;
+            current_faculty_count: number;
+            Total_Students: number;
+          }) => {
             const department = item.Department_Name;
             // Choose count based on dataKey (faculty or students)
             const count =
@@ -139,9 +171,13 @@ export default function DepartmentDistributionChart({
   };
 
   // Custom formatter for the legend that uses shortened names
-  const renderLegendText = (value: string, entry: any) => {
-    const { payload } = entry;
-    return <span>{payload.shortName}</span>;
+  // Using a permissive type that works with recharts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderLegendText = (value: unknown, entry: any): React.ReactNode => {
+    if (entry && entry.payload && entry.payload.shortName) {
+      return <span>{entry.payload.shortName}</span>;
+    }
+    return <span>{String(value)}</span>;
   };
 
   if (loading) {

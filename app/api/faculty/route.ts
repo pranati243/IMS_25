@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
-
-interface InsertResult {
-  insertId: number;
-}
+import { OkPacket } from "mysql2";
 
 export async function GET(request: Request) {
   try {
@@ -83,19 +80,50 @@ export async function POST(request: Request) {
       );
     }
 
-    // Insert into faculty table
-    const result = await query(
-      `
-      INSERT INTO faculty (F_name, F_dept)
-      VALUES (?, ?)
-    `,
-      [F_name, F_dept]
-    );
+    try {
+      // Insert into faculty table
+      const result = (await query(
+        `
+        INSERT INTO faculty (F_name, F_dept)
+        VALUES (?, ?)
+      `,
+        [F_name, F_dept]
+      )) as OkPacket;
 
-    return NextResponse.json({
-      success: true,
-      F_id: result.insertId,
-    });
+      return NextResponse.json({
+        success: true,
+        F_id: result.insertId,
+      });
+    } catch (insertError) {
+      // If the error is related to auto_increment not set up, try to fix it
+      if (
+        insertError instanceof Error &&
+        insertError.message.includes("ER_NO_DEFAULT_FOR_FIELD") &&
+        insertError.message.includes("F_id")
+      ) {
+        // First alter the table to add AUTO_INCREMENT to F_id
+        await query(
+          "ALTER TABLE faculty MODIFY F_id bigint NOT NULL AUTO_INCREMENT"
+        );
+
+        // Then retry the insert
+        const result = (await query(
+          `
+          INSERT INTO faculty (F_name, F_dept)
+          VALUES (?, ?)
+        `,
+          [F_name, F_dept]
+        )) as OkPacket;
+
+        return NextResponse.json({
+          success: true,
+          F_id: result.insertId,
+        });
+      } else {
+        // If it's another kind of error, rethrow it
+        throw insertError;
+      }
+    }
   } catch (error) {
     console.error("Error adding faculty:", error);
     return NextResponse.json(

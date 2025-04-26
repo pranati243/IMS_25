@@ -72,8 +72,6 @@
 // app/api/departments/stats/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
-import { cookies } from "next/headers";
-import { verify } from "jsonwebtoken";
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,33 +79,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const departmentFilter = searchParams.get("department");
 
-    // Get user role from session for additional filtering
-    const sessionToken = cookies().get("session_token")?.value;
-    let userRole = "guest";
-
-    if (sessionToken) {
-      try {
-        const decoded = verify(
-          sessionToken,
-          process.env.JWT_SECRET || "your-secret-key"
-        ) as { userId: number; role: string };
-
-        userRole = decoded.role;
-      } catch (error) {
-        console.error("Token verification failed:", error);
-      }
-    }
-
     // Build the SQL query based on role and filters
     let sql = `
       SELECT 
-        d.Department_Code, 
+        d.Department_ID, 
         d.Department_Name,
         COUNT(DISTINCT f.F_id) as current_faculty_count,
-        COUNT(DISTINCT s.S_id) as Total_Students
-      FROM departments d
-      LEFT JOIN faculty f ON d.Department_Code = f.F_dept
-      LEFT JOIN student s ON d.Department_Code = s.S_dept
+        dd.Total_Students
+      FROM department d
+      LEFT JOIN department_details dd ON d.Department_ID = dd.Department_ID
+      LEFT JOIN faculty f ON f.F_dept = d.Department_Name
     `;
 
     const params = [];
@@ -119,30 +100,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Group by department
-    sql += " GROUP BY d.Department_Code, d.Department_Name";
+    sql += " GROUP BY d.Department_ID, d.Department_Name, dd.Total_Students";
 
     // Execute the query
     const departmentStats = await query(sql, params);
 
-    // For students, limit the data they can see
-    if (userRole === "student") {
-      // Students should only see department names and student counts
-      const limitedStats = departmentStats.map((dept: any) => ({
-        Department_Code: dept.Department_Code,
-        Department_Name: dept.Department_Name,
-        current_faculty_count: 0, // Hide actual faculty count
-        Total_Students: dept.Total_Students,
-      }));
-
-      return NextResponse.json({
-        success: true,
-        data: { departmentStats: limitedStats },
-      });
-    }
+    // For safety, ensure we're returning an array
+    const statsArray = Array.isArray(departmentStats) ? departmentStats : [];
 
     return NextResponse.json({
       success: true,
-      data: { departmentStats },
+      data: { departmentStats: statsArray },
     });
   } catch (error) {
     console.error("Error fetching department stats:", error);
