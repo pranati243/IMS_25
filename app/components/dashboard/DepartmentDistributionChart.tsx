@@ -44,7 +44,7 @@ type CustomLabelProps = {
 const getShortName = (name: string): string => {
   // Return abbreviations for known departments with long names
   if (name === "Electronics and Telecommunication Engineering") return "ExTC";
-  if (name === "Computer Engineering") return "CSE";
+  if (name === "Computer Engineering") return "CE";
   if (name === "Mechanical Engineering") return "ME";
   if (name === "Electrical Engineering") return "EE";
   if (name === "Information Technology") return "IT";

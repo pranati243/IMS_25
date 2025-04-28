@@ -32,7 +32,7 @@ export const departmentColors = {
   },
 
   // Add abbreviations with the same color schemes
-  CSE: {
+  CE: {
     primary: "#2563eb", // Blue (same as Computer Engineering)
     secondary: "#1d4ed8",
     light: "#dbeafe",

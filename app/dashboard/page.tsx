@@ -199,18 +199,6 @@ export default function DashboardPage() {
           </ChartCard>
         </div>
 
-        {/* Debug information */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-            <h3 className="text-sm font-medium mb-2">Debug Data:</h3>
-            <div className="text-xs">
-              <p>
-                Faculty by Department: {JSON.stringify(facultyByDepartment)}
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* Announcements and Events */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <AnnouncementCard announcements={mockAnnouncements} />
