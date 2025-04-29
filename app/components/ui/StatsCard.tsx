@@ -11,6 +11,7 @@ type StatsCardProps = {
   trend?: "up" | "down" | "neutral";
   bgColor?: string;
   textColor?: string;
+  iconBgColor?: string;
 };
 
 export default function StatsCard({
@@ -22,16 +23,33 @@ export default function StatsCard({
   trend = "neutral",
   bgColor = "bg-white",
   textColor = "text-gray-900",
+  iconBgColor,
 }: StatsCardProps) {
+  // Determine icon background color based on trend if not provided
+  const defaultIconBgColor =
+    iconBgColor ||
+    (trend === "up"
+      ? "bg-green-100 text-green-600"
+      : trend === "down"
+      ? "bg-red-100 text-red-600"
+      : "bg-indigo-100 text-indigo-600");
+
   return (
     <div
       className={classNames(
         bgColor,
-        "relative overflow-hidden rounded-lg shadow-md p-5 transition-all duration-300 hover:shadow-lg"
+        "relative overflow-hidden rounded-lg shadow-md p-5 transition-all duration-300 hover:shadow-lg border border-gray-100 hover:border-gray-200"
       )}
     >
       <dt>
-        <div className="absolute rounded-md p-3 bg-indigo-500/10">{icon}</div>
+        <div
+          className={classNames(
+            "absolute rounded-md p-3",
+            iconBgColor || defaultIconBgColor
+          )}
+        >
+          {icon}
+        </div>
         <p className="ml-16 truncate text-sm font-medium text-gray-500">
           {title}
         </p>
@@ -46,7 +64,7 @@ export default function StatsCard({
             <p
               className={classNames(
                 trend === "up" ? "text-green-600" : "text-red-600",
-                "flex items-center text-xs"
+                "flex items-center text-xs font-medium"
               )}
             >
               {trend === "up" ? (

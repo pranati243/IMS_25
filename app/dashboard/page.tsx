@@ -6,6 +6,11 @@ import {
   AcademicCapIcon,
   BuildingLibraryIcon,
   BookOpenIcon,
+  DocumentTextIcon,
+  DocumentChartBarIcon,
+  AcademicCapIcon as AcademicCapSolid,
+  ChartBarIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import { formatNumber } from "@/app/lib/utils";
 import MainLayout from "@/app/components/layout/MainLayout";
@@ -13,15 +18,18 @@ import StatsCard from "@/app/components/ui/StatsCard";
 import ChartCard from "@/app/components/ui/ChartCard";
 import DepartmentDistributionChart from "@/app/components/dashboard/DepartmentDistributionChart";
 import DepartmentBarChart from "@/app/components/dashboard/DepartmentBarChart";
-import AnnouncementCard from "@/app/components/dashboard/AnnouncementCard";
-import EventsCard from "@/app/components/dashboard/EventsCard";
 import { DashboardStats } from "@/app/lib/types";
 
 interface DepartmentStat {
   Department_ID: number;
   Department_Name: string;
   current_faculty_count: number;
+  professor_count: number;
+  associate_professor_count: number;
+  assistant_professor_count: number;
   Total_Students: number;
+  research_projects: number;
+  publications: number;
 }
 
 interface DepartmentData {
@@ -29,57 +37,17 @@ interface DepartmentData {
   count: number;
 }
 
-// Mock data for announcements and events until we have API endpoints
-const mockAnnouncements = [
-  {
-    id: 1,
-    title: "Faculty Excellence Awards",
-    content:
-      "Nominations for the annual faculty excellence awards are now open.",
-    date: new Date("2024-10-15"),
-    author: "Academic Office",
-  },
-  {
-    id: 2,
-    title: "New Research Grants",
-    content:
-      "The institute has secured 5 new research grants worth Rs. 2.5 Crores.",
-    date: new Date("2024-10-10"),
-    author: "Research Cell",
-  },
-  {
-    id: 3,
-    title: "Student Exchange Program",
-    content:
-      "Applications for the international student exchange program are now being accepted.",
-    date: new Date("2024-10-05"),
-    author: "International Relations Office",
-  },
-];
-
-const mockEvents = [
-  {
-    id: 1,
-    title: "Annual Technical Symposium",
-    date: new Date("2024-11-15"),
-    location: "Main Auditorium",
-  },
-  {
-    id: 2,
-    title: "Industry Connect Workshop",
-    date: new Date("2024-10-25"),
-    location: "Seminar Hall",
-  },
-  {
-    id: 3,
-    title: "Research Methodology Seminar",
-    date: new Date("2024-11-05"),
-    location: "Conference Room",
-  },
-];
-
 export default function DashboardPage() {
-  const [dashboardData, setDashboardData] = useState<DashboardStats>({
+  const [dashboardData, setDashboardData] = useState<
+    DashboardStats & {
+      professorCount: number;
+      associateProfessorCount: number;
+      assistantProfessorCount: number;
+      totalResearchProjects: number;
+      totalPublications: number;
+      departmentDetails: DepartmentStat[];
+    }
+  >({
     totalFaculty: 0,
     totalStudents: 0,
     totalDepartments: 0,
@@ -88,8 +56,23 @@ export default function DashboardPage() {
     studentsByDepartment: [],
     recentAnnouncements: [],
     upcomingEvents: [],
+    professorCount: 0,
+    associateProfessorCount: 0,
+    assistantProfessorCount: 0,
+    totalResearchProjects: 0,
+    totalPublications: 0,
+    departmentDetails: [],
   });
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"naac" | "nba">("naac");
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportType, setReportType] = useState<
+    "full" | "faculty" | "students" | "research"
+  >("full");
+  const [reportMessage, setReportMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -115,7 +98,65 @@ export default function DashboardPage() {
     totalCourses,
     facultyByDepartment,
     studentsByDepartment,
+    professorCount,
+    associateProfessorCount,
+    assistantProfessorCount,
+    totalResearchProjects,
+    totalPublications,
+    departmentDetails,
   } = dashboardData;
+
+  const handleGenerateReport = async () => {
+    try {
+      setGeneratingReport(true);
+      setReportMessage(null);
+
+      // Call the report generation API
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          reportType,
+          departmentId: activeTab === "nba" ? "all" : undefined,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Create a data URL from the base64 PDF
+        const pdfDataUri = `data:application/pdf;base64,${result.data.pdfBase64}`;
+
+        // Create an invisible link and trigger download
+        const link = document.createElement("a");
+        link.href = pdfDataUri;
+        link.download = result.data.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setReportMessage({
+          type: "success",
+          text: `Report generated successfully. Your download should start automatically.`,
+        });
+      } else {
+        throw new Error(result.message || "Failed to generate report");
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      setReportMessage({
+        type: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "An error occurred while generating the report",
+      });
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
 
   // You can create a loading state if needed
   if (loading) {
@@ -140,18 +181,58 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        {/* Page title */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Welcome to the IMS Portal Dashboard. Here&apos;s an overview of the
-            institute&apos;s information.
-          </p>
+      <div className="space-y-8">
+        {/* Page title with report generation options */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Welcome to the Institute Management System Dashboard. Here&apos;s
+              an overview of key academic metrics.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <select
+              value={reportType}
+              onChange={(e) =>
+                setReportType(
+                  e.target.value as "full" | "faculty" | "students" | "research"
+                )
+              }
+              className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              disabled={generatingReport}
+            >
+              <option value="full">Full Report</option>
+              <option value="faculty">Faculty Report</option>
+              <option value="students">Students Report</option>
+              <option value="research">Research Output Report</option>
+            </select>
+            <button
+              onClick={handleGenerateReport}
+              disabled={generatingReport}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:bg-indigo-300"
+            >
+              <DocumentArrowDownIcon className="h-5 w-5" />
+              {generatingReport ? "Generating..." : "Generate Report"}
+            </button>
+          </div>
         </div>
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Report status message */}
+        {reportMessage && (
+          <div
+            className={`p-4 rounded-md ${
+              reportMessage.type === "success"
+                ? "bg-green-50 text-green-800"
+                : "bg-red-50 text-red-800"
+            }`}
+          >
+            {reportMessage.text}
+          </div>
+        )}
+
+        {/* Stats cards with improved UI */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Total Faculty"
             value={formatNumber(totalFaculty)}
@@ -159,6 +240,7 @@ export default function DashboardPage() {
             trend="up"
             change={5}
             changeText="from last semester"
+            bgColor="bg-gradient-to-br from-indigo-50 to-white"
           />
           <StatsCard
             title="Total Students"
@@ -167,11 +249,13 @@ export default function DashboardPage() {
             trend="up"
             change={8}
             changeText="from last semester"
+            bgColor="bg-gradient-to-br from-purple-50 to-white"
           />
           <StatsCard
             title="Departments"
             value={formatNumber(totalDepartments)}
             icon={<BuildingLibraryIcon className="h-6 w-6 text-blue-600" />}
+            bgColor="bg-gradient-to-br from-blue-50 to-white"
           />
           <StatsCard
             title="Courses"
@@ -180,36 +264,257 @@ export default function DashboardPage() {
             trend="up"
             change={3}
             changeText="new courses added"
+            bgColor="bg-gradient-to-br from-pink-50 to-white"
           />
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ChartCard title="Faculty Distribution by Department">
-            <DepartmentDistributionChart
-              dataKey="faculty"
-              data={facultyByDepartment}
-            />
-          </ChartCard>
-          <ChartCard title="Students by Department">
-            <DepartmentBarChart
-              data={studentsByDepartment}
-              barColor="#8b5cf6"
-            />
-          </ChartCard>
+        {/* NAAC vs NBA Tab Selector */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab("naac")}
+              className={`${
+                activeTab === "naac"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <DocumentChartBarIcon className="h-5 w-5" />
+              NAAC Metrics (Institute Level)
+            </button>
+            <button
+              onClick={() => setActiveTab("nba")}
+              className={`${
+                activeTab === "nba"
+                  ? "border-indigo-500 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            >
+              <ChartBarIcon className="h-5 w-5" />
+              NBA Metrics (Department Level)
+            </button>
+          </nav>
         </div>
 
-        {/* Announcements and Events */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <AnnouncementCard announcements={mockAnnouncements} />
-          <EventsCard events={mockEvents} />
-        </div>
+        {/* NAAC Stats (Institute Level) */}
+        {activeTab === "naac" && (
+          <div className="space-y-6">
+            {/* Faculty Designation Distribution */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <StatsCard
+                title="Professors"
+                value={formatNumber(professorCount)}
+                icon={<AcademicCapSolid className="h-6 w-6 text-red-600" />}
+                bgColor="bg-gradient-to-br from-red-50 to-white"
+              />
+              <StatsCard
+                title="Associate Professors"
+                value={formatNumber(associateProfessorCount)}
+                icon={<AcademicCapSolid className="h-6 w-6 text-amber-600" />}
+                bgColor="bg-gradient-to-br from-amber-50 to-white"
+              />
+              <StatsCard
+                title="Assistant Professors"
+                value={formatNumber(assistantProfessorCount)}
+                icon={<AcademicCapSolid className="h-6 w-6 text-green-600" />}
+                bgColor="bg-gradient-to-br from-green-50 to-white"
+              />
+            </div>
+
+            {/* Research and Publications */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <StatsCard
+                title="Total Research Projects"
+                value={formatNumber(totalResearchProjects)}
+                icon={<DocumentTextIcon className="h-6 w-6 text-blue-600" />}
+                bgColor="bg-gradient-to-br from-blue-50 to-white"
+              />
+              <StatsCard
+                title="Total Publications"
+                value={formatNumber(totalPublications)}
+                icon={<DocumentTextIcon className="h-6 w-6 text-purple-600" />}
+                bgColor="bg-gradient-to-br from-purple-50 to-white"
+              />
+            </div>
+
+            {/* Charts with improved UI */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <ChartCard
+                title="Faculty Distribution by Department"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-blue-600"
+                gradientTo="to-indigo-600"
+              >
+                <DepartmentDistributionChart
+                  dataKey="faculty"
+                  data={facultyByDepartment}
+                  height={350}
+                />
+              </ChartCard>
+              <ChartCard
+                title="Students by Department"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-purple-600"
+                gradientTo="to-pink-600"
+              >
+                <DepartmentBarChart
+                  data={studentsByDepartment}
+                  barColor="#8b5cf6"
+                  height={350}
+                />
+              </ChartCard>
+            </div>
+          </div>
+        )}
+
+        {/* NBA Stats (Department Level) */}
+        {activeTab === "nba" && (
+          <div className="space-y-6">
+            <div className="bg-white shadow-md rounded-lg overflow-hidden">
+              <div className="px-4 py-5 sm:px-6 bg-gradient-to-r from-indigo-600 to-purple-600">
+                <h3 className="text-lg font-medium leading-6 text-white">
+                  Department-wise Statistics
+                </h3>
+                <p className="mt-1 max-w-2xl text-sm text-indigo-100">
+                  Detailed breakdown of key metrics by department for NBA
+                  assessment
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Department
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Faculty Count
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Professors
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Associate Prof.
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Assistant Prof.
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Students
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Research Projects
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Publications
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {departmentDetails.map((dept) => (
+                      <tr key={dept.Department_ID} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {dept.Department_Name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.current_faculty_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.professor_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.associate_professor_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.assistant_professor_count}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.Total_Students}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.research_projects}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.publications}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Department Comparison Charts */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <ChartCard
+                title="Faculty Designation Distribution"
+                subtitle="Department-wise breakdown of faculty by designation"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-indigo-600"
+                gradientTo="to-blue-600"
+              >
+                <div className="h-80">
+                  {/* In a real implementation, add a stacked bar chart here */}
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-gray-500">
+                      Faculty designation chart will be displayed here
+                    </p>
+                  </div>
+                </div>
+              </ChartCard>
+              <ChartCard
+                title="Research Output Comparison"
+                subtitle="Department-wise research projects and publications"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-purple-600"
+                gradientTo="to-fuchsia-600"
+              >
+                <div className="h-80">
+                  {/* In a real implementation, add a grouped bar chart here */}
+                  <div className="flex h-full items-center justify-center">
+                    <p className="text-gray-500">
+                      Research output chart will be displayed here
+                    </p>
+                  </div>
+                </div>
+              </ChartCard>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
 }
 
-async function fetchDashboardData(): Promise<DashboardStats> {
+async function fetchDashboardData() {
   try {
     // Fetch department statistics
     const deptStatsResponse = await fetch(`/api/departments/stats`);
@@ -222,6 +527,21 @@ async function fetchDashboardData(): Promise<DashboardStats> {
 
     // Process department stats to get faculty and student distribution
     const { departmentStats } = deptStatsData.data;
+
+    // Mock data for professor designations until API is available
+    const departmentDetails: DepartmentStat[] = departmentStats.map(
+      (dept: DepartmentStat) => ({
+        ...dept,
+        professor_count: Math.floor(Math.random() * 3) + 1,
+        associate_professor_count: Math.floor(Math.random() * 5) + 2,
+        assistant_professor_count:
+          (dept.current_faculty_count || 0) -
+          (Math.floor(Math.random() * 3) + 1) -
+          (Math.floor(Math.random() * 5) + 2),
+        research_projects: Math.floor(Math.random() * 10) + 2,
+        publications: Math.floor(Math.random() * 30) + 5,
+      })
+    );
 
     const facultyByDepartment: DepartmentData[] = departmentStats.map(
       (dept: DepartmentStat) => ({
@@ -248,6 +568,28 @@ async function fetchDashboardData(): Promise<DashboardStats> {
     );
     const totalDepartments = departmentStats.length;
 
+    // Calculate faculty by designation totals
+    const professorCount = departmentDetails.reduce(
+      (sum, dept) => sum + dept.professor_count,
+      0
+    );
+    const associateProfessorCount = departmentDetails.reduce(
+      (sum, dept) => sum + dept.associate_professor_count,
+      0
+    );
+    const assistantProfessorCount = departmentDetails.reduce(
+      (sum, dept) => sum + dept.assistant_professor_count,
+      0
+    );
+    const totalResearchProjects = departmentDetails.reduce(
+      (sum, dept) => sum + dept.research_projects,
+      0
+    );
+    const totalPublications = departmentDetails.reduce(
+      (sum, dept) => sum + dept.publications,
+      0
+    );
+
     // Get courses count from API or use departments count * average courses per department as estimation
     const totalCourses = totalDepartments * 6; // Estimate 6 courses per department
 
@@ -258,8 +600,14 @@ async function fetchDashboardData(): Promise<DashboardStats> {
       totalCourses,
       facultyByDepartment,
       studentsByDepartment,
-      recentAnnouncements: mockAnnouncements,
-      upcomingEvents: mockEvents,
+      recentAnnouncements: [],
+      upcomingEvents: [],
+      professorCount,
+      associateProfessorCount,
+      assistantProfessorCount,
+      totalResearchProjects,
+      totalPublications,
+      departmentDetails,
     };
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
@@ -271,8 +619,14 @@ async function fetchDashboardData(): Promise<DashboardStats> {
       totalCourses: 0,
       facultyByDepartment: [],
       studentsByDepartment: [],
-      recentAnnouncements: mockAnnouncements,
-      upcomingEvents: mockEvents,
+      recentAnnouncements: [],
+      upcomingEvents: [],
+      professorCount: 0,
+      associateProfessorCount: 0,
+      assistantProfessorCount: 0,
+      totalResearchProjects: 0,
+      totalPublications: 0,
+      departmentDetails: [],
     };
   }
 }

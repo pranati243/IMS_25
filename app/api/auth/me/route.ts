@@ -7,7 +7,7 @@ import { query } from "@/app/lib/db";
 export async function GET(request: NextRequest) {
   try {
     // Get the session token from cookies
-    const sessionToken = cookies().get("session_token")?.value;
+    const sessionToken = (await cookies()).get("session_token")?.value;
 
     if (!sessionToken) {
       return NextResponse.json(

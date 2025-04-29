@@ -1,6 +1,5 @@
-import { getDepartmentStyle, commonStyles } from "@/app/lib/theme";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDepartmentStyle } from "@/app/lib/theme";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit } from "lucide-react";
 import Link from "next/link";
@@ -18,13 +17,13 @@ interface FacultyCardProps {
     total_contributions: number;
     professional_memberships: number;
   };
+  showEditButton?: boolean;
 }
 
 export function FacultyCard({
   faculty,
-}: {
-  faculty: FacultyCardProps["faculty"];
-}) {
+  showEditButton = true,
+}: FacultyCardProps) {
   const departmentStyle = getDepartmentStyle(faculty.F_dept);
 
   return (
@@ -62,15 +61,17 @@ export function FacultyCard({
               </div>
             </div>
           </div>
-          <Link href={`/faculty/edit/${faculty.F_id}`}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </Link>
+          {showEditButton && (
+            <Link href={`/faculty/edit/${faculty.F_id}`}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            </Link>
+          )}
         </div>
 
         <div className="space-y-2 text-sm">

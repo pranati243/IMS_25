@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Filter, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 // import { getDepartmentStyle } from "@/app/lib/theme";
 import { Card } from "@/components/ui/card";
@@ -46,8 +46,33 @@ export default function FacultyPage() {
   const [department, setDepartment] = useState<string>("");
   const [designation, setDesignation] = useState<string>("");
   const [experienceFilter, setExperienceFilter] = useState<string>("");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userDepartment, setUserDepartment] = useState<string | null>(null);
 
   useEffect(() => {
+    // First, check user's role from the authentication API
+    const fetchUserRoleAndDepartment = async () => {
+      try {
+        const response = await fetch("/api/auth/me");
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user) {
+            setUserRole(data.user.role);
+            setUserDepartment(data.user.department);
+
+            // For HODs, automatically filter to their department
+            if (data.user.role === "hod" && data.user.department) {
+              setDepartment(data.user.department);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+      }
+    };
+
+    fetchUserRoleAndDepartment();
     fetchFaculty();
   }, []);
 
@@ -134,6 +159,9 @@ export default function FacultyPage() {
     (designation !== "" && designation !== "all") ||
     (experienceFilter !== "" && experienceFilter !== "all");
 
+  // Check if user has permission to add/edit faculty
+  const canManageFaculty = userRole === "admin" || userRole === "hod";
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -144,15 +172,20 @@ export default function FacultyPage() {
               Faculty Directory
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              Browse and search faculty members across all departments
+              Browse and search faculty members
+              {userRole === "hod"
+                ? " in your department"
+                : " across all departments"}
             </p>
           </div>
-          <Link href="/faculty/add">
-            <Button className="flex items-center gap-2 shrink-0">
-              <Plus className="w-4 h-4" />
-              Add Faculty
-            </Button>
-          </Link>
+          {canManageFaculty && (
+            <Link href="/faculty/add">
+              <Button className="flex items-center gap-2 shrink-0">
+                <Plus className="w-4 h-4" />
+                Add Faculty
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Search and filters */}
@@ -384,7 +417,16 @@ export default function FacultyPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredFaculty.map((member) => (
-                  <FacultyCard key={member.F_id} faculty={member} />
+                  <FacultyCard
+                    key={member.F_id}
+                    faculty={member}
+                    showEditButton={
+                      canManageFaculty &&
+                      (userRole === "admin" ||
+                        (userRole === "hod" &&
+                          userDepartment === member.F_dept))
+                    }
+                  />
                 ))}
               </div>
             </div>

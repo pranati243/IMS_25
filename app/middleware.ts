@@ -99,6 +99,16 @@ const protectedApiPaths = [
   "/api/courses",
 ];
 
+// Client routes that require authentication
+const protectedClientPaths = [
+  "/dashboard",
+  "/admin",
+  "/faculty/manage",
+  "/students/manage",
+  "/settings",
+  // "/profile", - temporarily removing profile from protected routes
+];
+
 // Routes that require specific roles
 const adminOnlyApiPaths = ["/api/admin", "/api/users"];
 
@@ -107,6 +117,11 @@ export async function middleware(request: NextRequest) {
 
   // Skip auth check for auth API routes
   if (pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
+
+  // Skip auth check for profile page temporarily
+  if (pathname === "/profile") {
     return NextResponse.next();
   }
 
@@ -119,7 +134,12 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(route)
   );
 
-  if (!isProtectedApiRoute && !isAdminOnlyApiRoute) {
+  // Check if it's a protected client route
+  const isProtectedClientRoute = protectedClientPaths.some((route) =>
+    pathname.startsWith(route)
+  );
+
+  if (!isProtectedApiRoute && !isAdminOnlyApiRoute && !isProtectedClientRoute) {
     return NextResponse.next();
   }
 
@@ -127,7 +147,15 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get("session_token")?.value;
 
   if (!sessionToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // For API routes, return 401
+    if (isProtectedApiRoute || isAdminOnlyApiRoute) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // For client routes, redirect to login
+    return NextResponse.redirect(
+      new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url)
+    );
   }
 
   try {
@@ -155,9 +183,18 @@ export async function middleware(request: NextRequest) {
     });
   } catch (error) {
     console.error("Authentication error:", error);
-    return NextResponse.json(
-      { error: "Authentication failed" },
-      { status: 401 }
+
+    // For API routes, return 401
+    if (isProtectedApiRoute || isAdminOnlyApiRoute) {
+      return NextResponse.json(
+        { error: "Authentication failed" },
+        { status: 401 }
+      );
+    }
+
+    // For client routes, redirect to login
+    return NextResponse.redirect(
+      new URL(`/login?redirect=${encodeURIComponent(pathname)}`, request.url)
     );
   }
 }
@@ -166,5 +203,12 @@ export const config = {
   matcher: [
     // Match all API routes
     "/api/:path*",
+    // Match client routes that need protection
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/profile/:path*",
+    "/faculty/manage/:path*",
+    "/students/manage/:path*",
+    "/settings/:path*",
   ],
 };

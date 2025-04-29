@@ -11,10 +11,7 @@ import {
   AcademicCapIcon,
   BookOpenIcon,
   BuildingLibraryIcon,
-  Cog6ToothIcon,
   ChartBarIcon,
-  FolderIcon,
-  CalendarIcon,
 } from "@heroicons/react/24/outline";
 
 // Sidebar items - all visible during development
@@ -25,9 +22,6 @@ const sidebarItems = [
   { title: "Courses", href: "/courses", icon: BookOpenIcon },
   { title: "Departments", href: "/departments", icon: BuildingLibraryIcon },
   { title: "Reports", href: "/reports", icon: ChartBarIcon },
-  { title: "Resources", href: "/resources", icon: FolderIcon },
-  { title: "Calendar", href: "/calendar", icon: CalendarIcon },
-  { title: "Settings", href: "/settings", icon: Cog6ToothIcon },
 ];
 
 export default function Sidebar() {
