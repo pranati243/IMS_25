@@ -1,20 +1,34 @@
+"use client";
+
 // app/unauthorized/page.tsx
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ShieldAlert, ArrowLeft } from "lucide-react";
 
 export default function UnauthorizedPage() {
+  const router = useRouter();
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="text-center">
-        <h1 className="mt-6 text-3xl font-bold tracking-tight text-red-600">
-          Access Denied
-        </h1>
-        <p className="mt-4 text-lg text-gray-600">
-          You don't have permission to access this page.
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div className="text-center p-8 max-w-md">
+        <div className="flex justify-center mb-6">
+          <ShieldAlert className="h-16 w-16 text-red-500" />
+        </div>
+        <h1 className="text-3xl font-bold mb-2">Access Denied</h1>
+        <p className="text-gray-600 mb-6">
+          You don't have permission to access this page. Please contact your administrator if you believe this is a mistake.
         </p>
-        <div className="mt-10">
+        <div className="flex flex-col md:flex-row gap-4 justify-center">
+          <Button 
+            variant="outline" 
+            onClick={() => router.back()}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" /> Go Back
+          </Button>
           <Button asChild>
-            <Link href="/dashboard">Return to Dashboard</Link>
+            <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
         </div>
       </div>

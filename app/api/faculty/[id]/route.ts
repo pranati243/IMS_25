@@ -1,27 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = params.id;
+    console.log(`Fetching faculty data for ID: ${id}`);
 
-    // Get faculty and faculty details
-    const faculty = await query(
-      `
-      SELECT 
-        f.*,
-        fd.*
-      FROM faculty f
-      LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
-      WHERE f.F_id = ?
-    `,
+    // First check if the faculty exists
+    const facultyExists = await query(
+      `SELECT * FROM faculty WHERE F_id = ?`,
       [id]
     );
 
-    if (!faculty || !faculty[0]) {
+    if (!facultyExists || !(facultyExists as any[]).length) {
+      console.log(`Faculty with ID ${id} not found`);
       return NextResponse.json(
         {
           success: false,
@@ -31,7 +26,89 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(faculty[0]);
+    const basicFaculty = (facultyExists as any[])[0];
+
+    // Then check if faculty_details table exists
+    try {
+      const detailsTableExists = await query("SHOW TABLES LIKE 'faculty_details'");
+      
+      if ((detailsTableExists as any[]).length === 0) {
+        console.log("faculty_details table does not exist, returning basic faculty data");
+        // Return just the basic faculty data if details table doesn't exist
+        return NextResponse.json({
+          ...basicFaculty,
+          // Add empty values for expected fields to prevent form errors
+          Email: "",
+          Phone_Number: "",
+          PAN_Number: "",
+          Aadhaar_Number: "",
+          Highest_Degree: "",
+          Area_of_Certification: "",
+          Date_of_Joining: null,
+          Experience: 0,
+          Past_Experience: "",
+          Age: 18,
+          Current_Designation: "",
+          Date_of_Birth: null,
+          Nature_of_Association: "",
+        });
+      }
+    } catch (error) {
+      console.error("Error checking faculty_details table:", error);
+    }
+
+    // Try to get the faculty with details
+    const faculty = await query(
+      `
+      SELECT 
+        f.*,
+        fd.*
+      FROM faculty f
+      LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
+      WHERE f.F_id = ?
+      `,
+      [id]
+    );
+
+    // If we have data with details, return it
+    if (faculty && (faculty as any[]).length > 0) {
+      const facultyData = (faculty as any[])[0];
+      
+      // Convert date strings to proper format for the form
+      if (facultyData.Date_of_Joining) {
+        facultyData.Date_of_Joining = facultyData.Date_of_Joining instanceof Date 
+          ? facultyData.Date_of_Joining 
+          : new Date(facultyData.Date_of_Joining);
+      }
+      
+      if (facultyData.Date_of_Birth) {
+        facultyData.Date_of_Birth = facultyData.Date_of_Birth instanceof Date 
+          ? facultyData.Date_of_Birth 
+          : new Date(facultyData.Date_of_Birth);
+      }
+      
+      return NextResponse.json(facultyData);
+    }
+
+    // If we don't have details but faculty exists, return faculty with empty details
+    console.log(`Faculty found but no details for ID ${id}`);
+    return NextResponse.json({
+      ...basicFaculty,
+      // Add empty values for expected fields to prevent form errors
+      Email: "",
+      Phone_Number: "",
+      PAN_Number: "",
+      Aadhaar_Number: "",
+      Highest_Degree: "",
+      Area_of_Certification: "",
+      Date_of_Joining: null,
+      Experience: 0,
+      Past_Experience: "",
+      Age: 18,
+      Current_Designation: "",
+      Date_of_Birth: null,
+      Nature_of_Association: "",
+    });
   } catch (error) {
     console.error("Error fetching faculty:", error);
     return NextResponse.json(
@@ -46,11 +123,12 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const id = params.id;
+    console.log(`Updating faculty data for ID: ${id}`);
     const body = await request.json();
     const {
       F_name,
@@ -70,53 +148,150 @@ export async function PUT(
       Nature_of_Association,
     } = body;
 
-    // Update faculty table
-    await query(
-      `
-      UPDATE faculty 
-      SET F_name = ?, F_dept = ?
-      WHERE F_id = ?
-    `,
-      [F_name, F_dept, id]
-    );
+    console.log("Received data for update:", body);
 
-    // Update faculty_details table
-    await query(
-      `
-      UPDATE faculty_details 
-      SET 
-        Email = ?,
-        Phone_Number = ?,
-        PAN_Number = ?,
-        Aadhaar_Number = ?,
-        Highest_Degree = ?,
-        Area_of_Certification = ?,
-        Date_of_Joining = ?,
-        Experience = ?,
-        Past_Experience = ?,
-        Age = ?,
-        Current_Designation = ?,
-        Date_of_Birth = ?,
-        Nature_of_Association = ?
-      WHERE F_ID = ?
-    `,
-      [
-        Email,
-        Phone_Number,
-        PAN_Number,
-        Aadhaar_Number,
-        Highest_Degree,
-        Area_of_Certification,
-        Date_of_Joining,
-        Experience,
-        Past_Experience,
-        Age,
-        Current_Designation,
-        Date_of_Birth,
-        Nature_of_Association,
-        id,
-      ]
-    );
+    // Update faculty table
+    try {
+      await query(
+        `
+        UPDATE faculty 
+        SET F_name = ?, F_dept = ?
+        WHERE F_id = ?
+      `,
+        [F_name, F_dept, id]
+      );
+      console.log(`Successfully updated basic faculty info for ID ${id}`);
+    } catch (error) {
+      console.error("Error updating faculty table:", error);
+      throw new Error(`Failed to update faculty: ${error instanceof Error ? error.message : String(error)}`);
+    }
+
+    // Check if faculty_details table exists
+    try {
+      const detailsTableExists = await query("SHOW TABLES LIKE 'faculty_details'");
+      
+      if ((detailsTableExists as any[]).length === 0) {
+        console.log("faculty_details table doesn't exist, creating it");
+        // Create the table
+        await query(`
+          CREATE TABLE faculty_details (
+            F_ID INT NOT NULL,
+            Email VARCHAR(100),
+            Phone_Number VARCHAR(20),
+            PAN_Number VARCHAR(20),
+            Aadhaar_Number VARCHAR(20),
+            Highest_Degree VARCHAR(100),
+            Area_of_Certification VARCHAR(100),
+            Date_of_Joining DATE,
+            Experience INT,
+            Past_Experience VARCHAR(200),
+            Age INT,
+            Current_Designation VARCHAR(100),
+            Date_of_Birth DATE,
+            Nature_of_Association VARCHAR(100),
+            PRIMARY KEY (F_ID),
+            FOREIGN KEY (F_ID) REFERENCES faculty(F_id) ON DELETE CASCADE
+          )
+        `);
+        console.log("faculty_details table created successfully");
+      }
+    } catch (error) {
+      console.error("Error checking/creating faculty_details table:", error);
+      // Don't throw here, try to continue
+    }
+
+    // Check if record exists in faculty_details for this faculty
+    try {
+      const details = await query(
+        `SELECT 1 FROM faculty_details WHERE F_ID = ? LIMIT 1`,
+        [id]
+      );
+
+      if ((details as any[]).length === 0) {
+        // Insert new record
+        console.log(`Creating new faculty_details record for faculty ID ${id}`);
+        await query(
+          `
+          INSERT INTO faculty_details (
+            F_ID,
+            Email,
+            Phone_Number,
+            PAN_Number,
+            Aadhaar_Number,
+            Highest_Degree,
+            Area_of_Certification,
+            Date_of_Joining,
+            Experience,
+            Past_Experience,
+            Age,
+            Current_Designation,
+            Date_of_Birth,
+            Nature_of_Association
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          [
+            id,
+            Email,
+            Phone_Number,
+            PAN_Number,
+            Aadhaar_Number,
+            Highest_Degree,
+            Area_of_Certification,
+            Date_of_Joining,
+            Experience,
+            Past_Experience,
+            Age,
+            Current_Designation,
+            Date_of_Birth,
+            Nature_of_Association,
+          ]
+        );
+        console.log(`Faculty details record created successfully for ID ${id}`);
+      } else {
+        // Update existing record
+        console.log(`Updating faculty_details for faculty ID ${id}`);
+        await query(
+          `
+          UPDATE faculty_details 
+          SET 
+            Email = ?,
+            Phone_Number = ?,
+            PAN_Number = ?,
+            Aadhaar_Number = ?,
+            Highest_Degree = ?,
+            Area_of_Certification = ?,
+            Date_of_Joining = ?,
+            Experience = ?,
+            Past_Experience = ?,
+            Age = ?,
+            Current_Designation = ?,
+            Date_of_Birth = ?,
+            Nature_of_Association = ?
+          WHERE F_ID = ?
+          `,
+          [
+            Email,
+            Phone_Number,
+            PAN_Number,
+            Aadhaar_Number,
+            Highest_Degree,
+            Area_of_Certification,
+            Date_of_Joining,
+            Experience,
+            Past_Experience,
+            Age,
+            Current_Designation,
+            Date_of_Birth,
+            Nature_of_Association,
+            id,
+          ]
+        );
+        console.log(`Faculty details updated successfully for ID ${id}`);
+      }
+    } catch (error) {
+      console.error("Error updating faculty details:", error);
+      throw new Error(`Failed to update faculty details: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,40 +1,41 @@
 // app/components/auth/PermissionGate.tsx
 "use client";
 
-import { useAuth } from "@/app/providers/auth-provider";
 import { ReactNode } from "react";
+import { useAuth } from "@/app/providers/auth-provider";
 
-type PermissionGateProps = {
-  resource?: string;
-  action?: string;
-  permission?: string;
+interface PermissionGateProps {
+  resource: string;
+  action: string;
   children: ReactNode;
   fallback?: ReactNode;
-};
+}
 
+/**
+ * PermissionGate - Component to conditionally render content based on user permissions
+ * 
+ * @param resource - The resource being accessed (e.g., "faculty", "department")
+ * @param action - The action being performed (e.g., "read", "create", "update", "delete")
+ * @param children - Content to show if user has permission
+ * @param fallback - Optional content to show if user doesn't have permission
+ */
 export default function PermissionGate({
   resource,
   action,
-  permission,
   children,
   fallback = null,
 }: PermissionGateProps) {
-  const { checkPermission } = useAuth();
-
-  // If no permission specified, allow access
-  if (!permission && (!resource || !action)) {
-    return <>{children}</>;
+  const { user, checkPermission } = useAuth();
+  
+  // Check if the user is authenticated
+  if (!user) {
+    return fallback;
   }
-
-  // Allow access during development (always return true)
-  return <>{children}</>;
-
-  // This is the real check (commented out for development)
-  /*
-  const permToCheck = permission || `${resource}_${action}`;
-  if (checkPermission(permToCheck)) {
-    return <>{children}</>;
-  }
-  return <>{fallback}</>;
-  */
+  
+  // Check for the specific permission
+  const permissionName = `${resource}_${action}`;
+  const hasPermission = checkPermission(permissionName);
+  
+  // Render the content or fallback based on permission
+  return hasPermission ? <>{children}</> : <>{fallback}</>;
 }

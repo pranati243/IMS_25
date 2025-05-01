@@ -73,6 +73,7 @@ export function AddFacultyForm({
   facultyId 
 }: AddFacultyFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const form = useForm<FacultyFormValues>({
     resolver: zodResolver(facultyFormSchema),
@@ -96,29 +97,64 @@ export function AddFacultyForm({
   async function onSubmit(data: FacultyFormValues) {
     try {
       setIsSubmitting(true);
+      setSubmissionError(null);
+      console.log("Form submitted with data:", data);
 
       if (isEditing && facultyId) {
+        console.log(`Updating faculty ID: ${facultyId}`);
+        
+        // Prepare request body with proper date formatting
+        const requestBody = {
+          ...data,
+          Date_of_Joining: data.Date_of_Joining ? format(data.Date_of_Joining, 'yyyy-MM-dd') : null,
+          Date_of_Birth: data.Date_of_Birth ? format(data.Date_of_Birth, 'yyyy-MM-dd') : null,
+        };
+        
+        console.log("Sending PUT request with body:", requestBody);
+        console.log("To URL:", `/api/faculty/${facultyId}`);
+        
         // Update existing faculty
         const updateResponse = await fetch(`/api/faculty/${facultyId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            ...data,
-            Date_of_Joining: data.Date_of_Joining ? format(data.Date_of_Joining, 'yyyy-MM-dd') : null,
-            Date_of_Birth: data.Date_of_Birth ? format(data.Date_of_Birth, 'yyyy-MM-dd') : null,
-          }),
+          body: JSON.stringify(requestBody),
         });
 
-        if (!updateResponse.ok) {
-          const errorData = await updateResponse.json();
-          throw new Error(errorData.message || "Failed to update faculty");
+        console.log("Update API response status:", updateResponse.status);
+        console.log("Update API response headers:", Object.fromEntries([...updateResponse.headers.entries()]));
+        
+        // Clone the response before consuming it
+        const clonedResponse = updateResponse.clone();
+        
+        try {
+          const responseData = await updateResponse.json();
+          console.log("Update API response data:", responseData);
+
+          if (!updateResponse.ok) {
+            throw new Error(responseData.message || `Failed to update faculty (Status: ${updateResponse.status})`);
+          }
+
+          toast.success("Faculty updated successfully", {
+            duration: 3000,
+          });
+          
+          // Reset form and close after successful submission
+          form.reset();
+          // Add a delay before closing to ensure toast is visible
+          setTimeout(() => {
+            onClose();
+          }, 2000);
+        } catch (jsonError) {
+          console.error("Error parsing response JSON:", jsonError);
+          
+          // Try to read response as text instead
+          const textResponse = await clonedResponse.text();
+          console.error("Response text:", textResponse);
+          
+          throw new Error(`Failed to parse server response: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`);
         }
-
-        toast.success("Faculty updated successfully", {
-          duration: 3000,
-        });
       } else {
         // Create new faculty
         const facultyResponse = await fetch("/api/faculty", {
@@ -163,16 +199,11 @@ export function AddFacultyForm({
         });
       }
 
-      // Reset form and close after successful submission
-      form.reset();
-      // Add a delay before closing to ensure toast is visible
-      setTimeout(() => {
-        onClose();
-      }, 2000);
-
     } catch (error) {
       console.error("Error saving faculty:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to save faculty");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save faculty";
+      setSubmissionError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -192,6 +223,13 @@ export function AddFacultyForm({
       <h2 className="text-2xl font-bold mb-6">
         {isEditing ? "Edit Faculty" : "Add New Faculty"}
       </h2>
+
+      {submissionError && (
+        <div className="mb-6 p-4 border border-red-300 bg-red-50 rounded-lg">
+          <h3 className="text-red-600 font-medium mb-2">Error submitting form</h3>
+          <p className="text-red-600">{submissionError}</p>
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

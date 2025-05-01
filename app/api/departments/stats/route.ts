@@ -105,12 +105,29 @@ export async function GET(request: NextRequest) {
     // Execute the query
     const departmentStats = await query(sql, params);
 
+    // Fetch faculty designation counts by department
+    let facultyDesignationSql = `
+      SELECT 
+        f.F_dept as Department_Name,
+        fd.Current_Designation,
+        COUNT(*) as count
+      FROM faculty f
+      JOIN faculty_details fd ON f.F_id = fd.F_ID
+      GROUP BY f.F_dept, fd.Current_Designation
+      ORDER BY f.F_dept
+    `;
+
+    const facultyDesignationStats = await query(facultyDesignationSql);
+
     // For safety, ensure we're returning an array
     const statsArray = Array.isArray(departmentStats) ? departmentStats : [];
 
     return NextResponse.json({
       success: true,
-      data: { departmentStats: statsArray },
+      data: { 
+        departmentStats: statsArray,
+        facultyDesignationStats
+      },
     });
   } catch (error) {
     console.error("Error fetching department stats:", error);

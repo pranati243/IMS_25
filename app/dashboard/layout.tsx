@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NavHelper } from "./nav-helper";
 
 export const metadata: Metadata = {
   title: "Dashboard - IMS Portal",
@@ -10,5 +11,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <>
+      <NavHelper />
+      {children}
+    </>
+  );
 }

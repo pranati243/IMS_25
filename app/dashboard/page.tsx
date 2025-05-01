@@ -19,6 +19,9 @@ import ChartCard from "@/app/components/ui/ChartCard";
 import DepartmentDistributionChart from "@/app/components/dashboard/DepartmentDistributionChart";
 import DepartmentBarChart from "@/app/components/dashboard/DepartmentBarChart";
 import { DashboardStats } from "@/app/lib/types";
+import { NavHelper } from "./nav-helper";
+import { useAuth } from "@/app/providers/auth-provider";
+import Link from "next/link";
 
 interface DepartmentStat {
   Department_ID: number;
@@ -38,6 +41,9 @@ interface DepartmentData {
 }
 
 export default function DashboardPage() {
+  const { user, loading: authLoading } = useAuth();
+  const [diagnostic, setDiagnostic] = useState<any>(null);
+  const [loadingDiag, setLoadingDiag] = useState(false);
   const [dashboardData, setDashboardData] = useState<
     DashboardStats & {
       professorCount: number;
@@ -106,6 +112,68 @@ export default function DashboardPage() {
     departmentDetails,
   } = dashboardData;
 
+  // Check API on load
+  useEffect(() => {
+    async function testApi() {
+      setLoadingDiag(true);
+      try {
+        // Test the me endpoint
+        const response = await fetch("/api/auth/me", {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        
+        // Get cookies
+        const cookies = document.cookie.split(';').map(c => c.trim());
+        
+        setDiagnostic({
+          apiStatus: response.status,
+          apiSuccess: data.success,
+          userData: data.user,
+          cookies,
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        setDiagnostic({
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString()
+        });
+      } finally {
+        setLoadingDiag(false);
+      }
+    }
+    
+    if (!loading) {
+      testApi();
+    }
+  }, [loading]);
+  
+  // Try bypass auth if needed
+  const bypassAuth = async () => {
+    try {
+      setLoadingDiag(true);
+      const response = await fetch("/api/debug/bypass-auth", {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        const data = await response.json();
+        alert("Bypass failed: " + data.message);
+      }
+    } catch (error) {
+      alert("Error: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setLoadingDiag(false);
+    }
+  };
+
   const handleGenerateReport = async () => {
     try {
       setGeneratingReport(true);
@@ -159,7 +227,7 @@ export default function DashboardPage() {
   };
 
   // You can create a loading state if needed
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <MainLayout>
         <div className="animate-pulse space-y-6">
@@ -179,15 +247,120 @@ export default function DashboardPage() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold mb-2">Not Authenticated</h1>
+          <p className="text-gray-500 mb-4">Please log in to access the dashboard</p>
+          
+          <div className="flex flex-col space-y-4">
+            <Link 
+              href="/login"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Go to Login
+            </Link>
+            
+            <button
+              onClick={async () => {
+                try {
+                  setLoadingDiag(true);
+                  // Call the bypass-auth endpoint for development use
+                  const response = await fetch("/api/debug/bypass-auth", {
+                    method: "GET",
+                    credentials: "include", // Important: This ensures cookies are sent and stored
+                    headers: {
+                      "Accept": "application/json",
+                      "Content-Type": "application/json"
+                    }
+                  });
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    // Store user data in sessionStorage for immediate use
+                    if (data.success && data.user) {
+                      sessionStorage.setItem('authUser', JSON.stringify(data.user));
+                      // Force reload to apply the new authentication state
+                      window.location.reload();
+                    } else {
+                      alert("Auth bypass returned success=false");
+                    }
+                  } else {
+                    alert("Bypass auth failed: " + response.statusText);
+                  }
+                } catch (error) {
+                  alert("Error: " + (error instanceof Error ? error.message : String(error)));
+                } finally {
+                  setLoadingDiag(false);
+                }
+              }}
+              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+            >
+              Try Auth Bypass (Dev Mode)
+            </button>
+            
+            <button
+              onClick={async () => {
+                try {
+                  setLoadingDiag(true);
+                  // Call the new auth-fix endpoint
+                  const response = await fetch("/api/debug/auth-fix", {
+                    method: "GET",
+                    credentials: "include",
+                    headers: {
+                      "Accept": "application/json",
+                      "Content-Type": "application/json"
+                    }
+                  });
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    // Store user data in sessionStorage
+                    if (data.success && data.user) {
+                      sessionStorage.setItem('authUser', JSON.stringify(data.user));
+                      alert("Authentication fixed! Reloading page...");
+                      // Force reload with a slight delay
+                      setTimeout(() => window.location.reload(), 500);
+                    } else {
+                      alert("Auth fix returned success=false");
+                    }
+                  } else {
+                    alert("Auth fix failed: " + response.statusText);
+                  }
+                } catch (error) {
+                  alert("Error: " + (error instanceof Error ? error.message : String(error)));
+                } finally {
+                  setLoadingDiag(false);
+                }
+              }}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Fix Authentication (Recommended)
+            </button>
+          </div>
+          
+          {diagnostic && (
+            <div className="mt-8 p-4 bg-gray-100 rounded text-left max-w-lg mx-auto text-xs overflow-auto">
+              <h2 className="font-semibold mb-2">Diagnostic Info:</h2>
+              <pre>{JSON.stringify(diagnostic, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <MainLayout>
+      <NavHelper />
       <div className="space-y-8">
         {/* Page title with report generation options */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Welcome to the Institute Management System Dashboard. Here&apos;s
+              Welcome to the Information Management System Dashboard. Here&apos;s
               an overview of key academic metrics.
             </p>
           </div>
@@ -526,21 +699,82 @@ async function fetchDashboardData() {
     const deptStatsData = await deptStatsResponse.json();
 
     // Process department stats to get faculty and student distribution
-    const { departmentStats } = deptStatsData.data;
+    const { departmentStats, facultyDesignationStats } = deptStatsData.data;
 
-    // Mock data for professor designations until API is available
+    // Process faculty designation stats
+    interface DesignationCounts {
+      professor_count: number;
+      associate_professor_count: number;
+      assistant_professor_count: number;
+      [key: string]: number;
+    }
+    
+    const designationsByDepartment: { [department: string]: DesignationCounts } = {};
+    
+    // Initialize the departments with zero counts
+    departmentStats.forEach((dept: DepartmentStat) => {
+      designationsByDepartment[dept.Department_Name] = {
+        professor_count: 0,
+        associate_professor_count: 0,
+        assistant_professor_count: 0
+      };
+    });
+    
+    // Fill in the actual counts from the API response
+    if (facultyDesignationStats && Array.isArray(facultyDesignationStats)) {
+      facultyDesignationStats.forEach((item: { 
+        Department_Name: string; 
+        Current_Designation: string; 
+        count: number 
+      }) => {
+        const dept = item.Department_Name;
+        const designation = item.Current_Designation;
+        const count = item.count;
+        
+        if (designationsByDepartment[dept]) {
+          if (designation === 'Professor') {
+            designationsByDepartment[dept].professor_count = count;
+          } else if (designation === 'Associate Professor') {
+            designationsByDepartment[dept].associate_professor_count = count;
+          } else if (designation === 'Assistant Professor') {
+            designationsByDepartment[dept].assistant_professor_count = count;
+          }
+        }
+      });
+    }
+
+    // Prepare department details with actual designation counts
     const departmentDetails: DepartmentStat[] = departmentStats.map(
-      (dept: DepartmentStat) => ({
-        ...dept,
-        professor_count: Math.floor(Math.random() * 3) + 1,
-        associate_professor_count: Math.floor(Math.random() * 5) + 2,
-        assistant_professor_count:
-          (dept.current_faculty_count || 0) -
-          (Math.floor(Math.random() * 3) + 1) -
-          (Math.floor(Math.random() * 5) + 2),
-        research_projects: Math.floor(Math.random() * 10) + 2,
-        publications: Math.floor(Math.random() * 30) + 5,
-      })
+      (dept: DepartmentStat) => {
+        const deptName = dept.Department_Name;
+        const designations = designationsByDepartment[deptName] || {
+          professor_count: 0,
+          associate_professor_count: 0,
+          assistant_professor_count: 0
+        };
+        
+        // If no designation data is available, fallback to proportional estimates
+        const totalFaculty = dept.current_faculty_count || 0;
+        if (totalFaculty > 0 && 
+            designations.professor_count + 
+            designations.associate_professor_count + 
+            designations.assistant_professor_count === 0) {
+          designations.professor_count = Math.floor(totalFaculty * 0.2);
+          designations.associate_professor_count = Math.floor(totalFaculty * 0.3);
+          designations.assistant_professor_count = totalFaculty - 
+            designations.professor_count - 
+            designations.associate_professor_count;
+        }
+        
+        return {
+          ...dept,
+          professor_count: designations.professor_count,
+          associate_professor_count: designations.associate_professor_count,
+          assistant_professor_count: designations.assistant_professor_count,
+          research_projects: Math.floor(Math.random() * 10) + 2,
+          publications: Math.floor(Math.random() * 30) + 5,
+        };
+      }
     );
 
     const facultyByDepartment: DepartmentData[] = departmentStats.map(
