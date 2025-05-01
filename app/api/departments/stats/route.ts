@@ -70,67 +70,90 @@
 // }
 
 // app/api/departments/stats/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Get query parameters
-    const { searchParams } = new URL(request.url);
-    const departmentFilter = searchParams.get("department");
-
-    // Build the SQL query based on role and filters
-    let sql = `
-      SELECT 
-        d.Department_ID, 
-        d.Department_Name,
-        COUNT(DISTINCT f.F_id) as current_faculty_count,
-        dd.Total_Students
-      FROM department d
-      LEFT JOIN department_details dd ON d.Department_ID = dd.Department_ID
-      LEFT JOIN faculty f ON f.F_dept = d.Department_Name
-    `;
-
-    const params = [];
-
-    // Apply department filter if specified (mainly for HODs)
-    if (departmentFilter) {
-      sql += " WHERE d.Department_Name = ?";
-      params.push(departmentFilter);
+    // First check if tables exist
+    const departmentTableExists = await query("SHOW TABLES LIKE 'department'");
+    const facultyTableExists = await query("SHOW TABLES LIKE 'faculty'");
+    
+    if (!(departmentTableExists as any[]).length) {
+      throw new Error("Department table does not exist");
     }
-
-    // Group by department
-    sql += " GROUP BY d.Department_ID, d.Department_Name, dd.Total_Students";
-
-    // Execute the query
-    const departmentStats = await query(sql, params);
-
-    // Fetch faculty designation counts by department
-    let facultyDesignationSql = `
-      SELECT 
-        f.F_dept as Department_Name,
-        fd.Current_Designation,
-        COUNT(*) as count
-      FROM faculty f
-      JOIN faculty_details fd ON f.F_id = fd.F_ID
-      GROUP BY f.F_dept, fd.Current_Designation
-      ORDER BY f.F_dept
-    `;
-
-    const facultyDesignationStats = await query(facultyDesignationSql);
-
-    // For safety, ensure we're returning an array
-    const statsArray = Array.isArray(departmentStats) ? departmentStats : [];
-
+    
+    // Get list of all departments
+    const departments = await query(
+      `SELECT Department_ID, Department_Name FROM department ORDER BY Department_Name`
+    );
+    
+    const stats = [];
+    
+    for (const dept of departments as any[]) {
+      const deptName = dept.Department_Name;
+      
+      // Query to count faculty in this department
+      let facultyCount = 0;
+      if ((facultyTableExists as any[]).length) {
+        const facultyResult = await query(
+          `SELECT COUNT(*) as count FROM faculty WHERE F_dept = ?`,
+          [deptName]
+        );
+        facultyCount = (facultyResult as any[])[0].count;
+      }
+      
+      // Get department details if available
+      let details = {};
+      try {
+        const detailsQuery = await query(
+          `SELECT * FROM department_details WHERE Department_ID = ?`,
+          [dept.Department_ID]
+        );
+        
+        if ((detailsQuery as any[]).length) {
+          details = (detailsQuery as any[])[0];
+        }
+      } catch (error) {
+        console.error(`Error getting details for department ${deptName}:`, error);
+      }
+      
+      // Get HOD name if available
+      let hodName = "Not assigned";
+      let hodId = null;
+      try {
+        if (details && (details as any).HOD_ID) {
+          hodId = (details as any).HOD_ID;
+          const hodQuery = await query(
+            `SELECT F_name FROM faculty WHERE F_id = ?`,
+            [hodId]
+          );
+          
+          if ((hodQuery as any[]).length) {
+            hodName = (hodQuery as any[])[0].F_name;
+          }
+        }
+      } catch (error) {
+        console.error(`Error getting HOD for department ${deptName}:`, error);
+      }
+      
+      stats.push({
+        id: dept.Department_ID,
+        name: deptName,
+        facultyCount,
+        studentsCount: (details as any)?.Total_Students || 0,
+        hodName,
+        hodId,
+        establishmentYear: (details as any)?.Establishment_Year || null,
+      });
+    }
+    
     return NextResponse.json({
       success: true,
-      data: { 
-        departmentStats: statsArray,
-        facultyDesignationStats
-      },
+      data: stats
     });
   } catch (error) {
-    console.error("Error fetching department stats:", error);
+    console.error("Error getting department stats:", error);
     return NextResponse.json(
       {
         success: false,

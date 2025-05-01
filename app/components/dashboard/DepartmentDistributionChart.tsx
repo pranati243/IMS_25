@@ -103,21 +103,24 @@ export default function DepartmentDistributionChart({
           throw new Error(result.message || "API returned an error");
         }
 
-        const { departmentStats } = result.data;
+        // Check if data exists and has the expected structure
+        if (!result.data || !Array.isArray(result.data)) {
+          throw new Error("Invalid data structure received from API");
+        }
 
         // Transform API data to chart format with colors based on dataKey
-        const transformedData = departmentStats.map(
+        const transformedData = result.data.map(
           (item: {
-            Department_Name: string;
-            current_faculty_count: number;
-            Total_Students: number;
+            name: string;
+            facultyCount: number;
+            studentsCount: number;
           }) => {
-            const department = item.Department_Name;
+            const department = item.name;
             // Choose count based on dataKey (faculty or students)
             const count =
               dataKey === "faculty"
-                ? item.current_faculty_count
-                : item.Total_Students;
+                ? item.facultyCount || 0
+                : item.studentsCount || 0;
 
             const departmentStyle = getDepartmentStyle(department);
             const color = departmentStyle.primary;
@@ -141,7 +144,7 @@ export default function DepartmentDistributionChart({
     };
 
     fetchData();
-  }, [dataKey]);
+  }, [dataKey, data]);
 
   const renderCustomizedLabel = ({
     cx,
@@ -156,6 +159,10 @@ export default function DepartmentDistributionChart({
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
+    // Fix percentage display for small values
+    // If value is greater than 0 but would round to 0%, display as 1% instead
+    const displayPercent = percent > 0 && percent < 0.01 ? 1 : Math.round(percent * 100);
+
     return (
       <text
         x={x}
@@ -165,7 +172,7 @@ export default function DepartmentDistributionChart({
         dominantBaseline="central"
         fontSize={12}
       >
-        {`${(percent * 100).toFixed(0)}%`}
+        {`${displayPercent}%`}
       </text>
     );
   };

@@ -106,6 +106,7 @@ const protectedClientPaths = [
   "/faculty/manage",
   "/students/manage",
   "/settings",
+  "/departments",
   // "/profile", - temporarily removing profile from protected routes
 ];
 
@@ -210,5 +211,6 @@ export const config = {
     "/faculty/manage/:path*",
     "/students/manage/:path*",
     "/settings/:path*",
+    "/departments/:path*",
   ],
 };

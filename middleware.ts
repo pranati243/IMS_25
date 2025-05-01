@@ -233,9 +233,15 @@ export async function middleware(request: NextRequest) {
 // Specify which paths this middleware should run on
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for specific static files
-     */
-    "/((?!_next/static|_next/image).*)",
-  ],
+    // API routes
+    '/api/:path*',
+    // Client routes
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/faculty/:path*',
+    '/profile/:path*',
+    '/students/:path*',
+    '/settings/:path*',
+    '/departments/:path*', // Add departments to matcher
+  ]
 }; 

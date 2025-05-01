@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 01, 2025 at 08:39 AM
+-- Generation Time: May 01, 2025 at 09:38 PM
 -- Server version: 8.0.34
 -- PHP Version: 8.1.25
 
@@ -71,7 +71,7 @@ CREATE TABLE `department_details` (
 --
 
 INSERT INTO `department_details` (`Department_ID`, `Establishment_Year`, `Department_Code`, `Email_ID`, `Department_Phone_Number`, `HOD_ID`, `Vision`, `Mission`, `Total_Faculty`, `Total_Students`, `Website_URL`, `Notable_Achievements`, `Industry_Collaboration`, `Research_Focus_Area`) VALUES
-(10, '2005', 'CSE-101', 'cse@university.edu', '1234567890', NULL, 'To excel in computer education', 'Empowering students with programming skills', 25, 500, 'https://cse.university.edu', 'Ranked top 5 in national coding competitions', 'Partnership with Google and Microsoft', 'Artificial Intelligence, Cybersecurity'),
+(10, '2005', 'CSE-101', 'cse@university.edu', '1234567890', 112, 'To excel in computer education', 'Empowering students with programming skills', 25, 500, 'https://cse.university.edu', 'Ranked top 5 in national coding competitions', 'Partnership with Google and Microsoft', 'Artificial Intelligence, Cybersecurity'),
 (30, '2002', 'ECE-103', 'ece@university.edu', '1234567892', NULL, 'Enhancing communication technology', 'Pioneering research in electronics', 22, 400, 'https://ece.university.edu', 'Students won national circuit design competition', 'MoU with semiconductor companies', 'VLSI, Embedded Systems'),
 (40, '1995', 'EE-104', 'ee@university.edu', '1234567893', NULL, 'To electrify the world sustainably', 'Creating energy-efficient solutions', 20, 300, 'https://ee.university.edu', 'Developed a smart grid prototype', 'Collaboration with power industries', 'Renewable Energy, Power Systems'),
 (50, '2008', 'IT-105', 'it@university.edu', '1234567894', NULL, 'Advancing IT education and research', 'Focusing on real-world applications of IT', 15, 250, 'https://it.university.edu', 'Students won Hackathon 2024', 'MoU with top software companies', 'Cloud Computing, Data Analytics'),
@@ -94,6 +94,7 @@ CREATE TABLE `faculty` (
 --
 
 INSERT INTO `faculty` (`F_id`, `F_name`, `F_dept`) VALUES
+(100, 'Hindavi', 'Information Technology'),
 (111, 'Dr. Lata Ragha', 'Computer Engineering'),
 (112, 'Dr. M. Kiruthika', 'Computer Engineering'),
 (113, 'Dr. Jyoti More', 'Computer Engineering'),
@@ -127,6 +128,7 @@ INSERT INTO `faculty` (`F_id`, `F_name`, `F_dept`) VALUES
 --
 
 CREATE TABLE `faculty_contributions` (
+  `Contribution_ID` int NOT NULL,
   `F_ID` bigint NOT NULL,
   `Contribution_Type` varchar(255) NOT NULL,
   `Description` text NOT NULL,
@@ -180,6 +182,7 @@ INSERT INTO `faculty_details` (`F_ID`, `Email`, `Phone_Number`, `PAN_Number`, `A
 (128, 'bharati.k@fcrit.ac.in', '9876543232', 'ADUPJ6563E', '889900112277', 'M.E. (Electrics)', 'Power Electronics', '2022-07-21', 3, NULL, NULL, 32, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1993-12-20', NULL, NULL, 'Contract', NULL, NULL),
 (114, 'chhaya.pawar@fcrit.ac.in', '9876543218', 'AKCPD6570A', '445566778899', 'Ph. D', 'Artificial Intelligence', '2022-11-01', 3, NULL, NULL, 43, NULL, NULL, 'Associate Professor', NULL, NULL, NULL, '1982-11-25', NULL, NULL, 'Regular', NULL, NULL),
 (120, 'dakshayani@fcrit.ac.in', '9876543224', 'APNPG7656Q', '001122334455', 'M.E (Comp)', 'Data Science', '2007-08-31', 18, NULL, NULL, 45, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1980-06-18', NULL, NULL, 'Regular', NULL, NULL),
+(100, 'hindavi815@gmail.com', '9876543210', 'ABCDE1234F', '123456789012', 'PhD', 'Artificial Intelligence', '2025-05-01', 5, 'Industry experience', NULL, 35, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1985-01-01', NULL, NULL, 'Permanent', NULL, NULL),
 (113, 'jyoti.more@fcrit.ac.in', '9876543217', 'BKQPS3452K', '334455667788', 'Ph. D', 'Networks', '2022-02-02', 3, NULL, NULL, 40, NULL, NULL, 'Associate Professor', NULL, NULL, NULL, '1985-03-10', NULL, NULL, 'Regular', NULL, NULL),
 (119, 'kavita.shelke@fcrit.ac.in', '9876543223', 'BTXPS9598A', '990011223344', 'M.E (Comp)', 'Networking', '2007-08-27', 18, NULL, NULL, 44, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1981-12-14', NULL, NULL, 'Regular', NULL, NULL),
 (111, 'lata.ragha@fcrit.ac.in', '9876543215', 'ABKPR9379N', '112233445566', 'Ph. D', 'Network Security', '2016-12-21', 9, NULL, NULL, 50, NULL, NULL, 'Professor', NULL, NULL, NULL, '1975-05-15', NULL, NULL, 'Regular', NULL, NULL),
@@ -208,6 +211,7 @@ INSERT INTO `faculty_details` (`F_ID`, `Email`, `Phone_Number`, `PAN_Number`, `A
 --
 
 CREATE TABLE `faculty_professional_body` (
+  `SrNo` int NOT NULL,
   `Professional_Body_ID` int DEFAULT NULL,
   `F_ID` bigint DEFAULT NULL,
   `Professional_Body_Name` varchar(150) NOT NULL,
@@ -262,6 +266,31 @@ CREATE TABLE `faculty_resource_person` (
   `Event_Status` text,
   `Faculty_Name` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
+CREATE TABLE `password_reset_tokens` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `token` varchar(255) NOT NULL,
+  `expires_at` datetime NOT NULL,
+  `used` tinyint(1) DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `password_reset_tokens`
+--
+
+INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `expires_at`, `used`, `created_at`) VALUES
+(1, 100, 'd37d28820e81ae2edc0a86d7e0e3e4fe1ca7403aa51bd8d14326815d8533a2e9', '2025-05-01 09:29:23', 0, '2025-05-01 08:29:23'),
+(2, 100, '29807e463b8b69445089bdf86eea343d537c40c208b3f6ea87074b488464ce70', '2025-05-01 09:37:06', 0, '2025-05-01 08:37:06'),
+(3, 100, '5758cf5a6d7bd6a974fe169d9feca7074858a006349992784119dbebed713bd2', '2025-05-01 09:38:52', 0, '2025-05-01 08:38:52'),
+(4, 100, '1a5c0a8914d47a600f42597dd65b592a4552ae9128f66018a2c6e7879d4aa13d', '2025-05-01 10:12:43', 0, '2025-05-01 09:12:43');
 
 -- --------------------------------------------------------
 
@@ -403,6 +432,21 @@ INSERT INTO `role_permissions` (`id`, `role`, `permission_id`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `sessions`
+--
+
+CREATE TABLE `sessions` (
+  `id` varchar(255) NOT NULL,
+  `user_id` int NOT NULL,
+  `expires` datetime NOT NULL,
+  `data` text,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -436,7 +480,8 @@ INSERT INTO `users` (`id`, `username`, `password`, `email`, `name`, `role`, `dep
 (6, '501', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'amit.verma@university.edu', 'Dr. Shubhangi Vaikole', 'hod', 50, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
 (7, '10001', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'ce.student@university.edu', 'CE Student', 'student', 10, NULL, 10001, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
 (8, '20001', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'me.student@university.edu', 'ME Student', 'student', 20, NULL, 20001, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(9, 'admin', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'admin@ims.edu', 'System Administrator', 'admin', NULL, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 1);
+(9, 'admin', '$2b$10$YfuCQfBG0yFxIEVWMwLiWuWhWyw77RIIyZh7Fkid6O4t.qlpPBqh6', 'admin@ims.edu', 'System Administrator', 'admin', NULL, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-05-01 13:50:49', NULL, 1),
+(100, 'hindavi', '$2b$10$YfuCQfBG0yFxIEVWMwLiWuWhWyw77RIIyZh7Fkid6O4t.qlpPBqh6', 'hindavi815@gmail.com', 'Hindavi Bhagyawant', 'admin', 50, NULL, NULL, 1, '2025-05-01 08:01:41', '2025-05-01 18:21:22', '2025-05-01 18:21:22', 0);
 
 --
 -- Indexes for dumped tables
@@ -468,6 +513,7 @@ ALTER TABLE `faculty`
 -- Indexes for table `faculty_contributions`
 --
 ALTER TABLE `faculty_contributions`
+  ADD PRIMARY KEY (`Contribution_ID`),
   ADD KEY `F_ID` (`F_ID`);
 
 --
@@ -484,6 +530,7 @@ ALTER TABLE `faculty_details`
 -- Indexes for table `faculty_professional_body`
 --
 ALTER TABLE `faculty_professional_body`
+  ADD PRIMARY KEY (`SrNo`),
   ADD UNIQUE KEY `Membership_Number` (`Membership_Number`),
   ADD UNIQUE KEY `Unique_ID` (`Unique_ID`),
   ADD KEY `F_ID` (`F_ID`);
@@ -501,6 +548,13 @@ ALTER TABLE `faculty_resource_person`
   ADD KEY `F_ID` (`F_ID`);
 
 --
+-- Indexes for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
 -- Indexes for table `permissions`
 --
 ALTER TABLE `permissions`
@@ -514,6 +568,14 @@ ALTER TABLE `role_permissions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `role_permission_UNIQUE` (`role`,`permission_id`),
   ADD KEY `fk_role_permissions_permission` (`permission_id`);
+
+--
+-- Indexes for table `sessions`
+--
+ALTER TABLE `sessions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `expires` (`expires`);
 
 --
 -- Indexes for table `users`
@@ -542,6 +604,24 @@ ALTER TABLE `faculty`
   MODIFY `F_id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=136;
 
 --
+-- AUTO_INCREMENT for table `faculty_contributions`
+--
+ALTER TABLE `faculty_contributions`
+  MODIFY `Contribution_ID` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `faculty_professional_body`
+--
+ALTER TABLE `faculty_professional_body`
+  MODIFY `SrNo` int NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `permissions`
 --
 ALTER TABLE `permissions`
@@ -557,7 +637,7 @@ ALTER TABLE `role_permissions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- Constraints for dumped tables
@@ -599,6 +679,12 @@ ALTER TABLE `faculty_qualifications`
 --
 ALTER TABLE `faculty_resource_person`
   ADD CONSTRAINT `faculty_resource_person_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
 -- Constraints for table `role_permissions`

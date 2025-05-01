@@ -698,55 +698,33 @@ async function fetchDashboardData() {
 
     const deptStatsData = await deptStatsResponse.json();
 
-    // Process department stats to get faculty and student distribution
-    const { departmentStats, facultyDesignationStats } = deptStatsData.data;
-
-    // Process faculty designation stats
-    interface DesignationCounts {
-      professor_count: number;
-      associate_professor_count: number;
-      assistant_professor_count: number;
-      [key: string]: number;
+    // Check if we have valid data
+    if (!deptStatsData.success || !deptStatsData.data) {
+      throw new Error("Invalid department stats data structure");
     }
-    
-    const designationsByDepartment: { [department: string]: DesignationCounts } = {};
+
+    // Get departments from the new API structure
+    const departmentStats = deptStatsData.data;
+
+    // In the new API structure we don't have facultyDesignationStats
+    // So we'll create placeholder data
+    const designationsByDepartment: { [department: string]: any } = {};
     
     // Initialize the departments with zero counts
-    departmentStats.forEach((dept: DepartmentStat) => {
-      designationsByDepartment[dept.Department_Name] = {
-        professor_count: 0,
-        associate_professor_count: 0,
-        assistant_professor_count: 0
-      };
-    });
-    
-    // Fill in the actual counts from the API response
-    if (facultyDesignationStats && Array.isArray(facultyDesignationStats)) {
-      facultyDesignationStats.forEach((item: { 
-        Department_Name: string; 
-        Current_Designation: string; 
-        count: number 
-      }) => {
-        const dept = item.Department_Name;
-        const designation = item.Current_Designation;
-        const count = item.count;
-        
-        if (designationsByDepartment[dept]) {
-          if (designation === 'Professor') {
-            designationsByDepartment[dept].professor_count = count;
-          } else if (designation === 'Associate Professor') {
-            designationsByDepartment[dept].associate_professor_count = count;
-          } else if (designation === 'Assistant Professor') {
-            designationsByDepartment[dept].assistant_professor_count = count;
-          }
-        }
+    if (Array.isArray(departmentStats)) {
+      departmentStats.forEach((dept: any) => {
+        designationsByDepartment[dept.name] = {
+          professor_count: 0,
+          associate_professor_count: 0,
+          assistant_professor_count: 0
+        };
       });
     }
-
-    // Prepare department details with actual designation counts
-    const departmentDetails: DepartmentStat[] = departmentStats.map(
-      (dept: DepartmentStat) => {
-        const deptName = dept.Department_Name;
+    
+    // Prepare department details with actual department data
+    const departmentDetails = Array.isArray(departmentStats) ? departmentStats.map(
+      (dept: any) => {
+        const deptName = dept.name;
         const designations = designationsByDepartment[deptName] || {
           professor_count: 0,
           associate_professor_count: 0,
@@ -754,11 +732,8 @@ async function fetchDashboardData() {
         };
         
         // If no designation data is available, fallback to proportional estimates
-        const totalFaculty = dept.current_faculty_count || 0;
-        if (totalFaculty > 0 && 
-            designations.professor_count + 
-            designations.associate_professor_count + 
-            designations.assistant_professor_count === 0) {
+        const totalFaculty = dept.facultyCount || 0;
+        if (totalFaculty > 0) {
           designations.professor_count = Math.floor(totalFaculty * 0.2);
           designations.associate_professor_count = Math.floor(totalFaculty * 0.3);
           designations.assistant_professor_count = totalFaculty - 
@@ -766,30 +741,41 @@ async function fetchDashboardData() {
             designations.associate_professor_count;
         }
         
+        // Create HOD object if hodId and hodName are available
+        const hod = dept.hodId ? {
+          id: dept.hodId,
+          name: dept.hodName || "Unknown Faculty"
+        } : null;
+        
         return {
-          ...dept,
+          Department_ID: dept.id,
+          Department_Name: deptName,
+          current_faculty_count: dept.facultyCount || 0,
+          Total_Students: dept.studentsCount || 0,
           professor_count: designations.professor_count,
           associate_professor_count: designations.associate_professor_count,
           assistant_professor_count: designations.assistant_professor_count,
           research_projects: Math.floor(Math.random() * 10) + 2,
           publications: Math.floor(Math.random() * 30) + 5,
+          HOD: hod,
         };
       }
-    );
+    ) : [];
 
-    const facultyByDepartment: DepartmentData[] = departmentStats.map(
-      (dept: DepartmentStat) => ({
-        department: dept.Department_Name,
-        count: dept.current_faculty_count || 0,
+    // Create data for charts
+    const facultyByDepartment = Array.isArray(departmentStats) ? departmentStats.map(
+      (dept: any) => ({
+        department: dept.name,
+        count: dept.facultyCount || 0,
       })
-    );
+    ) : [];
 
-    const studentsByDepartment: DepartmentData[] = departmentStats.map(
-      (dept: DepartmentStat) => ({
-        department: dept.Department_Name,
-        count: dept.Total_Students || 0,
+    const studentsByDepartment = Array.isArray(departmentStats) ? departmentStats.map(
+      (dept: any) => ({
+        department: dept.name,
+        count: dept.studentsCount || 0,
       })
-    );
+    ) : [];
 
     // Calculate totals
     const totalFaculty = facultyByDepartment.reduce(
@@ -800,7 +786,7 @@ async function fetchDashboardData() {
       (sum: number, dept: DepartmentData) => sum + dept.count,
       0
     );
-    const totalDepartments = departmentStats.length;
+    const totalDepartments = Array.isArray(departmentStats) ? departmentStats.length : 0;
 
     // Calculate faculty by designation totals
     const professorCount = departmentDetails.reduce(
