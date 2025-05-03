@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcrypt";
 import { query } from "@/app/lib/db";
+import { OkPacket, ResultSetHeader } from "mysql2";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, username, password, role, departmentId } = await request.json();
+    const { name, email, username, password, role, departmentId, facultyId, studentId } = await request.json();
 
     // Validate input
     if (!name || !email || !username || !password) {
@@ -22,6 +23,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // For faculty, verify that faculty ID exists in the faculty table
+    if (role === "faculty") {
+      if (!facultyId) {
+        return NextResponse.json(
+          { success: false, message: "Faculty ID is required" },
+          { status: 400 }
+        );
+      }
+
+      // Check if faculty ID exists in faculty table
+      const faculty = await query(
+        `
+        SELECT F_id FROM faculty 
+        WHERE F_id = ?
+        LIMIT 1
+        `,
+        [facultyId]
+      );
+
+      // Check if faculty exists (faculty will be an array)
+      if (!faculty || (Array.isArray(faculty) && faculty.length === 0)) {
+        return NextResponse.json(
+          { success: false, message: "Faculty ID not found in the system. Contact administrator." },
+          { status: 404 }
+        );
+      }
+    }
+
     // Check if email or username already exists
     const existingUsers = await query(
       `
@@ -32,7 +61,8 @@ export async function POST(request: NextRequest) {
       [email, username]
     );
 
-    if (existingUsers.length > 0) {
+    // existingUsers will be an array
+    if (Array.isArray(existingUsers) && existingUsers.length > 0) {
       return NextResponse.json(
         { success: false, message: "Username or email already exists" },
         { status: 409 }
@@ -42,15 +72,19 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await hash(password, 10);
 
+    // Set the appropriate ID field based on role
+    const facultyIdValue = role === "faculty" ? facultyId : null;
+    const studentIdValue = role === "student" ? studentId : null;
+
     // Insert new user
     const result = await query(
       `
       INSERT INTO users (
-        username, password, email, name, role, department_id, created_at, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)
+        username, password, email, name, role, department_id, faculty_id, student_id, created_at, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)
       `,
-      [username, hashedPassword, email, name, role, departmentId]
-    );
+      [username, hashedPassword, email, name, role, departmentId, facultyIdValue, studentIdValue]
+    ) as OkPacket;
 
     // Get user ID from insert result
     const userId = result.insertId;

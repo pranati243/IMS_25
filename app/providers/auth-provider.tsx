@@ -33,7 +33,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
+  login: (username: string, password: string, rememberMe?: boolean) => Promise<boolean>;
   logout: () => Promise<void>;
   checkPermission: (permission: string) => boolean;
 }
@@ -178,12 +178,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user, loading, pathname]);
 
-  const login = async (email: string, password: string, rememberMe: boolean = false) => {
+  const login = async (username: string, password: string, rememberMe: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log("Login attempt for:", email);
+      console.log("Login attempt for:", username);
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -193,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         },
         // Make sure cookies are included
         credentials: 'include',
-        body: JSON.stringify({ email, password, rememberMe }),
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       // Check for non-JSON response
@@ -220,12 +220,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ensure auth state is stored in sessionStorage as well for redundancy
       sessionStorage.setItem('authUser', JSON.stringify(data.user));
       
-      // Return the user data
-      return data.user;
+      // Return success status
+      return true;
     } catch (err) {
       console.error("Login error details:", err);
       setError(err instanceof Error ? err.message : "Login failed");
-      throw err;
+      return false;
     } finally {
       setLoading(false);
     }

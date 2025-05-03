@@ -31,7 +31,8 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    username: "",
+    facultyId: "",
+    studentId: "",
     password: "",
     confirmPassword: "",
     role: "faculty",
@@ -42,6 +43,8 @@ export default function RegisterPage() {
   const [departments, setDepartments] = useState<{id: number, name: string}[]>(DEFAULT_DEPARTMENTS);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [validatingFaculty, setValidatingFaculty] = useState(false);
+  const [facultyExists, setFacultyExists] = useState<boolean | null>(null);
   const router = useRouter();
 
   // Fetch departments when component mounts
@@ -85,6 +88,49 @@ export default function RegisterPage() {
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Reset faculty/student ID when role changes
+    if (name === "role") {
+      setFormData(prev => ({ 
+        ...prev, 
+        facultyId: "", 
+        studentId: ""
+      }));
+      setFacultyExists(null);
+    }
+  };
+
+  // Validate if faculty exists
+  const validateFacultyId = async () => {
+    if (!formData.facultyId || formData.role !== "faculty") return;
+    
+    setValidatingFaculty(true);
+    setFacultyExists(null);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/faculty/check-exists?id=${formData.facultyId}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.exists) {
+        setFacultyExists(true);
+      } else {
+        setFacultyExists(false);
+        setError("Faculty ID not found. Only existing faculty can register.");
+      }
+    } catch (err) {
+      console.error("Error checking faculty:", err);
+      setError("Error checking faculty ID. Please try again.");
+      setFacultyExists(false);
+    } finally {
+      setValidatingFaculty(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,8 +148,33 @@ export default function RegisterPage() {
       return;
     }
 
+    // For faculty role, validate faculty ID exists
+    if (formData.role === "faculty") {
+      if (!formData.facultyId) {
+        setError("Faculty ID is required");
+        return;
+      }
+      
+      // Verify faculty exists
+      if (facultyExists !== true) {
+        await validateFacultyId();
+        if (facultyExists !== true) {
+          return; // Stop submission if faculty doesn't exist
+        }
+      }
+    }
+
+    // For student role, check student ID
+    if (formData.role === "student" && !formData.studentId) {
+      setError("Student Roll Number is required");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
+      
+      // Determine username based on role
+      const username = formData.role === "faculty" ? formData.facultyId : formData.studentId;
       
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -114,10 +185,13 @@ export default function RegisterPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          username: formData.username,
+          username: username,
           password: formData.password,
           role: formData.role,
-          departmentId: formData.departmentId ? parseInt(formData.departmentId) : null
+          departmentId: formData.departmentId ? parseInt(formData.departmentId) : null,
+          // Include IDs in the appropriate fields for database mapping
+          facultyId: formData.role === "faculty" ? formData.facultyId : null,
+          studentId: formData.role === "student" ? formData.studentId : null
         })
       });
 
@@ -163,34 +237,18 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username" className="text-sm font-medium">Username</Label>
-                <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  placeholder="johndoe"
-                  value={formData.username}
-                  onChange={handleChange}
-                  className="h-11"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                required
+                placeholder="John Doe"
+                value={formData.name}
+                onChange={handleChange}
+                className="h-11"
+              />
             </div>
 
             <div className="space-y-2">
@@ -221,7 +279,6 @@ export default function RegisterPage() {
                   <SelectContent>
                     <SelectItem value="faculty">Faculty</SelectItem>
                     <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -250,6 +307,55 @@ export default function RegisterPage() {
               Note: Admin and HOD roles can only be assigned by administrators
             </p>
 
+            {formData.role === "faculty" && (
+              <div className="space-y-2">
+                <Label htmlFor="facultyId" className="text-sm font-medium">Faculty ID</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="facultyId"
+                    name="facultyId"
+                    type="text"
+                    required
+                    placeholder="Enter your Faculty ID"
+                    value={formData.facultyId}
+                    onChange={handleChange}
+                    className="h-11"
+                    onBlur={validateFacultyId}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={validateFacultyId}
+                    disabled={validatingFaculty || !formData.facultyId}
+                    className="shrink-0"
+                  >
+                    {validatingFaculty ? "Checking..." : "Verify"}
+                  </Button>
+                </div>
+                {facultyExists === true && (
+                  <p className="text-xs text-green-600">✓ Faculty ID verified</p>
+                )}
+                <p className="text-xs text-gray-500">
+                  Only existing faculty members can register. Your Faculty ID must be added by an administrator first.
+                </p>
+              </div>
+            )}
+
+            {formData.role === "student" && (
+              <div className="space-y-2">
+                <Label htmlFor="studentId" className="text-sm font-medium">Roll Number</Label>
+                <Input
+                  id="studentId"
+                  name="studentId"
+                  type="text"
+                  required
+                  placeholder="Enter your Roll Number"
+                  value={formData.studentId}
+                  onChange={handleChange}
+                  className="h-11"
+                />
+              </div>
+            )}
+
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium">Password</Label>
@@ -266,19 +372,17 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
                 <div className="relative">
@@ -294,51 +398,59 @@ export default function RegisterPage() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    tabIndex={-1}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-5 w-5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-5 w-5" />
                     )}
                   </button>
                 </div>
               </div>
             </div>
-
-            <Button
-              type="submit"
-              className="w-full h-11 bg-purple-600 hover:bg-purple-700 transition-colors"
-              disabled={isSubmitting}
+            
+            <Button 
+              type="submit" 
+              className="w-full h-11"
+              disabled={isSubmitting || 
+                        (formData.role === "faculty" && facultyExists !== true)}
             >
               {isSubmitting ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <div className="flex items-center justify-center">
+                  <div className="h-5 w-5 border-2 border-white border-opacity-50 border-t-transparent rounded-full animate-spin mr-2"></div>
                   Creating Account...
-                </span>
+                </div>
               ) : (
-                <span className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
+                <div className="flex items-center justify-center">
+                  <UserPlus className="mr-2 h-4 w-4" />
                   Create Account
-                </span>
+                </div>
               )}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4 pb-8">
-          <Separator className="my-2" />
-          <div className="text-center text-sm">
-            Already have an account?{" "}
-            <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
-              Sign in
-            </Link>
+          
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">
+                  Or
+                </span>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-center text-sm">
+              Already have an account?{" "}
+              <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-800">
+                Sign in
+              </Link>
+            </div>
           </div>
-        </CardFooter>
+        </CardContent>
       </Card>
     </div>
   );

@@ -20,7 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -307,7 +307,7 @@ Password: password123
         `);
         
         // Pre-fill the form with test credentials
-        setEmail("hindavi815@gmail.com");
+        setUsername("hindavi815@gmail.com");
         setPassword("password123");
         setSuccessMessage("Database fixed successfully. Test credentials have been filled in.");
       } else {
@@ -325,7 +325,7 @@ Password: password123
       setIsSubmitting(true);
       
       // Use test email
-      const testEmail = email || "hindavi815@gmail.com";
+      const testEmail = username || "hindavi815@gmail.com";
       
       const response = await fetch("/api/debug/direct-login", {
         method: "POST",
@@ -430,45 +430,16 @@ Password: password123
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!email || !password) return;
-
+    setIsSubmitting(true);
+    setSuccessMessage(null);
+    
     try {
-      setIsSubmitting(true);
-      setSuccessMessage(null);
-      setLoginDebug(null);
-      console.log("Attempting login with email:", email);
-      
-      // Try login
-      const userData = await login(email, password, rememberMe);
-      console.log("Login successful, user data:", userData);
-      
-      // On successful login, verify the cookie is set
-      const hasSessionCookie = document.cookie
-        .split(';')
-        .some(cookie => cookie.trim().startsWith('session_token='));
-        
-      const hasAuthStatus = document.cookie
-        .split(';')
-        .some(cookie => cookie.trim().startsWith('auth_status='));
-      
-      console.log("Cookies after login - Session cookie:", hasSessionCookie, "Auth status:", hasAuthStatus);
-      
-      // Set a custom flag in localStorage to help with redirection
-      localStorage.setItem('pendingRedirect', 'true');
-      
-      // Add a visible indicator that we're about to redirect
-      setSuccessMessage("Login successful! Redirecting to dashboard...");
-      
-      // Use a direct approach to navigate to the dashboard
-      const targetUrl = redirect || "/dashboard";
-      console.log("Redirecting to:", targetUrl);
-      
-      // Force hard navigation instead of client-side navigation
-      window.location.href = targetUrl;
-      
+      const success = await login(username, password, rememberMe);
+      if (success) {
+        console.log("Login successful, redirecting to:", redirect);
+        router.push(redirect);
+      }
     } catch (err) {
-      // Error is handled in auth context
       console.error("Login error:", err);
     } finally {
       setIsSubmitting(false);
@@ -486,40 +457,43 @@ Password: password123
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {successMessage && (
-              <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 text-sm rounded-md border border-green-100">
-                <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                <span>{successMessage}</span>
-              </div>
-            )}
-            
-            {error && (
-              <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 text-sm rounded-md border border-red-100">
-                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-            
-            {loginDebug && (
-              <div className="p-3 bg-gray-50 text-gray-700 text-xs rounded-md border border-gray-200 font-mono whitespace-pre-wrap">
-                {loginDebug}
-              </div>
-            )}
+          {successMessage && (
+            <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 text-sm rounded-md border border-green-100">
+              <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
+              <span>{successMessage}</span>
+            </div>
+          )}
+          
+          {error && (
+            <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 text-sm rounded-md border border-red-100">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+          
+          {loginDebug && (
+            <div className="p-3 bg-gray-50 text-gray-700 text-xs rounded-md border border-gray-200 font-mono whitespace-pre-wrap">
+              {loginDebug}
+            </div>
+          )}
 
+          <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+              <Label htmlFor="username" className="text-sm font-medium">Username</Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                placeholder="Enter your Faculty ID or Roll Number"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
-                placeholder="your.email@institution.edu"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
                 className="h-11"
               />
+              <p className="text-xs text-gray-500">
+                For faculty/admin: Enter your Faculty ID<br />
+                For students: Enter your Roll Number
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -576,7 +550,7 @@ Password: password123
             <Button
               type="submit"
               className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 transition-colors"
-              disabled={isSubmitting || !email || !password}
+              disabled={isSubmitting || !username || !password}
             >
               {isSubmitting ? (
                 <span className="flex items-center gap-2">

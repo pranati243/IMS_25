@@ -25,36 +25,36 @@ const JWT_SECRET = "your-secure-jwt-secret-for-ims-application-123";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, rememberMe } = await request.json();
+    const { username, password, rememberMe } = await request.json();
 
     // Log login attempt (but not the password)
-    console.log(`Login attempt: ${email}`);
+    console.log(`Login attempt: ${username}`);
 
     // Validate input
-    if (!email || !password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { success: false, message: "Email and password are required" },
+        { success: false, message: "Username and password are required" },
         { status: 400 }
       );
     }
 
-    // Get user from database - removed is_active filter to debug
+    // Get user from database using username instead of email
     const users = await query(
       `
       SELECT 
         u.id, u.username, u.email, u.password, u.role, u.name, u.is_active
       FROM users u
-      WHERE u.email = ?
+      WHERE u.username = ?
       LIMIT 1
       `,
-      [email]
+      [username]
     ) as User[];
 
-    // Debug user query result
+    // Check user query result
     console.log(`User query results: ${users ? users.length : 0} users found`);
 
-    if (!users || users.length === 0) {
-      console.log(`No user found with email: ${email}`);
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      console.log(`No user found with username: ${username}`);
       return NextResponse.json(
         { success: false, message: "Invalid credentials" },
         { status: 401 }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is active
     if (user.is_active !== 1) {
-      console.log(`User account is not active: ${email}`);
+      console.log(`User account is not active: ${user.username}`);
       return NextResponse.json(
         { success: false, message: "Account is inactive or suspended" },
         { status: 401 }
@@ -75,12 +75,12 @@ export async function POST(request: NextRequest) {
 
     // Check password
     try {
-      console.log(`Comparing passwords for user: ${email}`);
+      console.log(`Comparing passwords for user: ${user.username}`);
       console.log(`Stored password hash length: ${user.password ? user.password.length : 0}`);
       
       // Make sure the password is a valid bcrypt hash
       if (!user.password || !user.password.startsWith('$2')) {
-        console.error(`Invalid password hash format for user: ${email}`);
+        console.error(`Invalid password hash format for user: ${user.username}`);
         return NextResponse.json(
           { success: false, message: "Account password format is invalid. Please reset your password." },
           { status: 401 }
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Set cookie in the response with more explicit settings
-    console.log(`Setting session cookie for ${email}, maxAge: ${maxAge}`);
+    console.log(`Setting session cookie for ${user.username}, maxAge: ${maxAge}`);
     response.cookies.set({
       name: "session_token",
       value: sessionToken,
@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
       // Continue login process even if update fails
     }
 
-    console.log(`Login successful for user: ${email}`);
+    console.log(`Login successful for user: ${user.username}`);
     return response;
   } catch (error) {
     console.error("Login error:", error);
