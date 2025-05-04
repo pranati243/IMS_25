@@ -18,15 +18,17 @@ import {
   UsersIcon,
   KeyIcon,
   TrophyIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 // Helper function to format dates
-const formatDate = (date: Date): string => {
+const formatDate = (date: Date | string | undefined): string => {
+  if (!date) return "Not available";
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
-  }).format(date);
+  }).format(new Date(date));
 };
 
 interface FacultyAchievement {
@@ -44,71 +46,73 @@ interface Publication {
   url?: string;
 }
 
+interface ProfileData {
+  id: string | number;
+  username: string;
+  email: string;
+  name?: string;
+  role: string;
+  department?: number | string;
+  departmentName?: string;
+  designation?: string;
+  employeeId?: string;
+  qualification?: string;
+  experience?: number;
+  joinDate?: string;
+  lastLogin?: string;
+  profileImage?: string;
+  achievements?: FacultyAchievement[];
+  publications?: Publication[];
+  researchProjects?: number;
+  professionalMemberships?: number;
+  totalContributions?: number;
+  enrollmentNo?: string;
+  semester?: number;
+  program?: string;
+  studentId?: number;
+  facultyId?: number;
+  phone?: string;
+}
+
 export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<string>("basic");
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const router = useRouter();
 
-  // Mock profile data
-  const mockProfile = {
-    id: "faculty123",
-    username: "johndoe",
-    email: "john.doe@example.edu",
-    name: "Dr. John Doe",
-    role: "faculty",
-    department: "CSE",
-    departmentName: "Computer Science and Engineering",
-    designation: "Associate Professor",
-    employeeId: "EMP001",
-    qualification: "Ph.D. in Computer Science",
-    experience: 8,
-    joinDate: "2016-06-15",
-    lastLogin: new Date().toISOString(),
-    profileImage: "",
-    achievements: [
-      {
-        id: 1,
-        title: "Best Teacher Award",
-        description:
-          "Awarded for excellence in teaching and mentoring students",
-        date: "2022-05-15",
-      },
-      {
-        id: 2,
-        title: "Research Excellence",
-        description: "Recognized for outstanding research contributions in AI",
-        date: "2021-11-10",
-      },
-    ],
-    publications: [
-      {
-        id: 1,
-        title: "Machine Learning Approaches for Educational Data Mining",
-        journal: "International Journal of Educational Technology",
-        year: 2022,
-        url: "https://example.com/publication1",
-      },
-      {
-        id: 2,
-        title: "A Survey of Deep Learning Techniques in Higher Education",
-        journal: "Journal of Educational Data Science",
-        year: 2021,
-        url: "https://example.com/publication2",
-      },
-    ],
-    researchProjects: 3,
-    professionalMemberships: 2,
-  };
-
-  const profile = mockProfile;
-
+  // Fetch profile data from the API
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    const fetchProfileData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/profile");
 
-    return () => clearTimeout(timer);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch profile: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.profile) {
+          setProfile(data.profile);
+          setError(null);
+        } else {
+          throw new Error(data.message || "Failed to load profile data");
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "An error occurred while fetching your profile"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
   }, []);
 
   // Loading state
@@ -120,6 +124,34 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="h-64 bg-gray-100 rounded-lg shadow"></div>
             <div className="h-64 md:col-span-2 bg-gray-100 rounded-lg shadow"></div>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Error state
+  if (error || !profile) {
+    return (
+      <MainLayout>
+        <div className="p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 flex items-start space-x-4">
+            <ExclamationTriangleIcon className="h-6 w-6 text-red-500 mt-0.5" />
+            <div>
+              <h2 className="text-lg font-medium text-red-800">
+                Failed to load profile
+              </h2>
+              <p className="text-sm text-red-600 mt-1">
+                {error || "Could not retrieve your profile information"}
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                className="mt-4"
+                variant="outline"
+              >
+                Try Again
+              </Button>
+            </div>
           </div>
         </div>
       </MainLayout>
@@ -142,7 +174,7 @@ export default function ProfilePage() {
                 {profile?.profileImage ? (
                   <img
                     src={profile.profileImage}
-                    alt={profile.name}
+                    alt={profile.name || profile.username}
                     className="w-full h-full object-cover rounded-full"
                   />
                 ) : (
@@ -200,9 +232,7 @@ export default function ProfilePage() {
                       <UserIcon className="h-5 w-5 text-gray-500 mt-0.5" />
                       <div>
                         <p className="text-sm text-gray-500">Username / ID</p>
-                        <p className="font-medium">
-                          {profile?.username || profile?.id}
-                        </p>
+                        <p className="font-medium">{profile?.username}</p>
                       </div>
                     </div>
 
@@ -219,9 +249,7 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm text-gray-500">Department</p>
                         <p className="font-medium">
-                          {profile?.departmentName ||
-                            profile?.department ||
-                            "Not assigned"}
+                          {profile?.departmentName || "Not assigned"}
                         </p>
                       </div>
                     </div>
@@ -241,9 +269,7 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm text-gray-500">Joined On</p>
                         <p className="font-medium">
-                          {profile?.joinDate
-                            ? formatDate(new Date(profile.joinDate))
-                            : "Not available"}
+                          {formatDate(profile?.joinDate)}
                         </p>
                       </div>
                     </div>
@@ -253,12 +279,42 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm text-gray-500">Last Login</p>
                         <p className="font-medium">
-                          {profile?.lastLogin
-                            ? formatDate(new Date(profile.lastLogin))
-                            : "First login"}
+                          {formatDate(profile?.lastLogin) || "First login"}
                         </p>
                       </div>
                     </div>
+
+                    {/* Show enrollment number for students */}
+                    {profile?.role === "student" && profile?.enrollmentNo && (
+                      <div className="flex items-start gap-3">
+                        <UserIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500">Enrollment No</p>
+                          <p className="font-medium">{profile.enrollmentNo}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show semester and program for students */}
+                    {profile?.role === "student" && profile?.semester && (
+                      <div className="flex items-start gap-3">
+                        <AcademicCapIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500">Semester</p>
+                          <p className="font-medium">{profile.semester}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {profile?.role === "student" && profile?.program && (
+                      <div className="flex items-start gap-3">
+                        <AcademicCapIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                        <div>
+                          <p className="text-sm text-gray-500">Program</p>
+                          <p className="font-medium">{profile.program}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -303,20 +359,31 @@ export default function ProfilePage() {
                         </div>
                       )}
 
-                      {profile?.publications &&
-                        profile.publications.length > 0 && (
-                          <div className="flex items-start gap-3">
-                            <DocumentTextIcon className="h-5 w-5 text-gray-500 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-gray-500">
-                                Publications
-                              </p>
-                              <p className="font-medium">
-                                {profile.publications.length}
-                              </p>
-                            </div>
+                      {profile?.phone && (
+                        <div className="flex items-start gap-3">
+                          <EnvelopeIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              Contact Number
+                            </p>
+                            <p className="font-medium">{profile.phone}</p>
                           </div>
-                        )}
+                        </div>
+                      )}
+
+                      {profile?.publications && (
+                        <div className="flex items-start gap-3">
+                          <DocumentTextIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              Publications
+                            </p>
+                            <p className="font-medium">
+                              {profile.publications.length}
+                            </p>
+                          </div>
+                        </div>
+                      )}
 
                       {profile?.researchProjects !== undefined && (
                         <div className="flex items-start gap-3">
@@ -341,6 +408,20 @@ export default function ProfilePage() {
                             </p>
                             <p className="font-medium">
                               {profile.professionalMemberships}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {profile?.totalContributions !== undefined && (
+                        <div className="flex items-start gap-3">
+                          <DocumentTextIcon className="h-5 w-5 text-gray-500 mt-0.5" />
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              Total Contributions
+                            </p>
+                            <p className="font-medium">
+                              {profile.totalContributions}
                             </p>
                           </div>
                         </div>
@@ -384,7 +465,7 @@ export default function ProfilePage() {
                       <div className="flex justify-between items-start">
                         <h3 className="font-medium">{achievement.title}</h3>
                         <span className="text-sm text-gray-500">
-                          {achievement.date}
+                          {formatDate(achievement.date)}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-gray-600">

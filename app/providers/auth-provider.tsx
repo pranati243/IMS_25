@@ -33,7 +33,11 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
-  login: (username: string, password: string, rememberMe?: boolean) => Promise<boolean>;
+  login: (
+    username: string,
+    password: string,
+    rememberMe?: boolean
+  ) => Promise<void>;
   logout: () => Promise<void>;
   checkPermission: (permission: string) => boolean;
 }
@@ -41,7 +45,15 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Define public routes that don't require authentication
-const publicRoutes = ["/", "/login", "/register", "/forgot-password", "/reset-password"];
+const publicRoutes = [
+  "/",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/logout",
+  "/unauthorized",
+];
 
 // Define role-based route access
 const roleAccess: Record<string, UserRole[]> = {
@@ -67,9 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
         // First check if we have a user in sessionStorage
-        const storedUser = sessionStorage.getItem('authUser');
+        const storedUser = sessionStorage.getItem("authUser");
         if (storedUser) {
           try {
             const parsedUser = JSON.parse(storedUser);
@@ -79,35 +91,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           } catch (parseError) {
             console.error("Error parsing stored user:", parseError);
-            sessionStorage.removeItem('authUser');
+            sessionStorage.removeItem("authUser");
           }
         }
-        
+
         // Check auth_status cookie
-        const cookies = document.cookie.split(';');
-        const hasAuthStatus = cookies.some(cookie => cookie.trim().startsWith('auth_status='));
-        
+        const cookies = document.cookie.split(";");
+        const hasAuthStatus = cookies.some((cookie) =>
+          cookie.trim().startsWith("auth_status=")
+        );
+
         if (!hasAuthStatus) {
           console.log("No auth_status cookie found, user is not logged in");
           setUser(null);
           setLoading(false);
           return;
         }
-        
+
         // Verify with server
         console.log("Verifying authentication with server...");
         const response = await fetch("/api/auth/me", {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
         });
 
         // Check for non-JSON response
         const contentType = response.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-          console.error("Non-JSON response from /api/auth/me endpoint:", await response.text());
+          console.error(
+            "Non-JSON response from /api/auth/me endpoint:",
+            await response.text()
+          );
           setUser(null);
           return;
         }
@@ -115,24 +132,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.user) {
-            console.log("Authentication verified successfully for:", data.user.email);
+            console.log(
+              "Authentication verified successfully for:",
+              data.user.email
+            );
             setUser(data.user);
             // Store in sessionStorage for redundancy
-            sessionStorage.setItem('authUser', JSON.stringify(data.user));
+            sessionStorage.setItem("authUser", JSON.stringify(data.user));
           } else {
             console.log("API returned success=false or no user data");
             setUser(null);
-            sessionStorage.removeItem('authUser');
+            sessionStorage.removeItem("authUser");
           }
         } else {
-          console.error("Authentication verification failed with status:", response.status);
+          console.error(
+            "Authentication verification failed with status:",
+            response.status
+          );
           setUser(null);
-          sessionStorage.removeItem('authUser');
+          sessionStorage.removeItem("authUser");
         }
       } catch (err) {
         console.error("Auth check failed:", err);
         setUser(null);
-        sessionStorage.removeItem('authUser');
+        sessionStorage.removeItem("authUser");
       } finally {
         setLoading(false);
       }
@@ -160,8 +183,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const serverHost = currentUrl.hostname;
       const protocol = currentUrl.protocol;
       const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
-      
-      window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(pathname)}`;
+
+      window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
+        pathname
+      )}`;
       return;
     }
 
@@ -173,39 +198,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const serverHost = currentUrl.hostname;
       const protocol = currentUrl.protocol;
       const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
-      
+
       window.location.href = `${baseUrl}/unauthorized`;
     }
   }, [user, loading, pathname]);
 
-  const login = async (username: string, password: string, rememberMe: boolean = false) => {
+  const login = async (
+    username: string, // Changed from email to username to match the API
+    password: string,
+    rememberMe: boolean = false
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log("Login attempt for:", username);
+
+      console.log("Login attempt for:", username); // Changed from email to username
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          Accept: "application/json",
         },
         // Make sure cookies are included
-        credentials: 'include',
-        body: JSON.stringify({ username, password, rememberMe }),
+        credentials: "include",
+        body: JSON.stringify({ username, password, rememberMe }), // Changed from email to username
       });
 
       // Check for non-JSON response
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        console.error("Non-JSON response from /api/auth/login endpoint:", await response.text());
+        console.error(
+          "Non-JSON response from /api/auth/login endpoint:",
+          await response.text()
+        );
         throw new Error("Server error: Invalid response format");
       }
 
       const data = await response.json();
-      console.log("Login response:", data.success ? "Success" : "Failed", 
-                 data.success ? `User role: ${data.user.role}` : `Error: ${data.message}`);
+      console.log(
+        "Login response:",
+        data.success ? "Success" : "Failed",
+        data.success ? `User role: ${data.user.role}` : `Error: ${data.message}`
+      );
 
       if (!response.ok) {
         throw new Error(data.message || "Login failed");
@@ -213,19 +248,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear any old error state
       setError(null);
-      
+
       // Set the user data from response
       setUser(data.user);
-      
+
       // Ensure auth state is stored in sessionStorage as well for redundancy
-      sessionStorage.setItem('authUser', JSON.stringify(data.user));
-      
-      // Return success status
-      return true;
+      sessionStorage.setItem("authUser", JSON.stringify(data.user));
+
+      // Return the user data
+      return data.user;
     } catch (err) {
       console.error("Login error details:", err);
       setError(err instanceof Error ? err.message : "Login failed");
-      return false;
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -234,19 +269,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       setLoading(true);
+      // Call the logout API
       await fetch("/api/auth/logout", { method: "POST" });
+
+      // Clear all auth data
       setUser(null);
-      
+      sessionStorage.removeItem("authUser");
+      localStorage.removeItem("session_token");
+
+      // Clear cookies manually as well
+      document.cookie =
+        "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      document.cookie =
+        "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+
       // Get the current server URL from the window location
       const currentUrl = new URL(window.location.href);
       const serverPort = currentUrl.port || "3000";
       const serverHost = currentUrl.hostname;
       const protocol = currentUrl.protocol;
       const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
-      
+
+      // Redirect to login page
       window.location.href = `${baseUrl}/login`;
     } catch (err) {
       console.error("Logout failed:", err);
+      // Even if the API call fails, clear auth data on the client
+      setUser(null);
+      sessionStorage.removeItem("authUser");
+
+      // Redirect to login page anyway
+      const currentUrl = new URL(window.location.href);
+      const serverPort = currentUrl.port || "3000";
+      const serverHost = currentUrl.hostname;
+      const protocol = currentUrl.protocol;
+      window.location.href = `${protocol}//${serverHost}:${serverPort}/login`;
     } finally {
       setLoading(false);
     }
@@ -259,11 +316,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user.role === "admin") return true;
 
     // HOD has department-specific permissions
-    if (user.role === "hod" && (
-      permission.startsWith("department_") || 
-      permission.startsWith("faculty_") || 
-      permission.startsWith("course_")
-    )) {
+    if (
+      user.role === "hod" &&
+      (permission.startsWith("department_") ||
+        permission.startsWith("faculty_") ||
+        permission.startsWith("course_"))
+    ) {
       return true;
     }
 

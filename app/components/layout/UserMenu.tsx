@@ -34,10 +34,25 @@ export default function UserMenu() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-      await logout();
+      // Call our custom logout endpoint
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Logout failed");
+      }
+      // Clear any remaining session data
+      document.cookie =
+        "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      localStorage.removeItem("session_token");
+      // Redirect to login page
       router.push("/login");
     } catch (error) {
       console.error("Logout failed:", error);
+      // Clear any remaining session data just in case
+      document.cookie =
+        "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+      localStorage.removeItem("session_token");
+      // Redirect to login page
+      router.push("/login");
     } finally {
       setIsLoggingOut(false);
     }
@@ -63,9 +78,9 @@ export default function UserMenu() {
       staff: "bg-green-100 text-green-800",
       student: "bg-amber-100 text-amber-800",
     };
-    
+
     const color = roleColors[user?.role || ""] || "bg-gray-100 text-gray-800";
-    
+
     return (
       <span className={`text-xs px-2 py-1 rounded-full ${color}`}>
         {user?.role?.toUpperCase()}
@@ -121,7 +136,7 @@ export default function UserMenu() {
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
-          
+
           {user.role === "admin" && (
             <DropdownMenuItem asChild>
               <Link href="/admin" className="flex cursor-pointer items-center">
@@ -130,10 +145,13 @@ export default function UserMenu() {
               </Link>
             </DropdownMenuItem>
           )}
-          
+
           {(user.role === "admin" || user.role === "hod") && (
             <DropdownMenuItem asChild>
-              <Link href="/settings" className="flex cursor-pointer items-center">
+              <Link
+                href="/settings"
+                className="flex cursor-pointer items-center"
+              >
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </Link>
@@ -152,4 +170,4 @@ export default function UserMenu() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-} 
+}

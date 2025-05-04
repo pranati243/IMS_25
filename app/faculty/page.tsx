@@ -14,7 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
-// import { getDepartmentStyle } from "@/app/lib/theme";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import FacultyModules from "@/app/components/faculty/FacultyModules";
 
 interface Faculty {
   F_id: number;
@@ -48,6 +48,7 @@ export default function FacultyPage() {
   const [experienceFilter, setExperienceFilter] = useState<string>("");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [userDepartment, setUserDepartment] = useState<string | null>(null);
+  const [facultyId, setFacultyId] = useState<number | null>(null);
 
   useEffect(() => {
     // First, check user's role from the authentication API
@@ -61,6 +62,17 @@ export default function FacultyPage() {
             setUserRole(data.user.role);
             setUserDepartment(data.user.department);
 
+            // For faculty members, we'll need their faculty ID for the modules view
+            if (data.user.role === "faculty") {
+              const facultyResponse = await fetch("/api/faculty/me");
+              if (facultyResponse.ok) {
+                const facultyData = await facultyResponse.json();
+                if (facultyData.success && facultyData.data) {
+                  setFacultyId(facultyData.data.F_id);
+                }
+              }
+            }
+
             // For HODs, automatically filter to their department
             if (data.user.role === "hod" && data.user.department) {
               setDepartment(data.user.department);
@@ -69,15 +81,23 @@ export default function FacultyPage() {
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchUserRoleAndDepartment();
-    fetchFaculty();
-  }, []);
+
+    // Only fetch faculty list for admin and HOD roles
+    if (userRole !== "faculty") {
+      fetchFaculty();
+    }
+  }, [userRole]);
 
   // Apply filters locally
   useEffect(() => {
+    if (faculty.length === 0) return;
+
     let result = [...faculty];
 
     // Filter by department
@@ -97,11 +117,6 @@ export default function FacultyPage() {
     }
 
     // Filter by designation
-    if (designation) {
-      result = result.filter((f) => f.Current_Designation === designation);
-    }
-
-    // Filter by experience
     if (designation && designation !== "all") {
       result = result.filter((f) => f.Current_Designation === designation);
     }
@@ -162,6 +177,27 @@ export default function FacultyPage() {
   // Check if user has permission to add/edit faculty
   const canManageFaculty = userRole === "admin" || userRole === "hod";
 
+  // If the user is a faculty member, show the faculty modules view
+  if (userRole === "faculty") {
+    return (
+      <MainLayout>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Faculty Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Manage your academic profile, publications, and contributions
+            </p>
+          </div>
+
+          <FacultyModules />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // For admin and HOD roles, show the faculty directory
   return (
     <MainLayout>
       <div className="space-y-6">

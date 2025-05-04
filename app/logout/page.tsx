@@ -2,15 +2,43 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 
 export default function LogoutPage() {
   const router = useRouter();
 
   useEffect(() => {
     const performLogout = async () => {
-      await signOut({ redirect: false });
-      router.push("/login");
+      try {
+        // Call our custom logout endpoint
+        const response = await fetch("/api/auth/logout", { method: "POST" });
+        if (!response.ok) {
+          throw new Error("Logout failed");
+        }
+
+        // Clear all authentication data
+        document.cookie =
+          "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        document.cookie =
+          "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        localStorage.removeItem("session_token");
+        sessionStorage.removeItem("authUser");
+
+        // Redirect to login page
+        router.push("/login");
+      } catch (error) {
+        console.error("Logout failed:", error);
+
+        // Clear any remaining session data just in case
+        document.cookie =
+          "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        document.cookie =
+          "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        localStorage.removeItem("session_token");
+        sessionStorage.removeItem("authUser");
+
+        // Redirect to login page
+        router.push("/login");
+      }
     };
 
     performLogout();
