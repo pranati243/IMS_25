@@ -139,15 +139,18 @@ export async function GET(request: NextRequest) {
       // Get achievements
       const achievementsData = await query(
         `SELECT 
-          a.id, a.title, a.description, a.date
+          c.Contribution_ID as id, 
+          c.Contribution_Type as title, 
+          c.Description as description, 
+          c.Contribution_Date as date
         FROM 
-          faculty_achievements a
+          faculty_contributions c
         INNER JOIN 
-          faculty f ON a.faculty_id = f.F_id
+          faculty f ON c.F_ID = f.F_id
         WHERE 
-          f.Faculty_ID = ?
+          f.F_id = ?
         ORDER BY 
-          a.date DESC`,
+          c.Contribution_Date DESC`,
         [username]
       );
 
@@ -155,6 +158,10 @@ export async function GET(request: NextRequest) {
         profile.achievements = achievementsData;
       }
 
+      // Initialize research projects count to 0 (table doesn't exist yet)
+      profile.researchProjects = 0;
+
+      /* Commenting out research_projects query since the table doesn't exist yet
       // Get research projects count
       const projectsData = await query(
         `SELECT 
@@ -175,6 +182,7 @@ export async function GET(request: NextRequest) {
       ) {
         profile.researchProjects = projectsData[0].research_projects || 0;
       }
+      */
     } else if (userRole === "student") {
       // Get student data
       const studentData = await query(
