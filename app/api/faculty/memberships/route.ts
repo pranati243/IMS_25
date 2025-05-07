@@ -62,11 +62,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if table exists and fetch contributions
+    // Check if table exists and fetch memberships
     try {
       // Verify table exists
       const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_contributions'"
+        "SHOW TABLES LIKE 'faculty_professional_body'"
       );
 
       if ((tableCheck as any[]).length === 0) {
@@ -74,46 +74,48 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: [],
-          message: "No contributions found (table doesn't exist)",
+          message: "No memberships found (table doesn't exist)",
         });
       }
 
-      // Table exists, fetch contributions
-      const contributions = await query(
+      // Table exists, fetch memberships
+      const memberships = await query(
         `SELECT 
-          Contribution_ID,
+          SrNo,
           F_ID,
-          Contribution_Type,
-          Description,
-          Contribution_Date
+          Organization_Name,
+          Membership_Type,
+          Membership_ID,
+          Start_Date,
+          End_Date
         FROM 
-          faculty_contributions
+          faculty_professional_body
         WHERE 
           F_ID = ?
         ORDER BY 
-          Contribution_Date DESC`,
+          Start_Date DESC`,
         [queryFacultyId]
       );
 
       return NextResponse.json({
         success: true,
-        data: contributions,
+        data: memberships,
       });
     } catch (error) {
       console.error(
-        "Error checking/querying faculty_contributions table:",
+        "Error checking/querying faculty_professional_body table:",
         error
       );
       return NextResponse.json({
         success: true,
         data: [],
-        error: "Database error when fetching contributions",
+        error: "Database error when fetching memberships",
       });
     }
   } catch (error) {
-    console.error("Error fetching faculty contributions:", error);
+    console.error("Error fetching faculty memberships:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch contributions" },
+      { success: false, message: "Failed to fetch memberships" },
       { status: 500 }
     );
   }
@@ -144,10 +146,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add contributions
+    // Only faculty, HOD, and admin can add memberships
     if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add contributions" },
+        { success: false, message: "Unauthorized to add memberships" },
         { status: 403 }
       );
     }
@@ -178,57 +180,90 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { contribution_type, description, date, f_id } = await request.json();
+    const {
+      Organization_Name,
+      Membership_Type,
+      Membership_ID,
+      Start_Date,
+      End_Date,
+      F_ID,
+    } = await request.json();
 
-    // For faculty role, ensure they can only add their own contributions
-    const contributionFacultyId =
-      authData.user.role === "faculty" ? facultyId : f_id;
+    // For faculty role, ensure they can only add their own memberships
+    const membershipFacultyId =
+      authData.user.role === "faculty" ? facultyId : F_ID;
 
-    if (!contributionFacultyId) {
+    if (!membershipFacultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!contribution_type || !description) {
+    if (!Organization_Name || !Membership_Type || !Start_Date) {
       return NextResponse.json(
         {
           success: false,
-          message: "Contribution type and description are required",
+          message:
+            "Organization name, membership type, and start date are required",
         },
         { status: 400 }
       );
     }
 
-    // Insert the contribution
+    // Check if the table exists, create it if it doesn't
+    const tableCheck = await query(
+      "SHOW TABLES LIKE 'faculty_professional_body'"
+    );
+
+    if ((tableCheck as any[]).length === 0) {
+      // Create the table if it doesn't exist
+      await query(`
+        CREATE TABLE faculty_professional_body (
+          SrNo INT AUTO_INCREMENT PRIMARY KEY,
+          F_ID VARCHAR(50) NOT NULL,
+          Organization_Name VARCHAR(255) NOT NULL,
+          Membership_Type VARCHAR(100) NOT NULL,
+          Membership_ID VARCHAR(100),
+          Start_Date DATE NOT NULL,
+          End_Date DATE,
+          FOREIGN KEY (F_ID) REFERENCES faculty(F_id)
+        )
+      `);
+    }
+
+    // Insert the membership
     const result = await query(
-      `INSERT INTO faculty_contributions 
-        (F_ID, Contribution_Type, Description, Contribution_Date) 
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO faculty_professional_body 
+        (F_ID, Organization_Name, Membership_Type, Membership_ID, Start_Date, End_Date) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        contributionFacultyId,
-        contribution_type,
-        description,
-        date || new Date(),
+        membershipFacultyId,
+        Organization_Name,
+        Membership_Type,
+        Membership_ID || null,
+        Start_Date,
+        End_Date || null,
       ]
     );
 
     return NextResponse.json({
       success: true,
-      message: "Contribution added successfully",
+      message: "Membership added successfully",
       data: {
-        id: (result as any).insertId,
-        f_id: contributionFacultyId,
-        contribution_type,
-        description,
-        date: date || new Date(),
+        SrNo: (result as any).insertId,
+        F_ID: membershipFacultyId,
+        Organization_Name,
+        Membership_Type,
+        Membership_ID,
+        Start_Date,
+        End_Date,
       },
     });
   } catch (error) {
-    console.error("Error adding faculty contribution:", error);
+    console.error("Error adding membership:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add contribution" },
+      { success: false, message: "Failed to add membership" },
       { status: 500 }
     );
   }

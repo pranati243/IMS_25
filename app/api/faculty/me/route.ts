@@ -38,48 +38,112 @@ export async function GET(request: NextRequest) {
     // Get faculty ID from username
     const facultyUsername = authData.user.username;
 
-    // Fetch faculty information from database
-    const facultyResults = await query(
-      `SELECT 
-        f.F_id, 
-        n.F_name, 
-        n.F_dept, 
-        f.Email, 
-        f.Phone_Number,
-        f.Current_Designation, 
-        f.Highest_Degree, 
-        f.Experience,
-        COUNT(DISTINCT c.contribution_id) as total_contributions,
-        COUNT(DISTINCT m.SrNo) as professional_memberships
-      FROM 
-        faculty_details f
-      LEFT JOIN
-        faculty n ON f.F_id = n.F_id
-      LEFT JOIN 
-        faculty_contributions c ON f.F_id = c.f_id
-      LEFT JOIN 
-        faculty_professional_body m ON f.F_id = m.f_id
-      WHERE 
-        f.F_ID = ?
-      GROUP BY 
-        f.F_id, n.F_name, n.F_dept, f.Email, f.Phone_Number, f.Current_Designation, f.Highest_Degree, f.Experience`,
+    // First check if the faculty ID exists in the faculty table
+    const facultyCheck = await query(
+      `SELECT F_id, F_name, F_dept 
+       FROM faculty 
+       WHERE F_id = ?`,
       [facultyUsername]
     );
 
+    // If no direct match in the faculty table, try different approaches
     if (
-      !facultyResults ||
-      !Array.isArray(facultyResults) ||
-      facultyResults.length === 0
+      !facultyCheck ||
+      !Array.isArray(facultyCheck) ||
+      facultyCheck.length === 0
     ) {
+      console.log(
+        `Could not find faculty with ID ${facultyUsername} in faculty table`
+      );
       return NextResponse.json(
-        { success: false, message: "Faculty information not found" },
+        { success: false, message: "Faculty record not found" },
         { status: 404 }
       );
     }
 
+    const faculty = facultyCheck[0];
+
+    // Now query for additional details and counts with proper LEFT JOINs
+    const detailsQuery = await query(
+      `SELECT 
+        fd.Email, 
+        fd.Phone_Number,
+        fd.Current_Designation, 
+        fd.Highest_Degree, 
+        fd.Experience
+      FROM 
+        faculty_details fd
+      WHERE 
+        fd.F_ID = ?`,
+      [facultyUsername]
+    );
+
+    // Query contributions count separately
+    const contribQuery = await query(
+      `SELECT 
+        COUNT(*) as total_contributions
+      FROM 
+        faculty_contributions
+      WHERE 
+        F_ID = ?`,
+      [facultyUsername]
+    );
+
+    // Query professional memberships count separately
+    const membershipQuery = await query(
+      `SELECT 
+        COUNT(*) as professional_memberships
+      FROM 
+        faculty_professional_body
+      WHERE 
+        F_ID = ?`,
+      [facultyUsername]
+    );
+
+    // Query publications count separately
+    const publicationsQuery = await query(
+      `SELECT 
+        COUNT(*) as publications
+      FROM 
+        paper_publication
+      WHERE 
+        id = ?`,
+      [facultyUsername]
+    );
+
+    // Combine all the data
+    const facultyData = {
+      ...faculty,
+      ...(detailsQuery && Array.isArray(detailsQuery) && detailsQuery.length > 0
+        ? detailsQuery[0]
+        : {
+            Email: null,
+            Phone_Number: null,
+            Current_Designation: null,
+            Highest_Degree: null,
+            Experience: null,
+          }),
+      total_contributions:
+        contribQuery && Array.isArray(contribQuery) && contribQuery.length > 0
+          ? contribQuery[0].total_contributions
+          : 0,
+      professional_memberships:
+        membershipQuery &&
+        Array.isArray(membershipQuery) &&
+        membershipQuery.length > 0
+          ? membershipQuery[0].professional_memberships
+          : 0,
+      publications:
+        publicationsQuery &&
+        Array.isArray(publicationsQuery) &&
+        publicationsQuery.length > 0
+          ? publicationsQuery[0].publications
+          : 0,
+    };
+
     return NextResponse.json({
       success: true,
-      data: facultyResults[0],
+      data: facultyData,
     });
   } catch (error) {
     console.error("Error fetching faculty data:", error);

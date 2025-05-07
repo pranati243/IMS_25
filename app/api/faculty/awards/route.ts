@@ -62,58 +62,55 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if table exists and fetch contributions
+    // Check if table exists and fetch awards
     try {
       // Verify table exists
-      const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_contributions'"
-      );
+      const tableCheck = await query("SHOW TABLES LIKE 'faculty_awards'");
 
       if ((tableCheck as any[]).length === 0) {
         // Return an empty array if the table doesn't exist yet
         return NextResponse.json({
           success: true,
           data: [],
-          message: "No contributions found (table doesn't exist)",
+          message: "No awards found (table doesn't exist)",
         });
       }
 
-      // Table exists, fetch contributions
-      const contributions = await query(
+      // Table exists, fetch awards
+      const awards = await query(
         `SELECT 
-          Contribution_ID,
-          F_ID,
-          Contribution_Type,
-          Description,
-          Contribution_Date
+          id,
+          faculty_id,
+          title,
+          organization,
+          description,
+          date,
+          category
         FROM 
-          faculty_contributions
+          faculty_awards
         WHERE 
-          F_ID = ?
+          faculty_id = ?
         ORDER BY 
-          Contribution_Date DESC`,
+          date DESC`,
         [queryFacultyId]
       );
 
       return NextResponse.json({
         success: true,
-        data: contributions,
+        data: awards,
       });
     } catch (error) {
-      console.error(
-        "Error checking/querying faculty_contributions table:",
-        error
-      );
+      console.error("Error checking/querying faculty_awards table:", error);
       return NextResponse.json({
         success: true,
         data: [],
-        error: "Database error when fetching contributions",
+        error: "Database error when fetching awards",
       });
     }
   } catch (error) {
-    console.error("Error fetching faculty contributions:", error);
+    console.error("Error fetching faculty awards:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch contributions" },
+      { success: false, message: "Failed to fetch awards" },
       { status: 500 }
     );
   }
@@ -144,10 +141,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add contributions
+    // Only faculty, HOD, and admin can add awards
     if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add contributions" },
+        { success: false, message: "Unauthorized to add awards" },
         { status: 403 }
       );
     }
@@ -178,57 +175,76 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { contribution_type, description, date, f_id } = await request.json();
+    const { title, organization, description, date, category, faculty_id } =
+      await request.json();
 
-    // For faculty role, ensure they can only add their own contributions
-    const contributionFacultyId =
-      authData.user.role === "faculty" ? facultyId : f_id;
+    // For faculty role, ensure they can only add their own awards
+    const awardFacultyId =
+      authData.user.role === "faculty" ? facultyId : faculty_id;
 
-    if (!contributionFacultyId) {
+    if (!awardFacultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!contribution_type || !description) {
+    if (!title || !organization || !description || !date) {
       return NextResponse.json(
         {
           success: false,
-          message: "Contribution type and description are required",
+          message: "Title, organization, description, and date are required",
         },
         { status: 400 }
       );
     }
 
-    // Insert the contribution
+    // Check if the table exists, create it if it doesn't
+    const tableCheck = await query("SHOW TABLES LIKE 'faculty_awards'");
+
+    if ((tableCheck as any[]).length === 0) {
+      // Create the table if it doesn't exist
+      await query(`
+        CREATE TABLE faculty_awards (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          faculty_id VARCHAR(50) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          organization VARCHAR(255) NOT NULL,
+          description TEXT,
+          date DATE NOT NULL,
+          category VARCHAR(100),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
+        )
+      `);
+    }
+
+    // Insert the award
     const result = await query(
-      `INSERT INTO faculty_contributions 
-        (F_ID, Contribution_Type, Description, Contribution_Date) 
-       VALUES (?, ?, ?, ?)`,
-      [
-        contributionFacultyId,
-        contribution_type,
-        description,
-        date || new Date(),
-      ]
+      `INSERT INTO faculty_awards 
+        (faculty_id, title, organization, description, date, category) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [awardFacultyId, title, organization, description, date, category || null]
     );
 
     return NextResponse.json({
       success: true,
-      message: "Contribution added successfully",
+      message: "Award added successfully",
       data: {
         id: (result as any).insertId,
-        f_id: contributionFacultyId,
-        contribution_type,
+        faculty_id: awardFacultyId,
+        title,
+        organization,
         description,
-        date: date || new Date(),
+        date,
+        category,
       },
     });
   } catch (error) {
-    console.error("Error adding faculty contribution:", error);
+    console.error("Error adding award:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add contribution" },
+      { success: false, message: "Failed to add award" },
       { status: 500 }
     );
   }

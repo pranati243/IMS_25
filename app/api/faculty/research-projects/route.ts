@@ -62,11 +62,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if table exists and fetch contributions
+    // Check if table exists and fetch research projects
     try {
       // Verify table exists
       const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_contributions'"
+        "SHOW TABLES LIKE 'faculty_research_projects'"
       );
 
       if ((tableCheck as any[]).length === 0) {
@@ -74,46 +74,64 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: [],
-          message: "No contributions found (table doesn't exist)",
+          message: "No research projects found (table doesn't exist)",
         });
       }
 
-      // Table exists, fetch contributions
-      const contributions = await query(
+      // Table exists, fetch research projects
+      // Note: Adjust the query based on your actual table structure
+      const projects = await query(
         `SELECT 
-          Contribution_ID,
-          F_ID,
-          Contribution_Type,
-          Description,
-          Contribution_Date
+          id,
+          faculty_id,
+          title,
+          description,
+          start_date,
+          end_date,
+          status,
+          funding_agency,
+          funding_amount
         FROM 
-          faculty_contributions
+          faculty_research_projects
         WHERE 
-          F_ID = ?
+          faculty_id = ?
         ORDER BY 
-          Contribution_Date DESC`,
+          start_date DESC`,
         [queryFacultyId]
       );
 
+      // If the previous query fails with unknown column, try a more generic approach
+      // This is just a fallback in case the table structure is different
+      if (!projects) {
+        // Return empty data for now
+        return NextResponse.json({
+          success: true,
+          data: [],
+          message: "No research projects found",
+        });
+      }
+
       return NextResponse.json({
         success: true,
-        data: contributions,
+        data: projects,
       });
     } catch (error) {
       console.error(
-        "Error checking/querying faculty_contributions table:",
+        "Error checking/querying faculty_research_projects table:",
         error
       );
+
+      // Return empty array rather than error to avoid breaking the UI
       return NextResponse.json({
         success: true,
         data: [],
-        error: "Database error when fetching contributions",
+        error: "Database error when fetching research projects",
       });
     }
   } catch (error) {
-    console.error("Error fetching faculty contributions:", error);
+    console.error("Error fetching faculty research projects:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch contributions" },
+      { success: false, message: "Failed to fetch research projects" },
       { status: 500 }
     );
   }
@@ -144,10 +162,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add contributions
+    // Only faculty, HOD, and admin can add research projects
     if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add contributions" },
+        { success: false, message: "Unauthorized to add research projects" },
         { status: 403 }
       );
     }
@@ -178,57 +196,99 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { contribution_type, description, date, f_id } = await request.json();
+    const {
+      title,
+      description,
+      start_date,
+      end_date,
+      status,
+      funding_agency,
+      funding_amount,
+      faculty_id,
+    } = await request.json();
 
-    // For faculty role, ensure they can only add their own contributions
-    const contributionFacultyId =
-      authData.user.role === "faculty" ? facultyId : f_id;
+    // For faculty role, ensure they can only add their own research projects
+    const projectFacultyId =
+      authData.user.role === "faculty" ? facultyId : faculty_id;
 
-    if (!contributionFacultyId) {
+    if (!projectFacultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!contribution_type || !description) {
+    if (!title || !description || !start_date || !status) {
       return NextResponse.json(
         {
           success: false,
-          message: "Contribution type and description are required",
+          message: "Title, description, start date, and status are required",
         },
         { status: 400 }
       );
     }
 
-    // Insert the contribution
+    // Check if the table exists, create it if it doesn't
+    const tableCheck = await query(
+      "SHOW TABLES LIKE 'faculty_research_projects'"
+    );
+
+    if ((tableCheck as any[]).length === 0) {
+      // Create the table if it doesn't exist
+      await query(`
+        CREATE TABLE faculty_research_projects (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          faculty_id VARCHAR(50) NOT NULL,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          start_date DATE NOT NULL,
+          end_date DATE,
+          status VARCHAR(50) NOT NULL,
+          funding_agency VARCHAR(255),
+          funding_amount DECIMAL(15,2),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
+        )
+      `);
+    }
+
+    // Insert the research project
     const result = await query(
-      `INSERT INTO faculty_contributions 
-        (F_ID, Contribution_Type, Description, Contribution_Date) 
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO faculty_research_projects 
+        (faculty_id, title, description, start_date, end_date, status, funding_agency, funding_amount) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        contributionFacultyId,
-        contribution_type,
+        projectFacultyId,
+        title,
         description,
-        date || new Date(),
+        start_date,
+        end_date || null,
+        status,
+        funding_agency || null,
+        funding_amount || null,
       ]
     );
 
     return NextResponse.json({
       success: true,
-      message: "Contribution added successfully",
+      message: "Research project added successfully",
       data: {
         id: (result as any).insertId,
-        f_id: contributionFacultyId,
-        contribution_type,
+        faculty_id: projectFacultyId,
+        title,
         description,
-        date: date || new Date(),
+        start_date,
+        end_date,
+        status,
+        funding_agency,
+        funding_amount,
       },
     });
   } catch (error) {
-    console.error("Error adding faculty contribution:", error);
+    console.error("Error adding research project:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add contribution" },
+      { success: false, message: "Failed to add research project" },
       { status: 500 }
     );
   }

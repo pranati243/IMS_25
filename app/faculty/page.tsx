@@ -53,6 +53,7 @@ export default function FacultyPage() {
   useEffect(() => {
     // First, check user's role from the authentication API
     const fetchUserRoleAndDepartment = async () => {
+      setLoading(true);
       try {
         const response = await fetch("/api/auth/me");
 
@@ -71,6 +72,9 @@ export default function FacultyPage() {
                   setFacultyId(facultyData.data.F_id);
                 }
               }
+            } else {
+              // For non-faculty roles, fetch the faculty directory data
+              await fetchFacultyData();
             }
 
             // For HODs, automatically filter to their department
@@ -81,18 +85,49 @@ export default function FacultyPage() {
         }
       } catch (error) {
         console.error("Error fetching user role:", error);
+        setError("Error loading user information");
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserRoleAndDepartment();
+  }, []); // Empty dependency array to run only once on mount
 
-    // Only fetch faculty list for admin and HOD roles
-    if (userRole !== "faculty") {
-      fetchFaculty();
+  // Separate function to fetch faculty data with proper error handling
+  const fetchFacultyData = async () => {
+    try {
+      setLoading(true);
+
+      // Add a cache-busting parameter to prevent browser caching
+      const response = await fetch(`/api/faculty?t=${Date.now()}`);
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || "Failed to fetch faculty data");
+      }
+
+      if (!Array.isArray(data.data)) {
+        throw new Error("Invalid faculty data format");
+      }
+
+      setFaculty(data.data);
+      setFilteredFaculty(data.data);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching faculty:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch faculty data"
+      );
+    } finally {
+      setLoading(false);
     }
-  }, [userRole]);
+  };
 
   // Apply filters locally
   useEffect(() => {
@@ -136,28 +171,6 @@ export default function FacultyPage() {
 
     setFilteredFaculty(result);
   }, [faculty, search, department, designation, experienceFilter]);
-
-  const fetchFaculty = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/faculty`);
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message);
-      }
-
-      setFaculty(data.data);
-      setFilteredFaculty(data.data);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch faculty data"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Get unique departments from faculty data
   const departments = Array.from(new Set(faculty.map((f) => f.F_dept))).sort();

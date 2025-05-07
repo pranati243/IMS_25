@@ -55,10 +55,18 @@ const publicRoutes = [
   "/unauthorized",
 ];
 
-// Define role-based route access
+// Define role-based route access with more specific paths
 const roleAccess: Record<string, UserRole[]> = {
   "/dashboard": ["admin", "hod", "faculty", "staff", "student"],
   "/faculty": ["admin", "hod", "faculty", "staff", "student"],
+  "/faculty/add": ["admin", "hod", "faculty"],
+  "/faculty/edit": ["admin", "hod", "faculty"],
+  "/faculty/details": ["admin", "hod", "faculty"],
+  "/faculty/modules": ["faculty"],
+  "/faculty/contributions": ["admin", "hod", "faculty"],
+  "/faculty/publications": ["admin", "hod", "faculty"],
+  "/faculty/memberships": ["admin", "hod", "faculty"],
+  "/faculty/achievements": ["admin", "hod", "faculty"],
   "/students": ["admin", "hod", "faculty", "staff"],
   "/courses": ["admin", "hod", "faculty", "staff", "student"],
   "/departments": ["admin", "hod"],
@@ -171,10 +179,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Allow access to public routes
     if (publicRoutes.includes(pathname)) return;
 
-    // Check if current route requires authentication
-    const basePath = `/${pathname.split("/")[1]}`;
-    const allowedRoles = roleAccess[basePath] || ["admin"];
-
     // If not authenticated, redirect to login
     if (!user) {
       // Get the current server URL from the window location
@@ -190,8 +194,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // If authenticated but doesn't have required role, redirect to unauthorized page
+    // Check access permissions based on path segments
+    const pathParts = pathname.split("/").filter(Boolean);
+    const basePath = `/${pathParts[0]}`;
+    const subPath =
+      pathParts.length > 1 ? `/${pathParts[0]}/${pathParts[1]}` : null;
+
+    // Find the most specific path match in roleAccess
+    let allowedRoles: UserRole[] = ["admin"];
+
+    if (subPath && roleAccess[subPath]) {
+      // Check if there's a specific access rule for the subpath (e.g., /faculty/add)
+      allowedRoles = roleAccess[subPath];
+    } else if (roleAccess[basePath]) {
+      // Fallback to base path access rules (e.g., /faculty)
+      allowedRoles = roleAccess[basePath];
+    }
+
+    // Check if the user's role is allowed for this path
     if (!allowedRoles.includes(user.role)) {
+      console.log(`User role ${user.role} not permitted to access ${pathname}`);
+
       // Get the current server URL from the window location
       const currentUrl = new URL(window.location.href);
       const serverPort = currentUrl.port || "3000";

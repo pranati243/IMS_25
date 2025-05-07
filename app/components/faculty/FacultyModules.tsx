@@ -74,16 +74,18 @@ export default function FacultyModules({ facultyId }: FacultyModulesProps) {
           );
         }
 
-        // Add some mock data for demonstration purposes
-        const enrichedData = {
+        // Use actual data from the database, set defaults for missing values
+        const facultyData = {
           ...data.data,
-          publications: Math.floor(Math.random() * 20) + 5,
-          research_projects: Math.floor(Math.random() * 8) + 2,
-          workshops_attended: Math.floor(Math.random() * 15) + 10,
-          awards: Math.floor(Math.random() * 5) + 1,
+          publications: data.data.publications || 0,
+          research_projects: data.data.research_projects || 0,
+          workshops_attended: data.data.workshops_attended || 0,
+          awards: data.data.awards || 0,
+          total_contributions: data.data.total_contributions || 0,
+          professional_memberships: data.data.professional_memberships || 0,
         };
 
-        setFacultyInfo(enrichedData);
+        setFacultyInfo(facultyData);
         setError(null);
       } catch (err) {
         console.error("Error fetching faculty info:", err);

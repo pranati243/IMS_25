@@ -62,58 +62,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if table exists and fetch contributions
+    // Check if table exists and fetch publications
     try {
       // Verify table exists
-      const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_contributions'"
-      );
+      const tableCheck = await query("SHOW TABLES LIKE 'paper_publication'");
 
       if ((tableCheck as any[]).length === 0) {
         // Return an empty array if the table doesn't exist yet
         return NextResponse.json({
           success: true,
           data: [],
-          message: "No contributions found (table doesn't exist)",
+          message: "No publications found (table doesn't exist)",
         });
       }
 
-      // Table exists, fetch contributions
-      const contributions = await query(
+      // Table exists, fetch publications
+      const publications = await query(
         `SELECT 
-          Contribution_ID,
-          F_ID,
-          Contribution_Type,
-          Description,
-          Contribution_Date
+          id as publication_id,
+          id as f_id,
+          title_of_the_paper,
+          name_of_the_conference,
+          Year_Of_Study,
+          paper_link
         FROM 
-          faculty_contributions
+          paper_publication
         WHERE 
-          F_ID = ?
+          id = ?
         ORDER BY 
-          Contribution_Date DESC`,
+          Year_Of_Study DESC`,
         [queryFacultyId]
+      );
+
+      console.log(
+        `Found ${
+          (publications as any[]).length
+        } publications for faculty ID ${queryFacultyId}`
       );
 
       return NextResponse.json({
         success: true,
-        data: contributions,
+        data: publications,
       });
     } catch (error) {
-      console.error(
-        "Error checking/querying faculty_contributions table:",
-        error
-      );
+      console.error("Error checking/querying paper_publication table:", error);
       return NextResponse.json({
         success: true,
         data: [],
-        error: "Database error when fetching contributions",
+        error: "Database error when fetching publications",
       });
     }
   } catch (error) {
-    console.error("Error fetching faculty contributions:", error);
+    console.error("Error fetching faculty publications:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to fetch contributions" },
+      { success: false, message: "Failed to fetch publications" },
       { status: 500 }
     );
   }
@@ -144,10 +146,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add contributions
+    // Only faculty, HOD, and admin can add publications
     if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add contributions" },
+        { success: false, message: "Unauthorized to add publications" },
         { status: 403 }
       );
     }
@@ -178,57 +180,65 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse request body
-    const { contribution_type, description, date, f_id } = await request.json();
+    const {
+      title_of_the_paper,
+      name_of_the_conference,
+      Year_Of_Study,
+      paper_link,
+      f_id,
+    } = await request.json();
 
-    // For faculty role, ensure they can only add their own contributions
-    const contributionFacultyId =
+    // For faculty role, ensure they can only add their own publications
+    const publicationFacultyId =
       authData.user.role === "faculty" ? facultyId : f_id;
 
-    if (!contributionFacultyId) {
+    if (!publicationFacultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!contribution_type || !description) {
+    if (!title_of_the_paper || !name_of_the_conference || !Year_Of_Study) {
       return NextResponse.json(
         {
           success: false,
-          message: "Contribution type and description are required",
+          message: "Publication title, conference name, and year are required",
         },
         { status: 400 }
       );
     }
 
-    // Insert the contribution
+    // Insert the publication
     const result = await query(
-      `INSERT INTO faculty_contributions 
-        (F_ID, Contribution_Type, Description, Contribution_Date) 
-       VALUES (?, ?, ?, ?)`,
+      `INSERT INTO paper_publication 
+        (id, title_of_the_paper, name_of_the_conference, Year_Of_Study, paper_link) 
+       VALUES (?, ?, ?, ?, ?)`,
       [
-        contributionFacultyId,
-        contribution_type,
-        description,
-        date || new Date(),
+        publicationFacultyId,
+        title_of_the_paper,
+        name_of_the_conference,
+        Year_Of_Study,
+        paper_link || null,
       ]
     );
 
     return NextResponse.json({
       success: true,
-      message: "Contribution added successfully",
+      message: "Publication added successfully",
       data: {
         id: (result as any).insertId,
-        f_id: contributionFacultyId,
-        contribution_type,
-        description,
-        date: date || new Date(),
+        f_id: publicationFacultyId,
+        title_of_the_paper,
+        name_of_the_conference,
+        Year_Of_Study,
+        paper_link,
       },
     });
   } catch (error) {
-    console.error("Error adding faculty contribution:", error);
+    console.error("Error adding publication:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add contribution" },
+      { success: false, message: "Failed to add publication" },
       { status: 500 }
     );
   }
