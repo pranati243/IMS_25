@@ -143,7 +143,11 @@ export default function FacultyContributionsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          contribution_type: formData.Contribution_Type,
+          description: formData.Description,
+          date: formData.Contribution_Date,
+        }),
       });
 
       const data = await response.json();
@@ -189,16 +193,18 @@ export default function FacultyContributionsPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(
-        `/api/faculty/contributions/${selectedContribution.Contribution_ID}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch("/api/faculty/contributions", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contribution_id: selectedContribution.Contribution_ID,
+          contribution_type: formData.Contribution_Type,
+          description: formData.Description,
+          date: formData.Contribution_Date,
+        }),
+      });
 
       const data = await response.json();
 
@@ -226,12 +232,15 @@ export default function FacultyContributionsPage() {
     if (!selectedContribution) return;
 
     try {
-      const response = await fetch(
-        `/api/faculty/contributions/${selectedContribution.Contribution_ID}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch("/api/faculty/contributions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contribution_id: selectedContribution.Contribution_ID,
+        }),
+      });
 
       const data = await response.json();
 

@@ -18,6 +18,8 @@ interface DialogFormProps {
   isSubmitting?: boolean;
   submitLabel?: string;
   cancelLabel?: string;
+  showCancel?: boolean;
+  showSubmit?: boolean;
   children: React.ReactNode;
 }
 
@@ -30,6 +32,8 @@ export function DialogForm({
   isSubmitting = false,
   submitLabel = "Save",
   cancelLabel = "Cancel",
+  showCancel = true,
+  showSubmit = true,
   children,
 }: DialogFormProps) {
   return (
@@ -44,17 +48,21 @@ export function DialogForm({
           </DialogHeader>
           <div className="py-4">{children}</div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              {cancelLabel}
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : submitLabel}
-            </Button>
+            {showCancel && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                {cancelLabel}
+              </Button>
+            )}
+            {showSubmit && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : submitLabel}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

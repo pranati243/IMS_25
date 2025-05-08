@@ -73,6 +73,7 @@ export default function FacultyPublicationsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedPublication, setSelectedPublication] =
     useState<Publication | null>(null);
   const [formData, setFormData] = useState<PublicationFormData>({
@@ -211,22 +212,20 @@ export default function FacultyPublicationsPage() {
       setIsSubmitting(true);
 
       const payload = {
+        id: selectedPublication.id, // Include the ID in the request body
         ...formData,
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
       };
 
-      const response = await fetch(
-        `/api/faculty/publications/${selectedPublication.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`/api/faculty/publications`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
       const data = await response.json();
 
@@ -254,8 +253,10 @@ export default function FacultyPublicationsPage() {
     if (!selectedPublication) return;
 
     try {
+      setIsDeleting(true);
+
       const response = await fetch(
-        `/api/faculty/publications/${selectedPublication.id}`,
+        `/api/faculty/publications?id=${selectedPublication.id}`,
         {
           method: "DELETE",
         }
@@ -278,6 +279,8 @@ export default function FacultyPublicationsPage() {
       toast.error(
         err instanceof Error ? err.message : "Failed to delete publication"
       );
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -309,10 +312,21 @@ export default function FacultyPublicationsPage() {
     setDeleteDialogOpen(true);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Not provided";
+
+    // Try to parse the date
+    const date = new Date(dateString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return "Invalid Date";
+    }
+
+    return date.toLocaleDateString("en-IN", {
       year: "numeric",
       month: "short",
+      day: "numeric",
     });
   };
 
@@ -619,7 +633,7 @@ export default function FacultyPublicationsPage() {
           setViewDialogOpen(false);
         }}
         submitLabel="Close"
-        cancelLabel="Close"
+        showCancel={false}
       >
         {selectedPublication && (
           <div className="space-y-4">
@@ -720,7 +734,8 @@ export default function FacultyPublicationsPage() {
             <div className="space-y-2">
               <Label>Citation Count</Label>
               <p className="text-sm">
-                {selectedPublication.citation_count !== null
+                {selectedPublication.citation_count !== null &&
+                selectedPublication.citation_count !== undefined
                   ? `${selectedPublication.citation_count} ${
                       selectedPublication.citation_count === 1
                         ? "citation"

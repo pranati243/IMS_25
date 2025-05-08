@@ -5,7 +5,7 @@ import { OkPacket } from "mysql2";
 export async function GET(request: Request) {
   const diagnosticMode = request.url.includes("diagnostic=true");
   const diagnosticInfo: Record<string, any> = {};
-  
+
   try {
     const { searchParams } = new URL(request.url);
     const department = searchParams.get("department");
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     try {
       const tableCheck = await query("SHOW TABLES LIKE 'faculty'");
       diagnosticInfo.tableCheck = { faculty: (tableCheck as any[]).length > 0 };
-      
+
       if ((tableCheck as any[]).length === 0) {
         throw new Error("Faculty table does not exist");
       }
@@ -26,12 +26,12 @@ export async function GET(request: Request) {
           success: false,
           message: "Faculty table not found or inaccessible",
           error: error instanceof Error ? error.message : "Unknown error",
-          diagnostic: diagnosticInfo
+          diagnostic: diagnosticInfo,
         },
         { status: 500 }
       );
     }
-    
+
     // Step 2: Build the query with proper error handling for joins
     let sql = `
       SELECT 
@@ -39,30 +39,40 @@ export async function GET(request: Request) {
         f.F_name,
         f.F_dept
     `;
-    
+
     // Check if faculty_details table exists before adding its columns
     let hasDetailsTable = false;
     try {
       const detailsCheck = await query("SHOW TABLES LIKE 'faculty_details'");
       hasDetailsTable = (detailsCheck as any[]).length > 0;
-      
-      diagnosticInfo.tableCheck = { 
+
+      diagnosticInfo.tableCheck = {
         ...diagnosticInfo.tableCheck,
-        faculty_details: hasDetailsTable 
+        faculty_details: hasDetailsTable,
       };
-      
+
       if (hasDetailsTable) {
         // Get the actual column names to avoid errors
         const detailsColumns = await query("SHOW COLUMNS FROM faculty_details");
-        const columnNames = (detailsColumns as any[]).map(col => col.Field);
-        
+        const columnNames = (detailsColumns as any[]).map((col) => col.Field);
+
         // Only include columns that actually exist
-        const emailCol = columnNames.includes('Email') ? 'fd.Email' : 'NULL as Email';
-        const phoneCol = columnNames.includes('Phone_Number') ? 'fd.Phone_Number' : 'NULL as Phone_Number';
-        const designationCol = columnNames.includes('Current_Designation') ? 'fd.Current_Designation' : 'NULL as Current_Designation';
-        const degreeCol = columnNames.includes('Highest_Degree') ? 'fd.Highest_Degree' : 'NULL as Highest_Degree';
-        const experienceCol = columnNames.includes('Experience') ? 'fd.Experience' : 'NULL as Experience';
-        
+        const emailCol = columnNames.includes("Email")
+          ? "fd.Email"
+          : "NULL as Email";
+        const phoneCol = columnNames.includes("Phone_Number")
+          ? "fd.Phone_Number"
+          : "NULL as Phone_Number";
+        const designationCol = columnNames.includes("Current_Designation")
+          ? "fd.Current_Designation"
+          : "NULL as Current_Designation";
+        const degreeCol = columnNames.includes("Highest_Degree")
+          ? "fd.Highest_Degree"
+          : "NULL as Highest_Degree";
+        const experienceCol = columnNames.includes("Experience")
+          ? "fd.Experience"
+          : "NULL as Experience";
+
         sql += `,
           ${emailCol},
           ${phoneCol},
@@ -88,16 +98,91 @@ export async function GET(request: Request) {
         NULL as Highest_Degree,
         NULL as Experience`;
     }
-    
-    // Add contribution and professional membership counts with safe column names
-    sql += `,
-      0 as total_contributions,
-      0 as professional_memberships
-    `;
-    
+
+    // Check for contributions table
+    let hasContributions = false;
+    try {
+      const contributionsCheck = await query(
+        "SHOW TABLES LIKE 'faculty_contributions'"
+      );
+      diagnosticInfo.tableCheck = {
+        ...diagnosticInfo.tableCheck,
+        faculty_contributions: (contributionsCheck as any[]).length > 0,
+      };
+
+      hasContributions = (contributionsCheck as any[]).length > 0;
+
+      // Add contribution count with safe SQL
+      if (hasContributions) {
+        sql += `,
+          (SELECT COUNT(*) FROM faculty_contributions WHERE F_ID = f.F_id) as total_contributions`;
+      } else {
+        sql += `,
+          0 as total_contributions`;
+      }
+    } catch (error) {
+      console.error("Error checking faculty_contributions:", error);
+      sql += `,
+        0 as total_contributions`;
+    }
+
+    // Check for professional_body table
+    let hasProfessionalBody = false;
+    try {
+      const professionalBodyCheck = await query(
+        "SHOW TABLES LIKE 'faculty_professional_body'"
+      );
+      diagnosticInfo.tableCheck = {
+        ...diagnosticInfo.tableCheck,
+        faculty_professional_body: (professionalBodyCheck as any[]).length > 0,
+      };
+
+      hasProfessionalBody = (professionalBodyCheck as any[]).length > 0;
+
+      // Add professional membership count with safe SQL
+      if (hasProfessionalBody) {
+        sql += `,
+          (SELECT COUNT(*) FROM faculty_professional_body WHERE F_ID = f.F_id) as professional_memberships`;
+      } else {
+        sql += `,
+          0 as professional_memberships`;
+      }
+    } catch (error) {
+      console.error("Error checking faculty_professional_body:", error);
+      sql += `,
+        0 as professional_memberships`;
+    }
+
+    // Check for publications table and add publications count
+    let hasPublications = false;
+    try {
+      const publicationsCheck = await query(
+        "SHOW TABLES LIKE 'faculty_publications'"
+      );
+      diagnosticInfo.tableCheck = {
+        ...diagnosticInfo.tableCheck,
+        faculty_publications: (publicationsCheck as any[]).length > 0,
+      };
+
+      hasPublications = (publicationsCheck as any[]).length > 0;
+
+      // Add publications count with safe SQL
+      if (hasPublications) {
+        sql += `,
+          (SELECT COUNT(*) FROM faculty_publications WHERE faculty_id = f.F_id) as publication_count`;
+      } else {
+        sql += `,
+          0 as publication_count`;
+      }
+    } catch (error) {
+      console.error("Error checking faculty_publications:", error);
+      sql += `,
+        0 as publication_count`;
+    }
+
     // Main table
-    sql += `FROM faculty f`;
-    
+    sql += ` FROM faculty f`;
+
     // Add LEFT JOINs conditionally
     let hasDetailsJoin = false;
     try {
@@ -109,34 +194,6 @@ export async function GET(request: Request) {
     } catch (error) {
       console.error("Error checking faculty_details for JOIN:", error);
       // Skip the join if there's an error
-    }
-    
-    // Check for contributions table - don't join it yet since we're not using its columns
-    let hasContributions = false;
-    try {
-      const contributionsCheck = await query("SHOW TABLES LIKE 'faculty_contributions'");
-      diagnosticInfo.tableCheck = { 
-        ...diagnosticInfo.tableCheck,
-        faculty_contributions: (contributionsCheck as any[]).length > 0 
-      };
-      
-      hasContributions = (contributionsCheck as any[]).length > 0;
-    } catch (error) {
-      console.error("Error checking faculty_contributions:", error);
-    }
-    
-    // Check for professional_body table - don't join it yet since we're not using its columns
-    let hasProfessionalBody = false;
-    try {
-      const professionalBodyCheck = await query("SHOW TABLES LIKE 'faculty_professional_body'");
-      diagnosticInfo.tableCheck = { 
-        ...diagnosticInfo.tableCheck,
-        faculty_professional_body: (professionalBodyCheck as any[]).length > 0 
-      };
-      
-      hasProfessionalBody = (professionalBodyCheck as any[]).length > 0;
-    } catch (error) {
-      console.error("Error checking faculty_professional_body:", error);
     }
 
     const params: (string | number | boolean | null)[] = [];
@@ -164,10 +221,11 @@ export async function GET(request: Request) {
 
     // Ensure the GROUP BY only includes columns that exist in the query
     sql += " GROUP BY f.F_id, f.F_name, f.F_dept";
-    
+
     // Add additional GROUP BY columns if we know they exist
     if (hasDetailsJoin) {
-      sql += ", fd.Email, fd.Phone_Number, fd.Current_Designation, fd.Highest_Degree, fd.Experience";
+      sql +=
+        ", fd.Email, fd.Phone_Number, fd.Current_Designation, fd.Highest_Degree, fd.Experience";
     }
 
     // Execute the query
@@ -181,7 +239,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       data: faculty,
-      diagnostic: diagnosticMode ? diagnosticInfo : undefined
+      diagnostic: diagnosticMode ? diagnosticInfo : undefined,
     });
   } catch (error) {
     console.error("Error fetching faculty:", error);
@@ -190,7 +248,7 @@ export async function GET(request: Request) {
         success: false,
         message: "Error fetching faculty data",
         error: error instanceof Error ? error.message : "Unknown error",
-        diagnostic: diagnosticInfo
+        diagnostic: diagnosticInfo,
       },
       { status: 500 }
     );
