@@ -22,6 +22,7 @@ import { DashboardStats } from "@/app/lib/types";
 import { NavHelper } from "./nav-helper";
 import { useAuth } from "@/app/providers/auth-provider";
 import Link from "next/link";
+import { ReportPreview } from "@/app/components/ui/report-preview";
 
 interface DepartmentStat {
   Department_ID: number;
@@ -79,6 +80,12 @@ export default function DashboardPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [reportData, setReportData] = useState<{
+    pdfBase64?: string;
+    filename?: string;
+    reportType?: string;
+  }>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -119,48 +126,48 @@ export default function DashboardPage() {
       try {
         // Test the me endpoint
         const response = await fetch("/api/auth/me", {
-          credentials: 'include',
+          credentials: "include",
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
         });
-        
+
         const data = await response.json();
-        
+
         // Get cookies
-        const cookies = document.cookie.split(';').map(c => c.trim());
-        
+        const cookies = document.cookie.split(";").map((c) => c.trim());
+
         setDiagnostic({
           apiStatus: response.status,
           apiSuccess: data.success,
           userData: data.user,
           cookies,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       } catch (error) {
         setDiagnostic({
           error: error instanceof Error ? error.message : String(error),
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         });
       } finally {
         setLoadingDiag(false);
       }
     }
-    
+
     if (!loading) {
       testApi();
     }
   }, [loading]);
-  
+
   // Try bypass auth if needed
   const bypassAuth = async () => {
     try {
       setLoadingDiag(true);
       const response = await fetch("/api/debug/bypass-auth", {
-        credentials: 'include'
+        credentials: "include",
       });
-      
+
       if (response.ok) {
         window.location.reload();
       } else {
@@ -168,12 +175,13 @@ export default function DashboardPage() {
         alert("Bypass failed: " + data.message);
       }
     } catch (error) {
-      alert("Error: " + (error instanceof Error ? error.message : String(error)));
+      alert(
+        "Error: " + (error instanceof Error ? error.message : String(error))
+      );
     } finally {
       setLoadingDiag(false);
     }
   };
-
   const handleGenerateReport = async () => {
     try {
       setGeneratingReport(true);
@@ -194,20 +202,19 @@ export default function DashboardPage() {
       const result = await response.json();
 
       if (result.success) {
-        // Create a data URL from the base64 PDF
-        const pdfDataUri = `data:application/pdf;base64,${result.data.pdfBase64}`;
+        // Store the report data for preview
+        setReportData({
+          pdfBase64: result.data.pdfBase64,
+          filename: result.data.filename,
+          reportType: result.data.reportType,
+        });
 
-        // Create an invisible link and trigger download
-        const link = document.createElement("a");
-        link.href = pdfDataUri;
-        link.download = result.data.filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Open the preview dialog
+        setPreviewOpen(true);
 
         setReportMessage({
           type: "success",
-          text: `Report generated successfully. Your download should start automatically.`,
+          text: `Report generated successfully. You can now preview, download, or print it.`,
         });
       } else {
         throw new Error(result.message || "Failed to generate report");
@@ -252,16 +259,18 @@ export default function DashboardPage() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <h1 className="text-xl font-semibold mb-2">Not Authenticated</h1>
-          <p className="text-gray-500 mb-4">Please log in to access the dashboard</p>
-          
+          <p className="text-gray-500 mb-4">
+            Please log in to access the dashboard
+          </p>
+
           <div className="flex flex-col space-y-4">
-            <Link 
+            <Link
               href="/login"
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               Go to Login
             </Link>
-            
+
             <button
               onClick={async () => {
                 try {
@@ -271,16 +280,19 @@ export default function DashboardPage() {
                     method: "GET",
                     credentials: "include", // Important: This ensures cookies are sent and stored
                     headers: {
-                      "Accept": "application/json",
-                      "Content-Type": "application/json"
-                    }
+                      Accept: "application/json",
+                      "Content-Type": "application/json",
+                    },
                   });
-                  
+
                   if (response.ok) {
                     const data = await response.json();
                     // Store user data in sessionStorage for immediate use
                     if (data.success && data.user) {
-                      sessionStorage.setItem('authUser', JSON.stringify(data.user));
+                      sessionStorage.setItem(
+                        "authUser",
+                        JSON.stringify(data.user)
+                      );
                       // Force reload to apply the new authentication state
                       window.location.reload();
                     } else {
@@ -290,7 +302,10 @@ export default function DashboardPage() {
                     alert("Bypass auth failed: " + response.statusText);
                   }
                 } catch (error) {
-                  alert("Error: " + (error instanceof Error ? error.message : String(error)));
+                  alert(
+                    "Error: " +
+                      (error instanceof Error ? error.message : String(error))
+                  );
                 } finally {
                   setLoadingDiag(false);
                 }
@@ -299,7 +314,7 @@ export default function DashboardPage() {
             >
               Try Auth Bypass (Dev Mode)
             </button>
-            
+
             <button
               onClick={async () => {
                 try {
@@ -309,16 +324,19 @@ export default function DashboardPage() {
                     method: "GET",
                     credentials: "include",
                     headers: {
-                      "Accept": "application/json",
-                      "Content-Type": "application/json"
-                    }
+                      Accept: "application/json",
+                      "Content-Type": "application/json",
+                    },
                   });
-                  
+
                   if (response.ok) {
                     const data = await response.json();
                     // Store user data in sessionStorage
                     if (data.success && data.user) {
-                      sessionStorage.setItem('authUser', JSON.stringify(data.user));
+                      sessionStorage.setItem(
+                        "authUser",
+                        JSON.stringify(data.user)
+                      );
                       alert("Authentication fixed! Reloading page...");
                       // Force reload with a slight delay
                       setTimeout(() => window.location.reload(), 500);
@@ -329,7 +347,10 @@ export default function DashboardPage() {
                     alert("Auth fix failed: " + response.statusText);
                   }
                 } catch (error) {
-                  alert("Error: " + (error instanceof Error ? error.message : String(error)));
+                  alert(
+                    "Error: " +
+                      (error instanceof Error ? error.message : String(error))
+                  );
                 } finally {
                   setLoadingDiag(false);
                 }
@@ -339,7 +360,7 @@ export default function DashboardPage() {
               Fix Authentication (Recommended)
             </button>
           </div>
-          
+
           {diagnostic && (
             <div className="mt-8 p-4 bg-gray-100 rounded text-left max-w-lg mx-auto text-xs overflow-auto">
               <h2 className="font-semibold mb-2">Diagnostic Info:</h2>
@@ -353,15 +374,26 @@ export default function DashboardPage() {
 
   return (
     <MainLayout>
+      {" "}
       <NavHelper />
+      {/* Report Preview Dialog */}
+      <ReportPreview
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        pdfBase64={reportData.pdfBase64}
+        filename={reportData.filename}
+        title={`${reportData.reportType
+          ?.charAt(0)
+          .toUpperCase()}${reportData.reportType?.slice(1)} Report`}
+      />
       <div className="space-y-8">
         {/* Page title with report generation options */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Welcome to the Information Management System Dashboard. Here&apos;s
-              an overview of key academic metrics.
+              Welcome to the Information Management System Dashboard.
+              Here&apos;s an overview of key academic metrics.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 items-center">
@@ -709,73 +741,78 @@ async function fetchDashboardData() {
     // In the new API structure we don't have facultyDesignationStats
     // So we'll create placeholder data
     const designationsByDepartment: { [department: string]: any } = {};
-    
+
     // Initialize the departments with zero counts
     if (Array.isArray(departmentStats)) {
       departmentStats.forEach((dept: any) => {
         designationsByDepartment[dept.name] = {
           professor_count: 0,
           associate_professor_count: 0,
-          assistant_professor_count: 0
+          assistant_professor_count: 0,
         };
       });
     }
-    
+
     // Prepare department details with actual department data
-    const departmentDetails = Array.isArray(departmentStats) ? departmentStats.map(
-      (dept: any) => {
-        const deptName = dept.name;
-        const designations = designationsByDepartment[deptName] || {
-          professor_count: 0,
-          associate_professor_count: 0,
-          assistant_professor_count: 0
-        };
-        
-        // If no designation data is available, fallback to proportional estimates
-        const totalFaculty = dept.facultyCount || 0;
-        if (totalFaculty > 0) {
-          designations.professor_count = Math.floor(totalFaculty * 0.2);
-          designations.associate_professor_count = Math.floor(totalFaculty * 0.3);
-          designations.assistant_professor_count = totalFaculty - 
-            designations.professor_count - 
-            designations.associate_professor_count;
-        }
-        
-        // Create HOD object if hodId and hodName are available
-        const hod = dept.hodId ? {
-          id: dept.hodId,
-          name: dept.hodName || "Unknown Faculty"
-        } : null;
-        
-        return {
-          Department_ID: dept.id,
-          Department_Name: deptName,
-          current_faculty_count: dept.facultyCount || 0,
-          Total_Students: dept.studentsCount || 0,
-          professor_count: designations.professor_count,
-          associate_professor_count: designations.associate_professor_count,
-          assistant_professor_count: designations.assistant_professor_count,
-          research_projects: Math.floor(Math.random() * 10) + 2,
-          publications: Math.floor(Math.random() * 30) + 5,
-          HOD: hod,
-        };
-      }
-    ) : [];
+    const departmentDetails = Array.isArray(departmentStats)
+      ? departmentStats.map((dept: any) => {
+          const deptName = dept.name;
+          const designations = designationsByDepartment[deptName] || {
+            professor_count: 0,
+            associate_professor_count: 0,
+            assistant_professor_count: 0,
+          };
+
+          // If no designation data is available, fallback to proportional estimates
+          const totalFaculty = dept.facultyCount || 0;
+          if (totalFaculty > 0) {
+            designations.professor_count = Math.floor(totalFaculty * 0.2);
+            designations.associate_professor_count = Math.floor(
+              totalFaculty * 0.3
+            );
+            designations.assistant_professor_count =
+              totalFaculty -
+              designations.professor_count -
+              designations.associate_professor_count;
+          }
+
+          // Create HOD object if hodId and hodName are available
+          const hod = dept.hodId
+            ? {
+                id: dept.hodId,
+                name: dept.hodName || "Unknown Faculty",
+              }
+            : null;
+
+          return {
+            Department_ID: dept.id,
+            Department_Name: deptName,
+            current_faculty_count: dept.facultyCount || 0,
+            Total_Students: dept.studentsCount || 0,
+            professor_count: designations.professor_count,
+            associate_professor_count: designations.associate_professor_count,
+            assistant_professor_count: designations.assistant_professor_count,
+            research_projects: Math.floor(Math.random() * 10) + 2,
+            publications: Math.floor(Math.random() * 30) + 5,
+            HOD: hod,
+          };
+        })
+      : [];
 
     // Create data for charts
-    const facultyByDepartment = Array.isArray(departmentStats) ? departmentStats.map(
-      (dept: any) => ({
-        department: dept.name,
-        count: dept.facultyCount || 0,
-      })
-    ) : [];
+    const facultyByDepartment = Array.isArray(departmentStats)
+      ? departmentStats.map((dept: any) => ({
+          department: dept.name,
+          count: dept.facultyCount || 0,
+        }))
+      : [];
 
-    const studentsByDepartment = Array.isArray(departmentStats) ? departmentStats.map(
-      (dept: any) => ({
-        department: dept.name,
-        count: dept.studentsCount || 0,
-      })
-    ) : [];
+    const studentsByDepartment = Array.isArray(departmentStats)
+      ? departmentStats.map((dept: any) => ({
+          department: dept.name,
+          count: dept.studentsCount || 0,
+        }))
+      : [];
 
     // Calculate totals
     const totalFaculty = facultyByDepartment.reduce(
@@ -786,7 +823,9 @@ async function fetchDashboardData() {
       (sum: number, dept: DepartmentData) => sum + dept.count,
       0
     );
-    const totalDepartments = Array.isArray(departmentStats) ? departmentStats.length : 0;
+    const totalDepartments = Array.isArray(departmentStats)
+      ? departmentStats.length
+      : 0;
 
     // Calculate faculty by designation totals
     const professorCount = departmentDetails.reduce(

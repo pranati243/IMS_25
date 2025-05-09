@@ -25,7 +25,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DialogForm } from "@/app/components/ui/dialog-form";
-import { Plus, BookOpen, Trash, Pencil, Link } from "lucide-react";
+import {
+  Plus,
+  BookOpen,
+  Trash,
+  Pencil,
+  Link,
+  Search,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 interface Publication {
@@ -74,6 +82,7 @@ export default function FacultyPublicationsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [doiLookupLoading, setDoiLookupLoading] = useState(false);
   const [selectedPublication, setSelectedPublication] =
     useState<Publication | null>(null);
   const [formData, setFormData] = useState<PublicationFormData>({
@@ -112,6 +121,55 @@ export default function FacultyPublicationsPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Add function to handle DOI lookup
+  const handleDoiLookup = async (doiValue: string) => {
+    if (!doiValue.trim()) {
+      toast.error("Please enter a DOI to lookup");
+      return;
+    }
+
+    try {
+      setDoiLookupLoading(true);
+
+      const response = await fetch(
+        `/api/doi?doi=${encodeURIComponent(doiValue.trim())}`
+      );
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to retrieve DOI metadata");
+      }
+
+      const metadata = data.data;
+
+      // Update form data with the retrieved metadata
+      setFormData((prev) => ({
+        ...prev,
+        title: metadata.title || prev.title,
+        abstract: metadata.abstract || prev.abstract,
+        authors: metadata.authors || prev.authors,
+        publication_date: metadata.publicationDate || prev.publication_date,
+        publication_type: metadata.publicationType || prev.publication_type,
+        publication_venue: metadata.publicationVenue || prev.publication_venue,
+        url: metadata.url || prev.url,
+        doi: metadata.doi || prev.doi,
+        citation_count:
+          metadata.citationCount !== undefined
+            ? String(metadata.citationCount)
+            : prev.citation_count,
+      }));
+
+      toast.success("DOI metadata retrieved successfully");
+    } catch (err) {
+      console.error("Error looking up DOI:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to retrieve DOI metadata"
+      );
+    } finally {
+      setDoiLookupLoading(false);
     }
   };
 
@@ -585,17 +643,33 @@ export default function FacultyPublicationsPage() {
               onChange={handleInputChange}
               required
             />
-          </div>
+          </div>{" "}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="doi">DOI</Label>
-              <Input
-                id="doi"
-                name="doi"
-                placeholder="Enter DOI (e.g., 10.1000/xyz123)"
-                value={formData.doi || ""}
-                onChange={handleInputChange}
-              />
+              <div className="flex gap-2">
+                <div className="flex-grow">
+                  <Input
+                    id="doi"
+                    name="doi"
+                    placeholder="Enter DOI (e.g., 10.1000/xyz123)"
+                    value={formData.doi || ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDoiLookup(formData.doi || "")}
+                  disabled={doiLookupLoading || !formData.doi}
+                >
+                  {doiLookupLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="url">URL</Label>
@@ -853,17 +927,33 @@ export default function FacultyPublicationsPage() {
               onChange={handleInputChange}
               required
             />
-          </div>
+          </div>{" "}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="edit_doi">DOI</Label>
-              <Input
-                id="edit_doi"
-                name="doi"
-                placeholder="Enter DOI (e.g., 10.1000/xyz123)"
-                value={formData.doi || ""}
-                onChange={handleInputChange}
-              />
+              <div className="flex gap-2">
+                <div className="flex-grow">
+                  <Input
+                    id="edit_doi"
+                    name="doi"
+                    placeholder="Enter DOI (e.g., 10.1000/xyz123)"
+                    value={formData.doi || ""}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleDoiLookup(formData.doi || "")}
+                  disabled={doiLookupLoading || !formData.doi}
+                >
+                  {doiLookupLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit_url">URL</Label>

@@ -6,6 +6,7 @@ import MainLayout from "@/app/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { ReportPreview } from "@/app/components/ui/report-preview";
 import {
   UserIcon,
   EnvelopeIcon,
@@ -19,6 +20,7 @@ import {
   KeyIcon,
   TrophyIcon,
   ExclamationTriangleIcon,
+  DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
 
 // Helper function to format dates
@@ -79,7 +81,51 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<string>("basic");
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [biodataLoading, setBiodataLoading] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [reportData, setReportData] = useState<{
+    pdfBase64?: string;
+    filename?: string;
+  }>({});
   const router = useRouter();
+
+  // Function to generate faculty biodata
+  const handleGenerateBiodata = async () => {
+    if (!profile || !profile.facultyId) return;
+
+    try {
+      setBiodataLoading(true);
+
+      const response = await fetch(
+        `/api/faculty/biodata?facultyId=${profile.facultyId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate biodata: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || "Failed to generate biodata");
+      }
+
+      setReportData({
+        pdfBase64: result.data.pdfBase64,
+        filename: result.data.filename,
+      });
+      setPreviewOpen(true);
+    } catch (err) {
+      console.error("Error generating biodata:", err);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while generating biodata"
+      );
+    } finally {
+      setBiodataLoading(false);
+    }
+  };
 
   // Fetch profile data from the API
   useEffect(() => {
@@ -195,8 +241,23 @@ export default function ProfilePage() {
                 <p className="text-sm text-indigo-600 font-medium">
                   {profile.designation}
                 </p>
-              )}
-              <div className="w-full border-t border-gray-200 pt-4 mt-4">
+              )}{" "}
+              <div className="w-full border-t border-gray-200 pt-4 mt-4 space-y-2">
+                {(profile?.role === "faculty" || profile?.role === "hod") && (
+                  <Button
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={handleGenerateBiodata}
+                    disabled={biodataLoading}
+                    variant="outline"
+                  >
+                    {biodataLoading ? (
+                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <DocumentArrowDownIcon className="h-5 w-5" />
+                    )}
+                    {biodataLoading ? "Generating..." : "Generate CV/Biodata"}
+                  </Button>
+                )}
                 <Button
                   className="w-full"
                   variant="outline"
@@ -441,6 +502,17 @@ export default function ProfilePage() {
                     <KeyIcon className="h-4 w-4" />
                     Change Password
                   </Button>
+                  {(profile?.role === "faculty" || profile?.role === "hod") && (
+                    <Button
+                      onClick={handleGenerateBiodata}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      disabled={biodataLoading}
+                    >
+                      <DocumentArrowDownIcon className="h-4 w-4" />
+                      {biodataLoading ? "Generating..." : "Generate Biodata"}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -521,6 +593,15 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
+
+      {/* Report Preview Dialog */}
+      <ReportPreview
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        pdfBase64={reportData.pdfBase64}
+        filename={reportData.filename}
+        title="Faculty CV/Biodata"
+      />
     </MainLayout>
   );
 }

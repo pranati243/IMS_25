@@ -71,6 +71,7 @@ interface FacultyData {
   Current_Designation: string | null;
   Highest_Degree: string | null;
   Experience: number | null;
+  Date_of_Joining: string | null;
 }
 
 interface DepartmentStats {
@@ -115,7 +116,6 @@ async function generateFacultyReport(
   doc.setFontSize(11);
   doc.text(`Department: ${departmentId || "All Departments"}`, 14, 30);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 36);
-
   // Fetch faculty data
   let facultyQuery = `
     SELECT 
@@ -125,7 +125,8 @@ async function generateFacultyReport(
       fd.Email,
       fd.Current_Designation,
       fd.Highest_Degree,
-      fd.Experience
+      fd.Experience,
+      fd.Date_of_Joining
     FROM faculty f
     LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
   `;
@@ -135,8 +136,18 @@ async function generateFacultyReport(
     facultyQuery += " WHERE f.F_dept = ?";
     params.push(departmentId);
   }
-
-  facultyQuery += " ORDER BY f.F_dept, fd.Current_Designation, f.F_name";
+  // Order by department, then designation order (Professor > Associate Professor > Assistant Professor), then date of joining
+  facultyQuery += `
+    ORDER BY 
+      f.F_dept, 
+      CASE 
+        WHEN fd.Current_Designation = 'Professor' THEN 1
+        WHEN fd.Current_Designation = 'Associate Professor' THEN 2
+        WHEN fd.Current_Designation = 'Assistant Professor' THEN 3
+        ELSE 4
+      END,
+      fd.Date_of_Joining
+  `;
 
   const facultyData = (await query(facultyQuery, params)) as FacultyData[];
 
@@ -146,7 +157,6 @@ async function generateFacultyReport(
     doc.text("No faculty data found", 14, 50);
     return [doc, filename];
   }
-
   // Prepare data for table
   const tableData = facultyData.map((faculty) => [
     faculty.F_name,
@@ -154,9 +164,11 @@ async function generateFacultyReport(
     faculty.Current_Designation || "N/A",
     faculty.Highest_Degree || "N/A",
     faculty.Experience?.toString() || "N/A",
+    faculty.Date_of_Joining
+      ? new Date(faculty.Date_of_Joining).toLocaleDateString()
+      : "N/A",
     faculty.Email || "N/A",
   ]) as RowInput[];
-
   // Add table
   autoTable(doc, {
     head: [
@@ -166,6 +178,7 @@ async function generateFacultyReport(
         "Designation",
         "Highest Degree",
         "Experience (Years)",
+        "Date of Joining",
         "Email",
       ],
     ],
