@@ -17,56 +17,62 @@ interface EmailOptions {
  * - etc.
  */
 export async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  // This is a placeholder implementation
-  // In development, we'll just log the email details
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('========================');
-    console.log('EMAIL WOULD BE SENT TO:', to);
-    console.log('SUBJECT:', subject);
+  // Log email details in both development and production
+  console.log('========================');
+  console.log('ATTEMPTING TO SEND EMAIL TO:', to);
+  console.log('SUBJECT:', subject);
+  console.log('========================');
+  
+  // Log environment variables for debugging
+  console.log('EMAIL CONFIG DEBUG:');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('SMTP_HOST:', process.env.SMTP_HOST || 'not set');
+  console.log('SMTP_PORT:', process.env.SMTP_PORT || 'not set');
+  console.log('SMTP_USER exists:', !!process.env.SMTP_USER);
+  console.log('SMTP_PASSWORD exists:', !!process.env.SMTP_PASSWORD);
+  console.log('SMTP_FROM_EMAIL:', process.env.SMTP_FROM_EMAIL || 'not set');
+  console.log('SEND_REAL_EMAILS:', process.env.SEND_REAL_EMAILS || 'not set');
+  console.log('========================');
+
+  // In development, we'll log the email details only (unless SEND_REAL_EMAILS is true)
+  if (process.env.NODE_ENV !== 'production' && process.env.SEND_REAL_EMAILS !== 'true') {
+    console.log('DEVELOPMENT MODE: Email would be sent, but is being logged instead.');
     console.log('HTML CONTENT:', html);
+    console.log('To send real emails in development, set SEND_REAL_EMAILS=true in .env.local');
     console.log('========================');
     return true;
   }
 
   try {
-    // Example implementation with a hypothetical email service
-    // In a real app, you would replace this with your actual email provider's SDK
-
-    // Example with NodeMailer (you would need to install and configure it)
-    // const { createTransport } = require('nodemailer');
-    // const transporter = createTransport({
-    //   host: process.env.SMTP_HOST,
-    //   port: Number(process.env.SMTP_PORT || 587),
-    //   secure: process.env.SMTP_SECURE === 'true',
-    //   auth: {
-    //     user: process.env.SMTP_USER,
-    //     pass: process.env.SMTP_PASSWORD,
-    //   },
-    // });
-    // 
-    // const info = await transporter.sendMail({
-    //   from: `"${process.env.SMTP_FROM_NAME}" <${process.env.SMTP_FROM_EMAIL}>`,
-    //   to,
-    //   subject,
-    //   html,
-    // });
-    // 
-    // return !!info.messageId;
-
-    // Example with SendGrid
-    // const sgMail = require('@sendgrid/mail');
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // const msg = {
-    //   to,
-    //   from: process.env.SENDGRID_FROM_EMAIL,
-    //   subject,
-    //   html,
-    // };
-    // await sgMail.send(msg);
-    // return true;
-
-    // For now, we'll simulate a successful email send
-    return true;
+    // Use Gmail-specific configuration that should work reliably
+    const nodemailer = require('nodemailer');
+    
+    const smtpUser = process.env.SMTP_USER || 'hindavi815@gmail.com';
+    const smtpPass = process.env.SMTP_PASSWORD || 'gdgiwlimrnklaola';
+    
+    console.log(`Creating Gmail transporter for user: ${smtpUser}`);
+    
+    // Create a Gmail-specific transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: smtpUser,
+        pass: smtpPass
+      }
+    });
+    
+    console.log('Gmail transporter created, attempting to send email...');
+    
+    // Send mail with defined transport object
+    const info = await transporter.sendMail({
+      from: `"IMS FCRIT" <${smtpUser}>`,
+      to,
+      subject,
+      html,
+    });
+    
+    console.log('Email sent successfully: %s', info.messageId);
+    return !!info.messageId;
   } catch (error) {
     console.error('Error sending email:', error);
     return false;

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 04, 2025 at 01:39 PM
+-- Generation Time: May 09, 2025 at 03:21 PM
 -- Server version: 8.0.34
 -- PHP Version: 8.1.25
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `ims2025iii`
+-- Database: `ims2025`
 --
 
 -- --------------------------------------------------------
@@ -3737,7 +3737,11 @@ INSERT INTO `faculty` (`F_id`, `F_name`, `F_dept`) VALUES
 (132, 'Ms. Rohini Deshpande', 'Computer Engineering'),
 (133, 'Mr. Raj Mahesh Ramchandani', 'Computer Engineering'),
 (134, 'Mrs. Neelam Joshi', 'Computer Engineering'),
-(135, 'Ms. Shalaka Deshpande', 'Computer Engineering');
+(135, 'Ms. Shalaka Deshpande', 'Computer Engineering'),
+(136, 'xyz1', 'Electrical Engineering'),
+(137, 'xyz1', 'Electrical Engineering'),
+(138, 'xyz1', 'Electrical Engineering'),
+(139, 'xyz1', 'Electrical Engineering');
 
 -- --------------------------------------------------------
 
@@ -3908,7 +3912,8 @@ INSERT INTO `faculty_details` (`F_ID`, `Email`, `Phone_Number`, `PAN_Number`, `A
 (116, 'smita.dange@fcrit.ac.in', '9876543220', 'AKUPM5516F', '667788990011', 'Ph. D', 'IOT, ML and Data Analytics', '2004-07-05', 21, NULL, NULL, 47, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1978-09-12', NULL, NULL, 'Regular', NULL, NULL),
 (123, 'smita.rukhande@fcrit.ac.in', '9876543227', 'AMVPR5107Q', '334455667722', 'ME (COMP)', 'Security', '2009-04-08', 16, NULL, NULL, 40, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1985-08-27', NULL, NULL, 'Regular', NULL, NULL),
 (131, 'ujala.patil@fcrit.ac.in', '9876543235', 'CIAPP5264K', '112233445511', 'M. Tech (CSC)', 'Cloud Computing', '2023-07-04', 2, NULL, NULL, 29, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1996-03-22', NULL, NULL, 'Contract', NULL, NULL),
-(130, 'vidya.kothari@fcrit.ac.in', '9876543234', 'DIWPK8357P', '001122334499', 'ME(COMP)', 'Image Processing', '2023-07-04', 2, NULL, NULL, 30, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1995-09-15', NULL, NULL, 'Contract', NULL, NULL);
+(130, 'vidya.kothari@fcrit.ac.in', '9876543234', 'DIWPK8357P', '001122334499', 'ME(COMP)', 'Image Processing', '2023-07-04', 2, NULL, NULL, 30, NULL, NULL, 'Assistant Professor', NULL, NULL, NULL, '1995-09-15', NULL, NULL, 'Contract', NULL, NULL),
+(136, 'xyz1@abc.com', '6789564321', 'ABCDE1234G', '453245675323', 'B.Tech', 'saddsad', '2025-04-29', 3, '', NULL, 26, NULL, NULL, 'dsf', NULL, NULL, NULL, '2025-04-28', NULL, NULL, 'rewr', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -6465,7 +6470,9 @@ INSERT INTO `password_reset_tokens` (`id`, `user_id`, `token`, `expires_at`, `us
 (1, 100, 'd37d28820e81ae2edc0a86d7e0e3e4fe1ca7403aa51bd8d14326815d8533a2e9', '2025-05-01 09:29:23', 0, '2025-05-01 08:29:23'),
 (2, 100, '29807e463b8b69445089bdf86eea343d537c40c208b3f6ea87074b488464ce70', '2025-05-01 09:37:06', 0, '2025-05-01 08:37:06'),
 (3, 100, '5758cf5a6d7bd6a974fe169d9feca7074858a006349992784119dbebed713bd2', '2025-05-01 09:38:52', 0, '2025-05-01 08:38:52'),
-(4, 100, '1a5c0a8914d47a600f42597dd65b592a4552ae9128f66018a2c6e7879d4aa13d', '2025-05-01 10:12:43', 0, '2025-05-01 09:12:43');
+(4, 100, '1a5c0a8914d47a600f42597dd65b592a4552ae9128f66018a2c6e7879d4aa13d', '2025-05-01 10:12:43', 0, '2025-05-01 09:12:43'),
+(5, 100, '5849d1a5360e703a7cac9251ca1564b299d32c1c45c603b682dfd6f03ae626b0', '2025-05-04 19:01:45', 0, '2025-05-04 18:01:46'),
+(6, 100, 'f189c30c90544c1d51a55522b4bf43bbc63407d8fef07ac5872adf43ee08424a', '2025-05-04 19:03:43', 0, '2025-05-04 18:03:43');
 
 -- --------------------------------------------------------
 
@@ -11189,17 +11196,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `email`, `name`, `role`, `department_id`, `faculty_id`, `student_id`, `is_active`, `created_at`, `updated_at`, `last_login`, `default_password_changed`) VALUES
-(1, '101', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'rajesh.sharma@university.edu', 'Dr. Rajesh Sharma', 'hod', 10, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-27 15:35:50', '2025-04-27 15:35:50', 0),
-(2, '102', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'ce.faculty@university.edu', 'CE Faculty Member', 'faculty', 10, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(3, '201', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'anjali.mehta@university.edu', 'Dr. Anjali Mehta', 'hod', 20, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(4, '301', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'suresh.reddy@university.edu', 'Dr. Suresh Reddy', 'hod', 30, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(5, '401', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'kavita.patel@university.edu', 'Dr. Kavita Patel', 'hod', 40, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(6, '501', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'amit.verma@university.edu', 'Dr. Shubhangi Vaikole', 'hod', 50, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(7, '10001', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'ce.student@university.edu', 'CE Student', 'student', 10, NULL, 10001, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(8, '20001', '$2b$10$n7GGUAtBBe3q7FGxnC93xeZ.PwERUwF2qOGdGm8xmgaAFANUaYYV6', 'me.student@university.edu', 'ME Student', 'student', 20, NULL, 20001, 1, '2025-04-26 19:54:23', '2025-04-26 19:54:23', NULL, 0),
-(9, 'admin', '$2b$10$YfuCQfBG0yFxIEVWMwLiWuWhWyw77RIIyZh7Fkid6O4t.qlpPBqh6', 'admin@ims.edu', 'System Administrator', 'admin', NULL, NULL, NULL, 1, '2025-04-26 19:54:23', '2025-05-01 13:50:49', NULL, 1),
-(100, 'hindavi', '$2b$10$YfuCQfBG0yFxIEVWMwLiWuWhWyw77RIIyZh7Fkid6O4t.qlpPBqh6', 'hindavi815@gmail.com', 'Hindavi Bhagyawant', 'admin', 50, NULL, NULL, 1, '2025-05-01 08:01:41', '2025-05-03 14:25:06', '2025-05-03 14:25:06', 0),
-(101, '99', '$2b$10$UCnaufeATWTjh9ENkyLu6.GAsr0N2bxz3HhfGzdXf3wk2wyBqCNFi', 'xyz@abc.com', 'xyz', 'faculty', 20, 99, NULL, 1, '2025-05-03 15:23:46', '2025-05-03 15:24:07', '2025-05-03 15:24:07', 0);
+(100, 'hindavi', '$2b$10$1gYMtK7POxEAubh0ykVT1.Th7F5/NPTu9DeXVktV/SIAE/qAs/9Xm', 'hindavi815@gmail.com', 'Hindavi Bhagyawant', 'admin', 50, NULL, NULL, 1, '2025-05-01 08:01:41', '2025-05-04 17:57:52', '2025-05-03 14:25:06', 0),
+(101, '99', '$2b$10$UCnaufeATWTjh9ENkyLu6.GAsr0N2bxz3HhfGzdXf3wk2wyBqCNFi', 'hleetcode2024@gmail.com', 'xyz', 'faculty', 20, 99, NULL, 1, '2025-05-03 15:23:46', '2025-05-09 13:11:09', '2025-05-03 15:24:07', 0),
+(102, '116', '$2b$10$HLU.MJNR8aQ/XCF/4RtV5Or02Zy3Im3E3C9OzORy7VD69n6cpMjSy', 'arjun.varshney1423@gmail.com', 'Dr. Smita Dange', 'faculty', 10, 116, NULL, 1, '2025-05-04 13:50:03', '2025-05-09 11:38:49', '2025-05-09 11:38:49', 0);
 
 -- --------------------------------------------------------
 
@@ -11863,7 +11862,7 @@ ALTER TABLE `department`
 -- AUTO_INCREMENT for table `faculty`
 --
 ALTER TABLE `faculty`
-  MODIFY `F_id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=136;
+  MODIFY `F_id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=140;
 
 --
 -- AUTO_INCREMENT for table `faculty_achievements`
@@ -11959,7 +11958,7 @@ ALTER TABLE `paper_publication`
 -- AUTO_INCREMENT for table `password_reset_tokens`
 --
 ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `patentcopyright`
@@ -12061,7 +12060,7 @@ ALTER TABLE `testing`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=102;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
 
 --
 -- AUTO_INCREMENT for table `workshops`
