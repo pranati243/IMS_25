@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle2, ArrowLeft, Send, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, ArrowLeft, Send, RefreshCw, AlertTriangle } from "lucide-react";
+
+// Email validation regex
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -25,6 +28,7 @@ export default function ForgotPasswordPage() {
   const [message, setMessage] = useState("");
   const [lastRequestTime, setLastRequestTime] = useState<number | null>(null);
   const [countDown, setCountDown] = useState(0);
+  const [emailError, setEmailError] = useState("");
   const router = useRouter();
 
   // Handle countdown for resend cooldown
@@ -44,9 +48,30 @@ export default function ForgotPasswordPage() {
     }, 1000);
   };
 
+  // Validate email when it changes
+  useEffect(() => {
+    if (email.trim() === "") {
+      setEmailError("");
+    } else if (!EMAIL_REGEX.test(email)) {
+      setEmailError("Please enter a valid email address");
+    } else {
+      setEmailError("");
+    }
+  }, [email]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    
+    // Client-side validation
+    if (!email) {
+      setEmailError("Email is required");
+      return;
+    }
+    
+    if (!EMAIL_REGEX.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -91,6 +116,12 @@ export default function ForgotPasswordPage() {
 
   const handleResend = async () => {
     if (!email || countDown > 0) return;
+    
+    // Validate email before resending
+    if (!EMAIL_REGEX.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return;
+    }
 
     try {
       setIsResending(true);
@@ -147,7 +178,10 @@ export default function ForgotPasswordPage() {
                   <CheckCircle2 className="h-8 w-8 text-green-600" />
                 </div>
                 <h3 className="font-medium text-lg mb-2">Check Your Email</h3>
-                <p className="text-gray-600 mb-6">{message}</p>
+                <p className="text-gray-600 mb-3">{message}</p>
+                <p className="text-gray-500 text-sm mb-6">
+                  If you don't receive the email, please check your spam folder or make sure the email address you entered is registered with the system.
+                </p>
                 
                 <div className="space-y-3 w-full">
                   <Button
@@ -207,15 +241,28 @@ export default function ForgotPasswordPage() {
                   placeholder="your.email@institution.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="h-11"
+                  className={`h-11 ${emailError ? 'border-red-500 focus:ring-red-500' : ''}`}
                   disabled={isSubmitting}
                 />
+                {emailError && (
+                  <div className="flex items-center gap-1 text-red-500 text-xs mt-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>{emailError}</span>
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the email address associated with your account.
+                  <br />
+                  <span className="mt-1 block">
+                    If you don't receive an email, please make sure the email address you entered is registered with the system.
+                  </span>
+                </p>
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 transition-colors"
-                disabled={isSubmitting || !email}
+                disabled={isSubmitting || !email || !!emailError}
               >
                 {isSubmitting ? (
                   <span className="flex items-center gap-2">
