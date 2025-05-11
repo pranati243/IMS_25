@@ -17,7 +17,7 @@ interface FacultyProfile {
   F_name: string;
   F_dept: string;
   Email: string | null;
-  Phone_No: string | null;
+  Phone_Number: string | null; // Changed from Phone_No to Phone_Number to match DB schema
   Current_Designation: string | null;
   Highest_Degree: string | null;
   Experience: number | null;
@@ -152,15 +152,15 @@ async function getFacultyProfile(
     SELECT 
       f.F_id,
       f.F_name,
-      f.F_dept,
+      IFNULL(f.F_dept, 'Not Specified') as F_dept,
       fd.Email,
-      fd.Phone_No,
+      fd.Phone_Number,
       fd.Current_Designation,
       fd.Highest_Degree,
       fd.Experience,
       fd.Date_of_Joining,
-      fd.Research_Interest,
-      fd.Bio
+      '' as Research_Interest,
+      '' as Bio
     FROM 
       faculty f
     LEFT JOIN 
@@ -175,84 +175,156 @@ async function getFacultyProfile(
     return null;
   }
 
-  return result[0] as FacultyProfile;
+  // Ensure all fields have at least a default value to prevent null errors
+  const profile = result[0] as FacultyProfile;
+  return {
+    F_id: profile.F_id,
+    F_name: profile.F_name || "Unknown Faculty",
+    F_dept: profile.F_dept || "Not Specified",
+    Email: profile.Email || "Not Available",
+    Phone_Number: profile.Phone_Number || "Not Available",
+    Current_Designation: profile.Current_Designation || "Not Specified",
+    Highest_Degree: profile.Highest_Degree || "Not Specified",
+    Experience: profile.Experience || 0,
+    Date_of_Joining: profile.Date_of_Joining || null,
+    Research_Interest: profile.Research_Interest || "",
+    Bio: profile.Bio || "",
+  };
 }
 
 async function getPublications(facultyId: string): Promise<Publication[]> {
-  const publicationsQuery = `
-    SELECT 
-      id,
-      title,
-      abstract,
-      authors,
-      publication_date,
-      publication_type,
-      publication_venue,
-      doi,
-      url,
-      citation_count
-    FROM 
-      faculty_publications
-    WHERE 
-      faculty_id = ?
-    ORDER BY 
-      publication_date DESC
-  `;
+  // Check if faculty_contributions table exists and has entries
+  try {
+    const contributionsQuery = `
+      SELECT 
+        fc.Contribution_ID as id,
+        '' as title,
+        fc.Description as abstract,
+        '' as authors,
+        fc.Contribution_Date as publication_date,
+        CASE 
+          WHEN fc.Contribution_Type = 'journal' THEN 'journal'
+          WHEN fc.Contribution_Type = 'conference' THEN 'conference'
+          WHEN fc.Contribution_Type = 'book' THEN 'book'
+          WHEN fc.Contribution_Type = 'book_chapter' THEN 'book_chapter'
+          ELSE 'other'
+        END as publication_type,
+        fc.Recognized_By as publication_venue,
+        fc.Award_Received as doi,
+        '' as url,
+        '' as citation_count
+      FROM 
+        faculty_contributions fc
+      WHERE 
+        fc.F_ID = ? AND fc.Contribution_Type IN ('journal', 'conference', 'publication', 'book', 'book_chapter')
+      ORDER BY 
+        fc.Contribution_Date DESC
+    `;
 
-  const result = (await query(publicationsQuery, [
-    facultyId,
-  ])) as RowDataPacket[];
+    const result = (await query(contributionsQuery, [
+      facultyId,
+    ])) as RowDataPacket[];
 
-  if (!result || !Array.isArray(result)) {
-    return [];
+    if (result && Array.isArray(result) && result.length > 0) {
+      return result as Publication[];
+    }
+  } catch (error) {
+    console.error("Error querying faculty_contributions:", error);
   }
 
-  return result as Publication[];
+  // If no results from faculty_contributions, try bookschapter table
+  try {
+    const bookschapterQuery = `
+      SELECT 
+        id as id,
+        Title_Of_The_Book_Published as title,
+        '' as abstract,
+        Name_Of_The_Teacher as authors,
+        STR_TO_DATE(CONCAT(Year_Of_Publication, '-01-01'), '%Y-%m-%d') as publication_date,
+        CASE 
+          WHEN National_Or_International = 'National' THEN 'book'
+          WHEN National_Or_International = 'International' THEN 'book'
+          ELSE 'book_chapter'
+        END as publication_type,
+        Name_Of_The_Publisher as publication_venue,
+        ISBN_Or_ISSN_Number as doi,
+        paper_link as url,
+        '' as citation_count
+      FROM 
+        bookschapter
+      WHERE 
+        user_id = ? AND STATUS = 'approved'
+      ORDER BY 
+        Year_Of_Publication DESC
+    `;
+
+    const result = (await query(bookschapterQuery, [
+      facultyId,
+    ])) as RowDataPacket[];
+
+    if (result && Array.isArray(result)) {
+      return result as Publication[];
+    }
+  } catch (error) {
+    console.error("Error querying bookschapter table:", error);
+  }
+
+  return [];
 }
 
 async function getAwards(facultyId: string): Promise<Award[]> {
-  const awardsQuery = `
+  // Skip checking for faculty_awards table and directly use faculty_contributions
+  // This avoids issues with tables or columns that don't exist
+
+  const contributionsAwardsQuery = `
     SELECT 
-      award_id,
-      award_name,
-      awarding_organization,
-      award_date,
-      award_description
+      fc.Contribution_ID as award_id,
+      fc.Description as award_name,
+      fc.Recognized_By as awarding_organization,
+      fc.Contribution_Date as award_date,
+      fc.Remarks as award_description
     FROM 
-      faculty_awards
+      faculty_contributions fc
     WHERE 
-      faculty_id = ?
+      fc.F_ID = ? AND fc.Contribution_Type IN ('award', 'achievement')
     ORDER BY 
-      award_date DESC
+      fc.Contribution_Date DESC
   `;
 
-  const result = (await query(awardsQuery, [facultyId])) as RowDataPacket[];
+  try {
+    const result = (await query(contributionsAwardsQuery, [
+      facultyId,
+    ])) as RowDataPacket[];
 
-  if (!result || !Array.isArray(result)) {
+    if (!result || !Array.isArray(result)) {
+      return [];
+    }
+
+    return result as Award[];
+  } catch (error) {
+    console.error("Error fetching awards from faculty_contributions:", error);
     return [];
   }
-
-  return result as Award[];
 }
 
 async function getContributions(facultyId: string): Promise<Contribution[]> {
   const contributionsQuery = `
     SELECT 
-      contribution_id,
-      contribution_type,
-      contribution_title,
-      contribution_date,
-      year,
-      journal_conference,
-      award,
-      impact_factor,
-      description
+      Contribution_ID as contribution_id,
+      Contribution_Type as contribution_type,
+      Description as contribution_title,
+      Contribution_Date as contribution_date,
+      YEAR(Contribution_Date) as year,
+      Recognized_By as journal_conference,
+      Award_Received as award,
+      '' as impact_factor,
+      Remarks as description
     FROM 
       faculty_contributions
     WHERE 
-      F_ID = ?
+      F_ID = ? AND Contribution_Type NOT IN ('award', 'achievement', 'journal', 'conference', 'publication', 'book', 'book_chapter')
     ORDER BY 
-      contribution_date DESC, year DESC
+      Contribution_Date DESC
   `;
 
   const result = (await query(contributionsQuery, [
@@ -267,26 +339,64 @@ async function getContributions(facultyId: string): Promise<Contribution[]> {
 }
 
 async function getMemberships(facultyId: string): Promise<Membership[]> {
-  const membershipsQuery = `
+  // Check if we're using faculty_professional_body table
+  const professionalBodyQuery = `
     SELECT 
-      membership_id,
-      organization,
-      membership_type,
-      start_date,
-      end_date,
-      description
+      SrNo as membership_id,
+      Professional_Body_Name as organization,
+      Membership_Type as membership_type,
+      DATE_FORMAT(Year, '%Y-01-01') as start_date,
+      NULL as end_date,
+      Membership_Number as description
     FROM 
-      faculty_memberships
+      faculty_professional_body
     WHERE 
-      faculty_id = ?
+      F_ID = ?
     ORDER BY 
-      start_date DESC
+      Year DESC
   `;
 
-  const result = (await query(membershipsQuery, [
-    facultyId,
-  ])) as RowDataPacket[];
+  let result;
+  try {
+    result = (await query(professionalBodyQuery, [
+      facultyId,
+    ])) as RowDataPacket[];
 
+    if (result && Array.isArray(result) && result.length > 0) {
+      return result as Membership[];
+    }
+  } catch (error) {
+    console.error(
+      "Error fetching memberships from faculty_professional_body:",
+      error
+    );
+  }
+
+  // If no results, try workshops table
+  try {
+    const tableCheck = await query("SHOW TABLES LIKE 'faculty_workshops'");
+    if (Array.isArray(tableCheck) && tableCheck.length > 0) {
+      const workshopsQuery = `
+        SELECT 
+          id as membership_id,
+          venue as organization,
+          type as membership_type,
+          start_date,
+          end_date,
+          description
+        FROM 
+          faculty_workshops
+        WHERE 
+          faculty_id = ?
+        ORDER BY 
+          start_date DESC
+      `;
+
+      result = (await query(workshopsQuery, [facultyId])) as RowDataPacket[];
+    }
+  } catch (error) {
+    console.error("Error fetching from workshops table:", error);
+  }
   if (!result || !Array.isArray(result)) {
     return [];
   }
@@ -344,14 +454,13 @@ async function generateBiodata(
 
   doc.setFontSize(11);
   doc.setFont("helvetica", "normal");
-
   if (faculty.Email) {
     doc.text(`Email: ${faculty.Email}`, 14, yPos);
     yPos += 6;
   }
 
-  if (faculty.Phone_No) {
-    doc.text(`Phone: ${faculty.Phone_No}`, 14, yPos);
+  if (faculty.Phone_Number) {
+    doc.text(`Phone: ${faculty.Phone_Number}`, 14, yPos);
     yPos += 6;
   }
 
@@ -384,9 +493,10 @@ async function generateBiodata(
     );
     yPos += 6;
   }
-
-  // Research Interests
-  if (faculty.Research_Interest) {
+  // Research Interests - Commented out as this field is not yet in the database
+  // If you add the Research_Interest column to faculty_details table, you can uncomment this
+  /*
+  if (faculty.Research_Interest && faculty.Research_Interest.trim() !== '') {
     yPos += 6;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -400,9 +510,12 @@ async function generateBiodata(
     doc.text(splitText, 14, yPos);
     yPos += splitText.length * 6 + 6;
   }
+  */
 
-  // Bio
-  if (faculty.Bio) {
+  // Bio - Commented out as this field is not yet in the database
+  // If you add the Bio column to faculty_details table, you can uncomment this
+  /*
+  if (faculty.Bio && faculty.Bio.trim() !== '') {
     yPos += 6;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
@@ -416,6 +529,7 @@ async function generateBiodata(
     doc.text(bioSplitText, 14, yPos);
     yPos += bioSplitText.length * 6 + 6;
   }
+  */
 
   // Check if we need to add a new page
   if (yPos > 250) {
@@ -577,9 +691,7 @@ async function generateBiodata(
       headStyles: { fillColor: [75, 70, 229], textColor: 255 },
       styles: { overflow: "linebreak", cellWidth: "auto" },
     });
-  }
-
-  // Other Contributions
+  } // Other Contributions
   if (contributions.length > 0) {
     doc.addPage();
     yPos = 20;
@@ -596,7 +708,7 @@ async function generateBiodata(
 
     // Group contributions by type
     const contributionsByType = contributions.reduce((acc, curr) => {
-      const type = curr.contribution_type;
+      const type = curr.contribution_type || "Other";
       if (!acc[type]) {
         acc[type] = [];
       }
@@ -668,22 +780,46 @@ async function generateBiodata(
 
       yPos += 6;
     }
-  }
+  } // Add footer with page numbers
+  const pageCount = doc.internal.pages.length - 1;
+  if (pageCount > 0) {
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(10);
+      doc.text(
+        `Page ${i} of ${pageCount}`,
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: "center" }
+      );
 
-  // Add footer with page numbers
-  const pageCount = doc.internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(10);
+      // Add generation date at the bottom of each page
+      const today = new Date().toLocaleDateString("en-IN");
+      doc.text(
+        `Generated on: ${today}`,
+        doc.internal.pageSize.width - 14,
+        doc.internal.pageSize.height - 10,
+        { align: "right" }
+      );
+    }
+  } else {
+    // Ensure we have at least one page
+    doc.addPage();
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
     doc.text(
-      `Page ${i} of ${pageCount}`,
+      "No additional data available",
       doc.internal.pageSize.width / 2,
-      doc.internal.pageSize.height - 10,
-      { align: "center" }
+      100,
+      {
+        align: "center",
+      }
     );
 
-    // Add generation date at the bottom of each page
+    // Add generation date at the bottom
     const today = new Date().toLocaleDateString("en-IN");
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
     doc.text(
       `Generated on: ${today}`,
       doc.internal.pageSize.width - 14,

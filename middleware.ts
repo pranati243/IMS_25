@@ -38,6 +38,7 @@ const apiPaths = [
   "/api/faculty/details",
   "/api/faculty/by-email",
   "/api/faculty/contributions",
+  "/api/faculty/comprehensive-report",
   "/api/faculty/[id]",
   "/api/faculty/edit",
   "/api/faculty/add",
@@ -274,5 +275,6 @@ export const config = {
     "/students/:path*",
     "/settings/:path*",
     "/departments/:path*", // Add departments to matcher
+    "/reports/:path*", // Add reports to matcher
   ],
 };

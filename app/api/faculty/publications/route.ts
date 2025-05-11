@@ -82,9 +82,7 @@ export async function GET(request: NextRequest) {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX (faculty_id),
         CONSTRAINT fk_faculty_publications_faculty FOREIGN KEY (faculty_id) REFERENCES faculty(F_id)
-      )`);
-
-      // Fetch publications from the proper table with the right field names
+      )`); // First try the faculty_publications table
       const publications = (await query(
         `SELECT 
           id,
@@ -108,13 +106,101 @@ export async function GET(request: NextRequest) {
       )) as RowDataPacket[];
 
       console.log(
-        `Found ${publications.length} publications for faculty ID ${queryFacultyId}`
+        `Found ${publications.length} publications in faculty_publications for faculty ID ${queryFacultyId}`
       );
 
-      // Return the publications data
+      // Also check bookschapter table for additional publications
+      let allPublications = [...publications];
+
+      try {
+        const bookChapters = (await query(
+          `SELECT 
+            id,
+            ? as faculty_id,
+            Title_Of_The_Book_Published as title,
+            NULL as abstract,
+            Name_Of_The_Teacher as authors,
+            STR_TO_DATE(CONCAT(Year_Of_Publication, '-01-01'), '%Y-%m-%d') as publication_date,
+            CASE 
+              WHEN National_Or_International = 'international' THEN 'book_chapter'
+              ELSE 'book'
+            END as publication_type,
+            Name_Of_The_Publisher as publication_venue,
+            ISBN_Or_ISSN_Number as doi,
+            paper_link as url,
+            NULL as citation_count
+          FROM 
+            bookschapter
+          WHERE 
+            user_id = ? AND STATUS = 'approved'
+          ORDER BY 
+            Year_Of_Publication DESC`,
+          [queryFacultyId, queryFacultyId]
+        )) as RowDataPacket[];
+
+        console.log(
+          `Found ${bookChapters.length} publications in bookschapter for faculty ID ${queryFacultyId}`
+        );
+
+        allPublications = [...allPublications, ...bookChapters];
+      } catch (error) {
+        console.error("Error fetching from bookschapter table:", error);
+        // Continue execution - don't fail if this table doesn't exist
+      }
+
+      // Also check faculty_contributions for publications
+      try {
+        const contributions = (await query(
+          `SELECT 
+            Contribution_ID as id,
+            ? as faculty_id,
+            Description as title,
+            NULL as abstract,
+            CONCAT('Faculty ID: ', F_ID) as authors,
+            Contribution_Date as publication_date,
+            CASE
+              WHEN Contribution_Type LIKE '%journal%' THEN 'journal'
+              WHEN Contribution_Type LIKE '%conference%' THEN 'conference'
+              WHEN Contribution_Type LIKE '%book%' THEN 'book'
+              ELSE 'other'
+            END as publication_type,
+            Recognized_By as publication_venue,
+            Award_Received as doi,
+            NULL as url,
+            NULL as citation_count
+          FROM 
+            faculty_contributions
+          WHERE 
+            F_ID = ? AND 
+            (Contribution_Type LIKE '%journal%' OR 
+             Contribution_Type LIKE '%conference%' OR 
+             Contribution_Type LIKE '%publication%' OR 
+             Contribution_Type LIKE '%book%' OR
+             Contribution_Type LIKE '%paper%')
+          ORDER BY 
+            Contribution_Date DESC`,
+          [queryFacultyId, queryFacultyId]
+        )) as RowDataPacket[];
+
+        console.log(
+          `Found ${contributions.length} publications in faculty_contributions for faculty ID ${queryFacultyId}`
+        );
+
+        allPublications = [...allPublications, ...contributions];
+      } catch (error) {
+        console.error(
+          "Error fetching from faculty_contributions table:",
+          error
+        );
+        // Continue execution - don't fail if this table doesn't exist
+      }
+
+      console.log(`Total publications found: ${allPublications.length}`);
+
+      // Return the combined publications data
       return NextResponse.json({
         success: true,
-        data: publications,
+        data: allPublications,
       });
     } catch (error) {
       console.error(

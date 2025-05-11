@@ -24,6 +24,17 @@ export async function checkAuth({
     redirect("/unauthorized");
   }
 
+  // Special case handling for faculty and reports
+  if (
+    session &&
+    session.user.role === "faculty" &&
+    resource === "report" &&
+    (action === "read" || action === "create")
+  ) {
+    // Faculty should be allowed to access reports as per permissions.ts
+    return session;
+  }
+
   // Check permission if resource and action are specified
   if (
     session &&
@@ -31,6 +42,9 @@ export async function checkAuth({
     action &&
     !hasPermission(session.user.role, resource, action)
   ) {
+    console.log(
+      `Permission denied for ${session.user.role} to ${action} ${resource}`
+    );
     redirect("/unauthorized");
   }
 

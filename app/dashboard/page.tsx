@@ -22,7 +22,7 @@ import { DashboardStats } from "@/app/lib/types";
 import { NavHelper } from "./nav-helper";
 import { useAuth } from "@/app/providers/auth-provider";
 import Link from "next/link";
-import { ReportPreview } from "@/app/components/ui/report-preview";
+import { EnhancedReportPreview } from "@/app/components/ui/enhanced-report-preview";
 
 interface DepartmentStat {
   Department_ID: number;
@@ -187,7 +187,21 @@ export default function DashboardPage() {
       setGeneratingReport(true);
       setReportMessage(null);
 
-      // Call the report generation API
+      // If faculty report, open in a new tab instead of showing modal
+      if (reportType === "faculty") {
+        window.open(
+          `/reports/faculty${activeTab === "nba" ? "?departmentId=all" : ""}`,
+          "_blank"
+        );
+        setReportMessage({
+          type: "success",
+          text: "Faculty Report opened in a new tab.",
+        });
+        setGeneratingReport(false);
+        return;
+      }
+
+      // For other reports, continue as before
       const response = await fetch("/api/reports", {
         method: "POST",
         headers: {
@@ -375,9 +389,8 @@ export default function DashboardPage() {
   return (
     <MainLayout>
       {" "}
-      <NavHelper />
-      {/* Report Preview Dialog */}
-      <ReportPreview
+      <NavHelper /> {/* Report Preview Dialog */}
+      <EnhancedReportPreview
         isOpen={previewOpen}
         onClose={() => setPreviewOpen(false)}
         pdfBase64={reportData.pdfBase64}
@@ -385,6 +398,7 @@ export default function DashboardPage() {
         title={`${reportData.reportType
           ?.charAt(0)
           .toUpperCase()}${reportData.reportType?.slice(1)} Report`}
+        reportType={reportData.reportType}
       />
       <div className="space-y-8">
         {/* Page title with report generation options */}

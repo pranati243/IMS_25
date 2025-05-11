@@ -6,7 +6,7 @@ import MainLayout from "@/app/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ReportPreview } from "@/app/components/ui/report-preview";
+import { EnhancedReportPreview } from "@/app/components/ui/enhanced-report-preview";
 import {
   UserIcon,
   EnvelopeIcon,
@@ -88,6 +88,51 @@ export default function ProfilePage() {
     filename?: string;
   }>({});
   const router = useRouter();
+  // Function to generate faculty comprehensive report
+  const handleGenerateComprehensiveReport = async () => {
+    if (!profile || !profile.facultyId) return;
+
+    try {
+      setBiodataLoading(true);
+
+      const response = await fetch(
+        `/api/faculty/comprehensive-report?facultyId=${profile.facultyId}`
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || "Failed to generate comprehensive report"
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(
+          data.message || "Failed to generate comprehensive report"
+        );
+      }
+
+      // Store PDF data for preview
+      setReportData({
+        pdfBase64: data.data.pdfBase64,
+        filename: data.data.filename,
+      });
+
+      // Show PDF preview
+      setPreviewOpen(true);
+    } catch (error) {
+      console.error("Error generating comprehensive report:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate comprehensive report"
+      );
+    } finally {
+      setBiodataLoading(false);
+    }
+  };
 
   // Function to generate faculty biodata
   const handleGenerateBiodata = async () => {
@@ -96,6 +141,15 @@ export default function ProfilePage() {
     try {
       setBiodataLoading(true);
 
+      // First, make sure necessary tables exist
+      try {
+        await fetch(`/api/faculty/biodata/setup`);
+      } catch (setupError) {
+        console.warn("Setup endpoint error:", setupError);
+        // Continue anyway, the main endpoint will handle errors
+      }
+
+      // Now generate the biodata
       const response = await fetch(
         `/api/faculty/biodata?facultyId=${profile.facultyId}`
       );
@@ -490,10 +544,9 @@ export default function ProfilePage() {
                     </div>
                   </TabsContent>
                 )}
-              </Tabs>
-
+              </Tabs>{" "}
               <div className="pt-4 mt-4 border-t border-gray-200">
-                <div className="flex justify-between">
+                <div className="flex flex-col sm:flex-row gap-2 justify-between">
                   <Button
                     onClick={() => router.push("/profile/change-password")}
                     variant="outline"
@@ -502,17 +555,34 @@ export default function ProfilePage() {
                     <KeyIcon className="h-4 w-4" />
                     Change Password
                   </Button>
-                  {(profile?.role === "faculty" || profile?.role === "hod") && (
-                    <Button
-                      onClick={handleGenerateBiodata}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                      disabled={biodataLoading}
-                    >
-                      <DocumentArrowDownIcon className="h-4 w-4" />
-                      {biodataLoading ? "Generating..." : "Generate Biodata"}
-                    </Button>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {(profile?.role === "faculty" ||
+                      profile?.role === "hod") && (
+                      <Button
+                        onClick={handleGenerateComprehensiveReport}
+                        variant="default"
+                        className="flex items-center gap-2"
+                        disabled={biodataLoading}
+                      >
+                        <DocumentArrowDownIcon className="h-4 w-4" />
+                        {biodataLoading
+                          ? "Generating..."
+                          : "Comprehensive Report"}
+                      </Button>
+                    )}
+                    {(profile?.role === "faculty" ||
+                      profile?.role === "hod") && (
+                      <Button
+                        onClick={handleGenerateBiodata}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                        disabled={biodataLoading}
+                      >
+                        <DocumentArrowDownIcon className="h-4 w-4" />
+                        {biodataLoading ? "Generating..." : "Basic Biodata"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -592,12 +662,17 @@ export default function ProfilePage() {
             </Card>
           )}
         </div>
-      </div>
-
+      </div>{" "}
       {/* Report Preview Dialog */}
-      <ReportPreview
+      <EnhancedReportPreview
         isOpen={previewOpen}
-        onClose={() => setPreviewOpen(false)}
+        onClose={() => {
+          try {
+            setPreviewOpen(false);
+          } catch (error) {
+            console.error("Error closing report preview:", error);
+          }
+        }}
         pdfBase64={reportData.pdfBase64}
         filename={reportData.filename}
         title="Faculty CV/Biodata"

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
+import { RowDataPacket } from "mysql2";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
 
     if (authData.user.role === "faculty") {
       // Get faculty ID for the logged-in user
-      const facultyResult = await query(
+      const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
         [username]
-      );
+      )) as RowDataPacket[];
 
       if (
         !facultyResult ||
@@ -76,8 +77,8 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Table exists, fetch workshops
-      const workshops = await query(
+      // Table exists, fetch workshops - first from workshops table
+      const workshops = (await query(
         `SELECT 
           id,
           faculty_id,
@@ -95,11 +96,56 @@ export async function GET(request: NextRequest) {
         ORDER BY 
           start_date DESC`,
         [queryFacultyId]
-      );
+      )) as RowDataPacket[];
+
+      // Check for workshop-like entries in contributions table
+      let allWorkshops = [...workshops];
+
+      try {
+        const workshopContributions = (await query(
+          `SELECT 
+            Contribution_ID as id,
+            F_ID as faculty_id,
+            Description as title,
+            Remarks as description,
+            Contribution_Date as start_date,
+            Contribution_Date as end_date,
+            Recognized_By as venue,
+            Contribution_Type as type,
+            'Participant' as role
+          FROM 
+            faculty_contributions
+          WHERE 
+            F_ID = ? AND 
+            (
+              Contribution_Type LIKE '%workshop%' OR 
+              Contribution_Type LIKE '%seminar%' OR 
+              Contribution_Type LIKE '%conference%' OR
+              Contribution_Type LIKE '%training%'
+            )
+          ORDER BY 
+            Contribution_Date DESC`,
+          [queryFacultyId]
+        )) as RowDataPacket[];
+
+        if (
+          workshopContributions &&
+          Array.isArray(workshopContributions) &&
+          workshopContributions.length > 0
+        ) {
+          allWorkshops = [...allWorkshops, ...workshopContributions];
+        }
+      } catch (error) {
+        console.error(
+          "Error fetching workshops from contributions table:",
+          error
+        );
+        // Continue execution - don't fail if this table doesn't exist
+      }
 
       return NextResponse.json({
         success: true,
-        data: workshops,
+        data: allWorkshops,
       });
     } catch (error) {
       console.error("Error checking/querying faculty_workshops table:", error);
@@ -143,132 +189,135 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add workshops
-    if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
+    // Only faculty or admin can add workshops
+    if (
+      authData.user.role !== "faculty" &&
+      authData.user.role !== "admin" &&
+      authData.user.role !== "hod"
+    ) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add workshops" },
+        { success: false, message: "Permission denied" },
         { status: 403 }
       );
     }
 
-    // Get faculty ID from username if user is faculty
-    const username = authData.user.username;
-    let facultyId = null;
+    // Get faculty ID for the faculty user
+    let facultyId = request.nextUrl.searchParams.get("facultyId");
 
-    if (authData.user.role === "faculty") {
-      // Get faculty ID for the logged-in user
-      const facultyResult = await query(
+    if (!facultyId && authData.user.role === "faculty") {
+      // Use the logged-in user's faculty ID
+      const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
-        [username]
-      );
+        [authData.user.username]
+      )) as RowDataPacket[];
 
-      if (
-        !facultyResult ||
-        !Array.isArray(facultyResult) ||
-        facultyResult.length === 0
-      ) {
-        return NextResponse.json(
-          { success: false, message: "Faculty record not found" },
-          { status: 404 }
-        );
+      if (Array.isArray(facultyResult) && facultyResult.length > 0) {
+        facultyId = facultyResult[0].F_id;
       }
-
-      facultyId = facultyResult[0].F_id;
     }
 
-    // Parse request body
-    const {
-      title,
-      description,
-      start_date,
-      end_date,
-      venue,
-      type,
-      role,
-      faculty_id,
-    } = await request.json();
-
-    // For faculty role, ensure they can only add their own workshops
-    const workshopFacultyId =
-      authData.user.role === "faculty" ? facultyId : faculty_id;
-
-    if (!workshopFacultyId) {
+    if (!facultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!title || !description || !start_date || !venue || !type || !role) {
+    // Parse the request body as JSON
+    const body = await request.json();
+    const {
+      title,
+      description,
+      startDate,
+      endDate,
+      venue,
+      type = "Workshop",
+      role = "Participant",
+    } = body;
+
+    // Validate required fields
+    if (!title || !startDate || !venue) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Title, description, start date, venue, type, and role are required",
+          message: "Title, start date, and venue are required",
         },
         { status: 400 }
       );
     }
 
-    // Check if the table exists, create it if it doesn't
-    const tableCheck = await query("SHOW TABLES LIKE 'faculty_workshops'");
+    // Ensure the faculty_workshops table exists
+    try {
+      const tableCheck = await query("SHOW TABLES LIKE 'faculty_workshops'");
 
-    if ((tableCheck as any[]).length === 0) {
-      // Create the table if it doesn't exist
-      await query(`
-        CREATE TABLE faculty_workshops (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          faculty_id VARCHAR(50) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          description TEXT,
-          start_date DATE NOT NULL,
-          end_date DATE,
-          venue VARCHAR(255) NOT NULL,
-          type ENUM('workshop', 'conference', 'seminar') NOT NULL,
-          role ENUM('attendee', 'presenter', 'organizer') NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
-        )
-      `);
+      if ((tableCheck as any[]).length === 0) {
+        // Create the table if it doesn't exist
+        await query(`
+          CREATE TABLE faculty_workshops (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            faculty_id VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            description TEXT,
+            start_date DATE NOT NULL,
+            end_date DATE,
+            venue VARCHAR(255) NOT NULL,
+            type VARCHAR(50) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
+          )
+        `);
+      }
+
+      // Insert the workshop
+      const result = (await query(
+        `INSERT INTO faculty_workshops 
+          (faculty_id, title, description, start_date, end_date, venue, type, role) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          facultyId,
+          title,
+          description || null,
+          startDate,
+          endDate || null,
+          venue,
+          type,
+          role,
+        ]
+      )) as RowDataPacket;
+
+      // Return success response
+      return NextResponse.json({
+        success: true,
+        message: "Workshop added successfully",
+        data: {
+          id: result.insertId,
+          faculty_id: facultyId,
+          title,
+          description,
+          start_date: startDate,
+          end_date: endDate,
+          venue,
+          type,
+          role,
+        },
+      });
+    } catch (error) {
+      console.error("Error adding workshop:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to add workshop",
+          error: String(error),
+        },
+        { status: 500 }
+      );
     }
-
-    // Insert the workshop
-    const result = await query(
-      `INSERT INTO faculty_workshops 
-        (faculty_id, title, description, start_date, end_date, venue, type, role) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        workshopFacultyId,
-        title,
-        description,
-        start_date,
-        end_date || null,
-        venue,
-        type,
-        role,
-      ]
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: "Workshop added successfully",
-      data: {
-        id: (result as any).insertId,
-        faculty_id: workshopFacultyId,
-        title,
-        description,
-        start_date,
-        end_date,
-        venue,
-        type,
-        role,
-      },
-    });
   } catch (error) {
-    console.error("Error adding workshop:", error);
+    console.error("Error in workshops API:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add workshop" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

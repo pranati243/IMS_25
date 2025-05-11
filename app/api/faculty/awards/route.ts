@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
+import { RowDataPacket } from "mysql2";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,10 +33,10 @@ export async function GET(request: NextRequest) {
 
     if (authData.user.role === "faculty") {
       // Get faculty ID for the logged-in user
-      const facultyResult = await query(
+      const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
         [username]
-      );
+      )) as RowDataPacket[];
 
       if (
         !facultyResult ||
@@ -77,27 +78,66 @@ export async function GET(request: NextRequest) {
       }
 
       // Table exists, fetch awards
-      const awards = await query(
+      const awards = (await query(
         `SELECT 
           id,
           faculty_id,
           title,
-          organization,
+          awarding_organization as organization,
           description,
-          date,
+          award_date as date,
           category
         FROM 
           faculty_awards
         WHERE 
           faculty_id = ?
         ORDER BY 
-          date DESC`,
+          award_date DESC`,
         [queryFacultyId]
-      );
+      )) as RowDataPacket[];
+
+      // Also check for award entries in faculty_contributions
+      let allAwards = [...awards];
+
+      try {
+        const contributionAwards = (await query(
+          `SELECT 
+            Contribution_ID as id,
+            F_ID as faculty_id,
+            Description as title,
+            Recognized_By as organization,
+            Award_Received as description,
+            Contribution_Date as date,
+            Contribution_Type as category
+          FROM 
+            faculty_contributions
+          WHERE 
+            F_ID = ? AND 
+            (
+              Contribution_Type LIKE '%award%' OR 
+              Contribution_Type LIKE '%achievement%' OR 
+              Contribution_Type LIKE '%recognition%'
+            )
+          ORDER BY 
+            Contribution_Date DESC`,
+          [queryFacultyId]
+        )) as RowDataPacket[];
+
+        if (
+          contributionAwards &&
+          Array.isArray(contributionAwards) &&
+          contributionAwards.length > 0
+        ) {
+          allAwards = [...allAwards, ...contributionAwards];
+        }
+      } catch (error) {
+        console.error("Error fetching awards from contributions table:", error);
+        // Continue execution - don't fail if this query has issues
+      }
 
       return NextResponse.json({
         success: true,
-        data: awards,
+        data: allAwards,
       });
     } catch (error) {
       console.error("Error checking/querying faculty_awards table:", error);
@@ -141,110 +181,127 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Only faculty, HOD, and admin can add awards
-    if (!["faculty", "hod", "admin"].includes(authData.user.role)) {
+    // Only faculty or admin can add awards
+    if (
+      authData.user.role !== "faculty" &&
+      authData.user.role !== "admin" &&
+      authData.user.role !== "hod"
+    ) {
       return NextResponse.json(
-        { success: false, message: "Unauthorized to add awards" },
+        { success: false, message: "Permission denied" },
         { status: 403 }
       );
     }
 
-    // Get faculty ID from username if user is faculty
-    const username = authData.user.username;
-    let facultyId = null;
+    // Get faculty ID for the faculty user
+    let facultyId = request.nextUrl.searchParams.get("facultyId");
 
-    if (authData.user.role === "faculty") {
-      // Get faculty ID for the logged-in user
-      const facultyResult = await query(
+    if (!facultyId && authData.user.role === "faculty") {
+      // Use the logged-in user's faculty ID
+      const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
-        [username]
-      );
+        [authData.user.username]
+      )) as RowDataPacket[];
 
-      if (
-        !facultyResult ||
-        !Array.isArray(facultyResult) ||
-        facultyResult.length === 0
-      ) {
-        return NextResponse.json(
-          { success: false, message: "Faculty record not found" },
-          { status: 404 }
-        );
+      if (Array.isArray(facultyResult) && facultyResult.length > 0) {
+        facultyId = facultyResult[0].F_id;
       }
-
-      facultyId = facultyResult[0].F_id;
     }
 
-    // Parse request body
-    const { title, organization, description, date, category, faculty_id } =
-      await request.json();
-
-    // For faculty role, ensure they can only add their own awards
-    const awardFacultyId =
-      authData.user.role === "faculty" ? facultyId : faculty_id;
-
-    if (!awardFacultyId) {
+    if (!facultyId) {
       return NextResponse.json(
         { success: false, message: "Faculty ID is required" },
         { status: 400 }
       );
     }
 
-    if (!title || !organization || !description || !date) {
+    // Parse the request body as JSON
+    const body = await request.json();
+    const {
+      title,
+      awarding_organization,
+      description,
+      award_date,
+      category = "Achievement",
+    } = body;
+
+    // Validate required fields
+    if (!title || !awarding_organization || !award_date) {
       return NextResponse.json(
         {
           success: false,
-          message: "Title, organization, description, and date are required",
+          message: "Title, awarding organization, and date are required",
         },
         { status: 400 }
       );
     }
 
-    // Check if the table exists, create it if it doesn't
-    const tableCheck = await query("SHOW TABLES LIKE 'faculty_awards'");
+    // Ensure the faculty_awards table exists
+    try {
+      const tableCheck = await query("SHOW TABLES LIKE 'faculty_awards'");
 
-    if ((tableCheck as any[]).length === 0) {
-      // Create the table if it doesn't exist
-      await query(`
-        CREATE TABLE faculty_awards (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          faculty_id VARCHAR(50) NOT NULL,
-          title VARCHAR(255) NOT NULL,
-          organization VARCHAR(255) NOT NULL,
-          description TEXT,
-          date DATE NOT NULL,
-          category VARCHAR(100),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
-        )
-      `);
+      if ((tableCheck as any[]).length === 0) {
+        // Create the table if it doesn't exist
+        await query(`
+          CREATE TABLE faculty_awards (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            faculty_id VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            awarding_organization VARCHAR(255) NOT NULL,
+            description TEXT,
+            award_date DATE NOT NULL,
+            category VARCHAR(50) DEFAULT 'Achievement',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
+          )
+        `);
+      }
+
+      // Insert the award
+      const result = (await query(
+        `INSERT INTO faculty_awards 
+          (faculty_id, title, awarding_organization, description, award_date, category) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          facultyId,
+          title,
+          awarding_organization,
+          description || null,
+          award_date,
+          category,
+        ]
+      )) as RowDataPacket;
+
+      // Return success response
+      return NextResponse.json({
+        success: true,
+        message: "Award added successfully",
+        data: {
+          id: result.insertId,
+          faculty_id: facultyId,
+          title,
+          organization: awarding_organization, // Return field name consistent with GET
+          description,
+          date: award_date, // Return field name consistent with GET
+          category,
+        },
+      });
+    } catch (error) {
+      console.error("Error adding award:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Failed to add award",
+          error: String(error),
+        },
+        { status: 500 }
+      );
     }
-
-    // Insert the award
-    const result = await query(
-      `INSERT INTO faculty_awards 
-        (faculty_id, title, organization, description, date, category) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [awardFacultyId, title, organization, description, date, category || null]
-    );
-
-    return NextResponse.json({
-      success: true,
-      message: "Award added successfully",
-      data: {
-        id: (result as any).insertId,
-        faculty_id: awardFacultyId,
-        title,
-        organization,
-        description,
-        date,
-        category,
-      },
-    });
   } catch (error) {
-    console.error("Error adding award:", error);
+    console.error("Error in awards API:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to add award" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

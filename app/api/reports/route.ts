@@ -3,6 +3,11 @@ import { query } from "@/app/lib/db";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { RowInput, UserOptions } from "jspdf-autotable";
+import {
+  getFacultyReportData,
+  getStudentsReportData,
+  getResearchReportData,
+} from "@/app/lib/report-data";
 
 // Extend jsPDF with autoTable
 declare module "jspdf" {
@@ -13,9 +18,82 @@ declare module "jspdf" {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { reportType, departmentId } = body;
+    // Check if the request has a body before trying to parse it
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { success: false, message: "Invalid content type. Expected JSON." },
+        { status: 400 }
+      );
+    }
 
+    // Clone the request to read the body as text first for debugging
+    const clonedRequest = request.clone();
+    const rawBody = await clonedRequest.text();
+
+    if (!rawBody || rawBody.trim() === "") {
+      return NextResponse.json(
+        { success: false, message: "Empty request body" },
+        { status: 400 }
+      );
+    }
+
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error("JSON parsing error:", parseError, "Raw body:", rawBody);
+      return NextResponse.json(
+        { success: false, message: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+
+    const { reportType, departmentId, format = "pdf" } = body;
+
+    // If JSON format is requested, return the raw data
+    if (format === "json") {
+      let tableData;
+      let columns;
+
+      switch (reportType) {
+        case "faculty":
+          [tableData, columns] = await getFacultyReportData(departmentId);
+          break;
+        case "students":
+          [tableData, columns] = await getStudentsReportData(departmentId);
+          break;
+        case "research":
+          [tableData, columns] = await getResearchReportData(departmentId);
+          break;
+        case "full":
+        default:
+          // For full reports, we'll combine data
+          const [facultyData] = await getFacultyReportData(departmentId);
+          const [studentData] = await getStudentsReportData(departmentId);
+          const [researchData] = await getResearchReportData(departmentId);
+          tableData = {
+            faculty: facultyData,
+            students: studentData,
+            research: researchData,
+          };
+          break;
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Report data retrieved successfully",
+        data: {
+          reportType,
+          departmentId: departmentId || "all",
+          generatedAt: new Date().toISOString(),
+          tableData,
+          columns,
+        },
+      });
+    }
+
+    // Otherwise generate PDF as usual
     let pdfDoc: jsPDF;
     let filename: string;
 
