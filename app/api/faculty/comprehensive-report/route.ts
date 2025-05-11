@@ -265,8 +265,10 @@ async function getFacultyProfile(
 
 async function getPublications(facultyId: string): Promise<Publication[]> {
   try {
-    // Skip faculty_publications table that doesn't have journal_name field
-    // Start with bookschapter table
+    // Combine all publications from various tables
+    let allPublications: Publication[] = [];
+
+    // Get publications from bookschapter table
     const bookschapterQuery = `
       SELECT 
         id,
@@ -283,15 +285,55 @@ async function getPublications(facultyId: string): Promise<Publication[]> {
         Year_Of_Publication DESC
     `;
 
-    const booksResult = (await query(bookschapterQuery, [
-      facultyId,
-    ])) as RowDataPacket[];
+    try {
+      const booksResult = (await query(bookschapterQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
 
-    if (booksResult && Array.isArray(booksResult) && booksResult.length > 0) {
-      return booksResult as Publication[];
+      if (booksResult && Array.isArray(booksResult) && booksResult.length > 0) {
+        allPublications = [...allPublications, ...booksResult];
+      }
+    } catch (error) {
+      console.error("Error fetching from bookschapter table:", error);
     }
 
-    // If no results, check faculty_contributions for publication type entries
+    // Get publications from conference_publications table
+    const conferenceQuery = `
+      SELECT 
+        id,
+        Title_Of_The_Paper as title,
+        Name_Of_The_Teacher as authors,
+        Name_Of_The_Conference as journal_name,
+        publication_date,
+        doi
+      FROM 
+        conference_publications
+      WHERE 
+        user_id = ? AND STATUS = 'approved'
+      ORDER BY 
+        Year_Of_Publication DESC
+    `;
+
+    try {
+      const conferenceResult = (await query(conferenceQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
+
+      if (
+        conferenceResult &&
+        Array.isArray(conferenceResult) &&
+        conferenceResult.length > 0
+      ) {
+        allPublications = [...allPublications, ...conferenceResult];
+      }
+    } catch (error) {
+      console.error(
+        "Error fetching from conference_publications table:",
+        error
+      );
+    }
+
+    // Get publications from faculty_contributions table
     const contribQuery = `
       SELECT 
         Contribution_ID as id,
@@ -315,15 +357,84 @@ async function getPublications(facultyId: string): Promise<Publication[]> {
         Contribution_Date DESC
     `;
 
-    const contribsResult = (await query(contribQuery, [
-      facultyId,
-    ])) as RowDataPacket[];
+    try {
+      const contribsResult = (await query(contribQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
 
-    if (contribsResult && Array.isArray(contribsResult)) {
-      return contribsResult as Publication[];
+      if (
+        contribsResult &&
+        Array.isArray(contribsResult) &&
+        contribsResult.length > 0
+      ) {
+        allPublications = [...allPublications, ...contribsResult];
+      }
+    } catch (error) {
+      console.error("Error fetching from faculty_contributions table:", error);
+    } // Get publications from faculty_publications table
+    const publicationsQuery = `
+      SELECT 
+        id,
+        title,
+        authors,
+        publication_venue as journal_name,
+        publication_date,
+        doi
+      FROM 
+        faculty_publications
+      WHERE 
+        faculty_id = ?
+      ORDER BY 
+        publication_date DESC
+    `;
+
+    try {
+      const publicationsResult = (await query(publicationsQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
+
+      if (
+        publicationsResult &&
+        Array.isArray(publicationsResult) &&
+        publicationsResult.length > 0
+      ) {
+        allPublications = [...allPublications, ...publicationsResult];
+      }
+    } catch (error) {
+      console.error("Error fetching from faculty_publications table:", error);
     }
 
-    return [];
+    // Get publications from paper_publication table (if exists)
+    try {
+      const paperPublicationsQuery = `
+        SELECT 
+          id,
+          title as title,
+          authors,
+          journal_name,
+          publication_date,
+          doi
+        FROM 
+          paper_publication
+        WHERE 
+          id = ?
+        ORDER BY 
+          publication_date DESC
+      `;
+
+      const paperResult = (await query(paperPublicationsQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
+
+      if (paperResult && Array.isArray(paperResult) && paperResult.length > 0) {
+        allPublications = [...allPublications, ...paperResult];
+      }
+    } catch (error) {
+      // This table might not exist, so we'll just log and continue
+      console.error("Error fetching from paper_publication table:", error);
+    }
+
+    return allPublications;
   } catch (error) {
     console.error("Error fetching publications:", error);
     return [];

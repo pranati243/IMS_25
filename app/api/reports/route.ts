@@ -150,6 +150,7 @@ interface FacultyData {
   Highest_Degree: string | null;
   Experience: number | null;
   Date_of_Joining: string | null;
+  is_hod: boolean | null;
 }
 
 interface DepartmentStats {
@@ -195,8 +196,7 @@ async function generateFacultyReport(
   doc.text(`Department: ${departmentId || "All Departments"}`, 14, 30);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 36);
   // Fetch faculty data
-  let facultyQuery = `
-    SELECT 
+  let facultyQuery = `    SELECT 
       f.F_id,
       f.F_name,
       f.F_dept,
@@ -204,7 +204,8 @@ async function generateFacultyReport(
       fd.Current_Designation,
       fd.Highest_Degree,
       fd.Experience,
-      fd.Date_of_Joining
+      fd.Date_of_Joining,
+      fd.is_hod
     FROM faculty f
     LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
   `;
@@ -213,11 +214,14 @@ async function generateFacultyReport(
   if (departmentId && departmentId !== "all") {
     facultyQuery += " WHERE f.F_dept = ?";
     params.push(departmentId);
-  }
-  // Order by department, then designation order (Professor > Associate Professor > Assistant Professor), then date of joining
+  } // Add ORDER BY clause with hierarchical sorting
+  // First priority - HOD status (using is_hod flag + departments.HOD_ID), then designation, then date of joining
   facultyQuery += `
     ORDER BY 
-      f.F_dept, 
+      CASE 
+        WHEN fd.is_hod = TRUE OR f.F_id = (SELECT HOD_ID FROM departments WHERE Department_Name = f.F_dept) THEN 0
+        ELSE 1
+      END,
       CASE 
         WHEN fd.Current_Designation = 'Professor' THEN 1
         WHEN fd.Current_Designation = 'Associate Professor' THEN 2
@@ -239,7 +243,7 @@ async function generateFacultyReport(
   const tableData = facultyData.map((faculty) => [
     faculty.F_name,
     faculty.F_dept,
-    faculty.Current_Designation || "N/A",
+    (faculty.is_hod ? "HoD - " : "") + (faculty.Current_Designation || "N/A"),
     faculty.Highest_Degree || "N/A",
     faculty.Experience?.toString() || "N/A",
     faculty.Date_of_Joining
