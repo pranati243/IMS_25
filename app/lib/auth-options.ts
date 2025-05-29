@@ -18,7 +18,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Find user by username
-        const users = await query(
+        const users = (await query(
           `
           SELECT 
             u.id, u.username, u.password, u.email, u.role, 
@@ -29,7 +29,7 @@ export const authOptions: NextAuthOptions = {
           LIMIT 1
         `,
           [credentials.username]
-        ) as any[];
+        )) as any[];
 
         const user = users[0];
 

@@ -3,10 +3,7 @@ import { query } from "@/app/lib/db";
 
 type RouteParams = { params: { id: string } };
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     console.log(`Fetching department data for ID: ${id}`);
@@ -32,10 +29,14 @@ export async function GET(
 
     // Then check if department_details table exists
     try {
-      const detailsTableExists = await query("SHOW TABLES LIKE 'department_details'");
-      
+      const detailsTableExists = await query(
+        "SHOW TABLES LIKE 'department_details'"
+      );
+
       if ((detailsTableExists as any[]).length === 0) {
-        console.log("department_details table does not exist, returning basic department data");
+        console.log(
+          "department_details table does not exist, returning basic department data"
+        );
         // Return just the basic department data if details table doesn't exist
         return NextResponse.json({
           ...basicDepartment,
@@ -52,7 +53,7 @@ export async function GET(
           Website_URL: "",
           Notable_Achievements: "",
           Industry_Collaboration: "",
-          Research_Focus_Area: ""
+          Research_Focus_Area: "",
         });
       }
     } catch (error) {
@@ -75,36 +76,39 @@ export async function GET(
     // If we have data with details, return it
     if (department && (department as any[]).length > 0) {
       const departmentData = (department as any[])[0];
-      
+
       // Get HOD information if available
       let hodInfo = null;
       if (departmentData.HOD_ID) {
         try {
-          const facultyQuery = await query("SELECT F_id, F_name FROM faculty WHERE F_id = ?", [departmentData.HOD_ID]);
+          const facultyQuery = await query(
+            "SELECT F_id, F_name FROM faculty WHERE F_id = ?",
+            [departmentData.HOD_ID]
+          );
           if ((facultyQuery as any[]).length > 0) {
             const faculty = (facultyQuery as any[])[0];
             hodInfo = {
               id: faculty.F_id,
-              name: faculty.F_name
+              name: faculty.F_name,
             };
           } else {
             hodInfo = {
               id: departmentData.HOD_ID,
-              name: "Unknown Faculty"
+              name: "Unknown Faculty",
             };
           }
         } catch (error) {
           console.error("Error processing HOD information:", error);
           hodInfo = {
             id: departmentData.HOD_ID,
-            name: "Unknown Faculty"
+            name: "Unknown Faculty",
           };
         }
       }
-      
+
       return NextResponse.json({
         ...departmentData,
-        HOD: hodInfo
+        HOD: hodInfo,
       });
     }
 
@@ -125,7 +129,7 @@ export async function GET(
       Website_URL: "",
       Notable_Achievements: "",
       Industry_Collaboration: "",
-      Research_Focus_Area: ""
+      Research_Focus_Area: "",
     });
   } catch (error) {
     console.error("Error fetching department:", error);
@@ -140,10 +144,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     console.log(`Updating department data for ID: ${id}`);
@@ -180,13 +181,19 @@ export async function PUT(
       console.log(`Successfully updated basic department info for ID ${id}`);
     } catch (error) {
       console.error("Error updating department table:", error);
-      throw new Error(`Failed to update department: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to update department: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
     // Check if department_details table exists
     try {
-      const detailsTableExists = await query("SHOW TABLES LIKE 'department_details'");
-      
+      const detailsTableExists = await query(
+        "SHOW TABLES LIKE 'department_details'"
+      );
+
       if ((detailsTableExists as any[]).length === 0) {
         console.log("department_details table doesn't exist, creating it");
         // Create the table
@@ -227,7 +234,9 @@ export async function PUT(
 
       if ((details as any[]).length === 0) {
         // Insert new record
-        console.log(`Creating new department_details record for department ID ${id}`);
+        console.log(
+          `Creating new department_details record for department ID ${id}`
+        );
         await query(
           `
           INSERT INTO department_details (
@@ -264,7 +273,9 @@ export async function PUT(
             Research_Focus_Area,
           ]
         );
-        console.log(`Department details record created successfully for ID ${id}`);
+        console.log(
+          `Department details record created successfully for ID ${id}`
+        );
       } else {
         // Update existing record
         console.log(`Updating department_details for department ID ${id}`);
@@ -308,7 +319,11 @@ export async function PUT(
       }
     } catch (error) {
       console.error("Error updating department details:", error);
-      throw new Error(`Failed to update department details: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to update department details: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
     return NextResponse.json({
@@ -328,10 +343,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteParams
-) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const id = params.id;
     console.log(`Attempting to delete department with ID: ${id}`);
@@ -359,7 +371,7 @@ export async function DELETE(
     );
 
     const facultyCount = (facultyInDepartment as any[])[0].count;
-    
+
     if (facultyCount > 0) {
       return NextResponse.json(
         {
@@ -372,20 +384,19 @@ export async function DELETE(
 
     // First delete from department_details if exists
     try {
-      await query(
-        `DELETE FROM department_details WHERE Department_ID = ?`,
-        [id]
-      );
+      await query(`DELETE FROM department_details WHERE Department_ID = ?`, [
+        id,
+      ]);
     } catch (error) {
-      console.error("Error deleting department details (might not exist):", error);
+      console.error(
+        "Error deleting department details (might not exist):",
+        error
+      );
       // Continue even if this fails
     }
 
     // Then delete the department
-    await query(
-      `DELETE FROM department WHERE Department_ID = ?`,
-      [id]
-    );
+    await query(`DELETE FROM department WHERE Department_ID = ?`, [id]);
 
     return NextResponse.json({
       success: true,
@@ -402,4 +413,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

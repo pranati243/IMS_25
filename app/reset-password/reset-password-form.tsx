@@ -15,13 +15,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { AlertCircle, CheckCircle2, ArrowLeft, Key, Eye, EyeOff } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ArrowLeft,
+  Key,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 
 export default function ResetPasswordForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<"idle" | "validating" | "invalid" | "success" | "error">("validating");
+  const [status, setStatus] = useState<
+    "idle" | "validating" | "invalid" | "success" | "error"
+  >("validating");
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -34,32 +43,43 @@ export default function ResetPasswordForm() {
     const validateToken = async () => {
       if (!token) {
         setStatus("invalid");
-        setMessage("Invalid or missing reset token. Please request a new password reset link.");
+        setMessage(
+          "Invalid or missing reset token. Please request a new password reset link."
+        );
         return;
       }
 
       try {
-        const response = await fetch(`/api/auth/validate-reset-token?token=${token}`);
-        
+        const response = await fetch(
+          `/api/auth/validate-reset-token?token=${token}`
+        );
+
         // Try to parse the JSON response safely
         let data;
         try {
           data = await response.json();
         } catch (parseError) {
           console.error("Error parsing JSON response:", parseError);
-          throw new Error("Server returned an invalid response. Please try again later.");
+          throw new Error(
+            "Server returned an invalid response. Please try again later."
+          );
         }
 
         if (!response.ok) {
           setStatus("invalid");
-          setMessage(data.message || "Invalid or expired reset token. Please request a new password reset link.");
+          setMessage(
+            data.message ||
+              "Invalid or expired reset token. Please request a new password reset link."
+          );
         } else {
           setStatus("idle");
         }
       } catch (error) {
         console.error("Error validating token:", error);
         setStatus("error");
-        setMessage("An error occurred while validating your reset token. Please try again later.");
+        setMessage(
+          "An error occurred while validating your reset token. Please try again later."
+        );
       }
     };
 
@@ -69,7 +89,7 @@ export default function ResetPasswordForm() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate passwords match and meet requirements
     if (password !== confirmPassword) {
       setStatus("error");
@@ -102,29 +122,39 @@ export default function ResetPasswordForm() {
         data = await response.json();
       } catch (parseError) {
         console.error("Error parsing JSON response:", parseError);
-        throw new Error("Server returned an invalid response. Please try again later.");
+        throw new Error(
+          "Server returned an invalid response. Please try again later."
+        );
       }
 
       if (!response.ok) {
         setStatus("error");
-        setMessage(data.message || "Failed to reset password. Please try again.");
+        setMessage(
+          data.message || "Failed to reset password. Please try again."
+        );
       } else {
         setStatus("success");
-        setMessage("Your password has been reset successfully! You can now log in with your new password.");
-        
+        setMessage(
+          "Your password has been reset successfully! You can now log in with your new password."
+        );
+
         // Clear form
         setPassword("");
         setConfirmPassword("");
-        
+
         // Redirect to login after a delay
         setTimeout(() => {
-          router.push("/login?message=Password reset successful! You can now log in with your new password.");
+          router.push(
+            "/login?message=Password reset successful! You can now log in with your new password."
+          );
         }, 3000);
       }
     } catch (error) {
       console.error("Error resetting password:", error);
       setStatus("error");
-      setMessage("An error occurred while resetting your password. Please try again later.");
+      setMessage(
+        "An error occurred while resetting your password. Please try again later."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -219,7 +249,9 @@ export default function ResetPasswordForm() {
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Label htmlFor="confirm-password">
+                      Confirm New Password
+                    </Label>
                     <div className="relative">
                       <Input
                         id="confirm-password"
@@ -234,7 +266,9 @@ export default function ResetPasswordForm() {
                         variant="ghost"
                         size="icon"
                         className="absolute right-1 top-1"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                       >
                         {showConfirmPassword ? (
                           <EyeOff className="h-4 w-4" />
