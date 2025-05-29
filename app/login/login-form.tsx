@@ -44,10 +44,10 @@ export default function LoginPage() {
     const redirectToDashboard = () => {
       // Get the current server URL from the window location
       const currentUrl = new URL(window.location.href);
-      const serverPort = currentUrl.port || "3000";
+      // const serverPort = currentUrl.port || "3000";
       const serverHost = currentUrl.hostname;
       const protocol = currentUrl.protocol;
-      const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
+      const baseUrl = `${protocol}//${serverHost}`;
       const targetUrl = baseUrl + (redirect || "/dashboard");
 
       console.log("Redirecting to dashboard:", targetUrl);
@@ -396,11 +396,11 @@ Password: password123
         // Redirect to dashboard
         setTimeout(() => {
           const currentUrl = new URL(window.location.href);
-          const port = currentUrl.port || "3000";
+          // const port = currentUrl.port || "3000";
           const protocol = currentUrl.protocol;
           const host = currentUrl.hostname;
 
-          window.location.replace(`${protocol}//${host}:${port}/dashboard`);
+          window.location.replace(`${protocol}//${host}/dashboard`);
         }, 1000);
       } else {
         setLoginDebug(
@@ -497,10 +497,10 @@ Password: password123
   // Function to directly go to dashboard
   const forceDashboard = () => {
     const currentUrl = new URL(window.location.href);
-    const serverPort = currentUrl.port || "3000";
+    // const serverPort = currentUrl.port || "3000";
     const serverHost = currentUrl.hostname;
     const protocol = currentUrl.protocol;
-    const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
+    const baseUrl = `${protocol}//${serverHost}`;
 
     window.location.href = `${baseUrl}/dashboard`;
   };
