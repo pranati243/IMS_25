@@ -1,7 +1,7 @@
 // app/lib/auth/server.ts
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/app/lib/auth-options";
 import { hasPermission } from "./permissions";
 
 // Check authentication and permissions on the server
