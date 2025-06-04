@@ -68,9 +68,14 @@ export async function middleware(request: NextRequest) {
       sessionCookie ? "Present" : "Missing"
     }, AuthStatus=${authStatus ? "Present" : "Missing"}`
   );
-
   // For API routes, ensure we set proper headers
   if (pathname.startsWith("/api/")) {
+    // Skip middleware for /api/auth/me to avoid authentication loop
+    if (pathname === "/api/auth/me") {
+      console.log("Skipping middleware check for /api/auth/me endpoint");
+      return NextResponse.next();
+    }
+
     // Add proper headers to ensure API responses are treated as JSON
     requestHeaders.set("Accept", "application/json");
     requestHeaders.set("Content-Type", "application/json");

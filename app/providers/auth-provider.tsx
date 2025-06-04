@@ -53,6 +53,11 @@ const publicRoutes = [
   "/reset-password",
   "/logout",
   "/unauthorized",
+  "/_next", // Static Next.js resources
+  "/api/auth", // Auth API routes
+  "/api/debug", // Debug API routes
+  "/images", // Static resources
+  "/favicon.ico",
 ];
 
 // Define role-based route access with more specific paths
@@ -170,22 +175,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     checkAuth();
-  }, []);
-  // Route protection
+  }, []); // Route protection
   useEffect(() => {
     if (loading) return;
 
     // Allow access to public routes
-    if (publicRoutes.includes(pathname)) return;
+    const isPublicRoute = publicRoutes.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`)
+    );
+
+    if (isPublicRoute) return;
 
     // If not authenticated, redirect to login
     if (!user) {
+      console.log(
+        "User not authenticated, redirecting to login from path:",
+        pathname
+      );
+
       // Use window.location.origin for reliable base URL in all environments
       const baseUrl = window.location.origin;
 
-      window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
-        pathname
-      )}`;
+      // Delay the redirect slightly to avoid race conditions
+      setTimeout(() => {
+        window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
+          pathname
+        )}`;
+      }, 100);
       return;
     }
 

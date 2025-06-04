@@ -3,50 +3,61 @@ import { NextRequest, NextResponse } from "next/server";
 import { verify } from "jsonwebtoken";
 import { query } from "@/app/lib/db";
 
-// Hard-coded secret key for development to ensure consistency
-const JWT_SECRET = "your-secure-jwt-secret-for-ims-application-123";
+// Use environment variable for JWT secret, with fallback for consistency
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
 
 export async function GET(request: NextRequest) {
   try {
     // Force content type to be application/json
     const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    
+    headers.set("Content-Type", "application/json");
+    headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+
     // Log all headers for debugging
-    console.log("Request headers:", 
+    console.log(
+      "Request headers:",
       Array.from(request.headers.entries())
         .map(([key, value]) => `${key}: ${value}`)
-        .join('\n')
+        .join("\n")
     );
-    
+
     // Log all cookies for debugging
-    console.log("All cookies:", 
+    console.log(
+      "All cookies:",
       Array.from(request.cookies.getAll())
-        .map(c => `${c.name}=${c.value.substring(0,10)}...`)
-        .join('; ')
+        .map((c) => `${c.name}=${c.value.substring(0, 10)}...`)
+        .join("; ")
     );
 
     // Get session token from cookies - try multiple approaches
     let sessionToken = request.cookies.get("session_token")?.value;
-    
+
     if (!sessionToken) {
       // Try to parse from the Cookie header directly as a fallback
-      const cookieHeader = request.headers.get('cookie');
+      const cookieHeader = request.headers.get("cookie");
       if (cookieHeader) {
-        const cookies = cookieHeader.split(';');
-        const sessionCookie = cookies.find(c => c.trim().startsWith('session_token='));
+        const cookies = cookieHeader.split(";");
+        const sessionCookie = cookies.find((c) =>
+          c.trim().startsWith("session_token=")
+        );
         if (sessionCookie) {
-          sessionToken = sessionCookie.split('=')[1];
+          sessionToken = sessionCookie.split("=")[1];
           console.log("Found session token in cookie header");
         }
       }
     }
 
     // SPECIAL HANDLING FOR DEVELOPMENT MODE - For diagnostic purposes only
-    if (process.env.NODE_ENV !== 'production' && request.cookies.get("auth_status")?.value === "direct_login") {
+    if (
+      process.env.NODE_ENV !== "production" &&
+      request.cookies.get("auth_status")?.value === "direct_login"
+    ) {
       console.log("Development mode: Using direct login fallback");
-      
+
       try {
         // Get admin user in development mode
         const debugUsers = await query(
@@ -55,10 +66,10 @@ export async function GET(request: NextRequest) {
            WHERE role = 'admin' 
            LIMIT 1`
         );
-        
+
         if (debugUsers && (debugUsers as any[]).length > 0) {
           const user = (debugUsers as any[])[0];
-          
+
           // Get user permissions
           const permissions = await query(
             `SELECT p.name
@@ -67,25 +78,28 @@ export async function GET(request: NextRequest) {
              WHERE rp.role = ?`,
             [user.role]
           );
-          
-          const permissionNames = (permissions as any[]).map(p => p.name);
-          
+
+          const permissionNames = (permissions as any[]).map((p) => p.name);
+
           // Create a new session token
-          const newToken = require('jsonwebtoken').sign(
+          const newToken = require("jsonwebtoken").sign(
             { userId: user.id, role: user.role, debug: true },
             JWT_SECRET,
             { expiresIn: "24h" }
           );
-          
+
           // Return success response with the user data
-          const response = NextResponse.json({
-            success: true,
-            user: {
-              ...user,
-              permissions: permissionNames
-            }
-          }, { status: 200, headers });
-          
+          const response = NextResponse.json(
+            {
+              success: true,
+              user: {
+                ...user,
+                permissions: permissionNames,
+              },
+            },
+            { status: 200, headers }
+          );
+
           // Set new cookies
           response.cookies.set({
             name: "session_token",
@@ -96,7 +110,7 @@ export async function GET(request: NextRequest) {
             path: "/",
             sameSite: "lax",
           });
-          
+
           response.cookies.set({
             name: "auth_status",
             value: "debug_login",
@@ -106,7 +120,7 @@ export async function GET(request: NextRequest) {
             path: "/",
             sameSite: "lax",
           });
-          
+
           return response;
         }
       } catch (debugError) {
@@ -124,11 +138,11 @@ export async function GET(request: NextRequest) {
 
     try {
       // Verify JWT token
-      const decoded = verify(
-        sessionToken,
-        JWT_SECRET
-      ) as { userId: number; role: string };
-      
+      const decoded = verify(sessionToken, JWT_SECRET) as {
+        userId: number;
+        role: string;
+      };
+
       console.log("Token verification successful for user ID:", decoded.userId);
 
       // Get user data from database
@@ -161,7 +175,7 @@ export async function GET(request: NextRequest) {
           `SELECT Department_Name FROM department WHERE Department_ID = ?`,
           [user.department_id]
         );
-        
+
         if (departments && (departments as any[]).length > 0) {
           department = (departments as any[])[0].Department_Name;
         }
@@ -197,7 +211,7 @@ export async function GET(request: NextRequest) {
         }),
         { status: 200, headers }
       );
-      
+
       // Set the token again in the response to refresh it
       response.cookies.set({
         name: "session_token",
@@ -208,7 +222,7 @@ export async function GET(request: NextRequest) {
         path: "/",
         sameSite: "lax",
       });
-      
+
       // Also set the auth_status cookie
       response.cookies.set({
         name: "auth_status",
@@ -219,15 +233,20 @@ export async function GET(request: NextRequest) {
         path: "/",
         sameSite: "lax",
       });
-      
+
       return response;
     } catch (tokenError) {
       console.error("Token verification failed:", tokenError);
-      
+
       // DEVELOPMENT MODE BYPASS - allow access for debugging
-      if (process.env.NODE_ENV !== 'production' && request.cookies.get("auth_status")?.value) {
-        console.log("DEV MODE: Token verification failed but auth_status cookie present, attempting direct access");
-        
+      if (
+        process.env.NODE_ENV !== "production" &&
+        request.cookies.get("auth_status")?.value
+      ) {
+        console.log(
+          "DEV MODE: Token verification failed but auth_status cookie present, attempting direct access"
+        );
+
         try {
           // Get admin user in development mode for quick testing
           const debugUsers = await query(
@@ -236,10 +255,10 @@ export async function GET(request: NextRequest) {
              WHERE role = 'admin' 
              LIMIT 1`
           );
-          
+
           if (debugUsers && (debugUsers as any[]).length > 0) {
             const user = (debugUsers as any[])[0];
-            
+
             // Get permissions
             const permissions = await query(
               `SELECT p.name
@@ -248,25 +267,28 @@ export async function GET(request: NextRequest) {
                WHERE rp.role = ?`,
               [user.role]
             );
-            
-            const permissionNames = (permissions as any[]).map(p => p.name);
-            
+
+            const permissionNames = (permissions as any[]).map((p) => p.name);
+
             // Create a new session token
-            const newToken = require('jsonwebtoken').sign(
+            const newToken = require("jsonwebtoken").sign(
               { userId: user.id, role: user.role, debug: true },
               JWT_SECRET,
               { expiresIn: "24h" }
             );
-            
+
             // Return success response with the user data
-            const response = NextResponse.json({
-              success: true,
-              user: {
-                ...user,
-                permissions: permissionNames
-              }
-            }, { status: 200, headers });
-            
+            const response = NextResponse.json(
+              {
+                success: true,
+                user: {
+                  ...user,
+                  permissions: permissionNames,
+                },
+              },
+              { status: 200, headers }
+            );
+
             // Set new cookies
             response.cookies.set({
               name: "session_token",
@@ -277,7 +299,7 @@ export async function GET(request: NextRequest) {
               path: "/",
               sameSite: "lax",
             });
-            
+
             response.cookies.set({
               name: "auth_status",
               value: "debug_login",
@@ -287,35 +309,38 @@ export async function GET(request: NextRequest) {
               path: "/",
               sameSite: "lax",
             });
-            
+
             return response;
           }
         } catch (debugError) {
           console.error("Debug login bypass failed:", debugError);
         }
       }
-      
+
       return new NextResponse(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           message: "Invalid authentication token",
-          error: tokenError instanceof Error ? tokenError.message : String(tokenError)
+          error:
+            tokenError instanceof Error
+              ? tokenError.message
+              : String(tokenError),
         }),
         { status: 401, headers }
       );
     }
   } catch (error) {
     console.error("Error getting current user:", error);
-    
+
     // Force content type to be application/json
     const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    
+    headers.set("Content-Type", "application/json");
+
     return new NextResponse(
-      JSON.stringify({ 
-        success: false, 
+      JSON.stringify({
+        success: false,
         message: "Authentication failed",
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }),
       { status: 401, headers }
     );

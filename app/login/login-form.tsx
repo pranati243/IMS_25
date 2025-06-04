@@ -356,7 +356,6 @@ Password: password123
       );
     }
   };
-
   // Function for direct login
   const directLogin = async () => {
     try {
@@ -388,15 +387,13 @@ Password: password123
           "Direct login successful. Redirecting to dashboard..."
         );
 
+        // Store the user info in sessionStorage to ensure it's available after redirect
+        sessionStorage.setItem("authUser", JSON.stringify(data.user));
+
         // Redirect to dashboard
         setTimeout(() => {
-          const currentUrl = new URL(window.location.href);
-          // const port = currentUrl.port || "3000";
-          const protocol = currentUrl.protocol;
-          const host = currentUrl.hostname;
-
-          window.location.replace(`${protocol}//${host}/dashboard`);
-        }, 1000);
+          window.location.href = `${window.location.origin}/dashboard`;
+        }, 1500); // Slightly longer timeout to ensure cookies are set
       } else {
         setLoginDebug(
           `Direct login failed: ${response.status} ${response.statusText}`
@@ -502,15 +499,7 @@ Password: password123
 
     try {
       await login(username, password, rememberMe);
-      console.log("Login successful, redirecting to:", redirect);
-
-      // Use window.location for more reliable navigation in deployed environment
-      setSuccessMessage("Login successful! Redirecting...");
-      // Allow cookies to be properly set before redirect
-      setTimeout(() => {
-        window.location.href =
-          window.location.origin + (redirect || "/dashboard");
-      }, 1000);
+      // After login, user context should update and redirect will be handled by useEffect
     } catch (err) {
       console.error("Login error:", err);
     } finally {
