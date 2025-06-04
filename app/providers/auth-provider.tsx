@@ -171,7 +171,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     checkAuth();
   }, []);
-
   // Route protection
   useEffect(() => {
     if (loading) return;
@@ -181,12 +180,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // If not authenticated, redirect to login
     if (!user) {
-      // Get the current server URL from the window location
-      const currentUrl = new URL(window.location.href);
-      const serverPort = currentUrl.port || "3000";
-      const serverHost = currentUrl.hostname;
-      const protocol = currentUrl.protocol;
-      const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
+      // Use window.location.origin for reliable base URL in all environments
+      const baseUrl = window.location.origin;
 
       window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
         pathname
@@ -209,18 +204,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else if (roleAccess[basePath]) {
       // Fallback to base path access rules (e.g., /faculty)
       allowedRoles = roleAccess[basePath];
-    }
-
-    // Check if the user's role is allowed for this path
+    } // Check if the user's role is allowed for this path
     if (!allowedRoles.includes(user.role)) {
       console.log(`User role ${user.role} not permitted to access ${pathname}`);
 
-      // Get the current server URL from the window location
-      const currentUrl = new URL(window.location.href);
-      const serverPort = currentUrl.port || "3000";
-      const serverHost = currentUrl.hostname;
-      const protocol = currentUrl.protocol;
-      const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
+      // Use window.location.origin for reliable base URL in all environments
+      const baseUrl = window.location.origin;
 
       window.location.href = `${baseUrl}/unauthorized`;
     }
@@ -304,14 +293,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       document.cookie =
         "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
       document.cookie =
-        "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-
-      // Get the current server URL from the window location
-      const currentUrl = new URL(window.location.href);
-      const serverPort = currentUrl.port || "3000";
-      const serverHost = currentUrl.hostname;
-      const protocol = currentUrl.protocol;
-      const baseUrl = `${protocol}//${serverHost}:${serverPort}`;
+        "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;"; // Use window.location.origin for reliable base URL in all environments
+      const baseUrl = window.location.origin;
 
       // Redirect to login page
       window.location.href = `${baseUrl}/login`;
@@ -319,14 +302,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Logout failed:", err);
       // Even if the API call fails, clear auth data on the client
       setUser(null);
-      sessionStorage.removeItem("authUser");
-
-      // Redirect to login page anyway
-      const currentUrl = new URL(window.location.href);
-      const serverPort = currentUrl.port || "3000";
-      const serverHost = currentUrl.hostname;
-      const protocol = currentUrl.protocol;
-      window.location.href = `${protocol}//${serverHost}:${serverPort}/login`;
+      sessionStorage.removeItem("authUser"); // Redirect to login page anyway using origin
+      const baseUrl = window.location.origin;
+      window.location.href = `${baseUrl}/login`;
     } finally {
       setLoading(false);
     }

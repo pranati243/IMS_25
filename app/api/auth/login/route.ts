@@ -20,8 +20,9 @@ type Permission = {
   name: string;
 };
 
-// Hard-coded secret key for development to ensure consistency
-const JWT_SECRET = "your-secure-jwt-secret-for-ims-application-123";
+// Use env variable for JWT secret, with fallback to ensure consistency
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get user from database using username instead of email
-    const users = await query(
+    const users = (await query(
       `
       SELECT 
         u.id, u.username, u.email, u.password, u.role, u.name, u.is_active
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       LIMIT 1
       `,
       [username]
-    ) as User[];
+    )) as User[];
 
     // Check user query result
     console.log(`User query results: ${users ? users.length : 0} users found`);
@@ -76,17 +77,27 @@ export async function POST(request: NextRequest) {
     // Check password
     try {
       console.log(`Comparing passwords for user: ${user.username}`);
-      console.log(`Stored password hash length: ${user.password ? user.password.length : 0}`);
-      
+      console.log(
+        `Stored password hash length: ${
+          user.password ? user.password.length : 0
+        }`
+      );
+
       // Make sure the password is a valid bcrypt hash
-      if (!user.password || !user.password.startsWith('$2')) {
-        console.error(`Invalid password hash format for user: ${user.username}`);
+      if (!user.password || !user.password.startsWith("$2")) {
+        console.error(
+          `Invalid password hash format for user: ${user.username}`
+        );
         return NextResponse.json(
-          { success: false, message: "Account password format is invalid. Please reset your password." },
+          {
+            success: false,
+            message:
+              "Account password format is invalid. Please reset your password.",
+          },
           { status: 401 }
         );
       }
-      
+
       const passwordMatch = await compare(password, user.password);
       console.log(`Password match result: ${passwordMatch}`);
 
@@ -107,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Get user permissions from role_permissions table
     let permissionNames: string[] = [];
     try {
-      const permissions = await query(
+      const permissions = (await query(
         `
         SELECT p.name
         FROM permissions p
@@ -115,7 +126,7 @@ export async function POST(request: NextRequest) {
         WHERE rp.role = ?
         `,
         [user.role]
-      ) as Permission[];
+      )) as Permission[];
 
       permissionNames = permissions.map((p) => p.name);
     } catch (permError) {
@@ -125,7 +136,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Set session duration based on rememberMe flag
-    const expiresIn = rememberMe ? '30d' : '24h';
+    const expiresIn = rememberMe ? "30d" : "24h";
     const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24; // 30 days or 1 day
 
     // Create session token
@@ -148,10 +159,10 @@ export async function POST(request: NextRequest) {
         ...userWithoutPassword,
         permissions: permissionNames,
       },
-    });
-
-    // Set cookie in the response with more explicit settings
-    console.log(`Setting session cookie for ${user.username}, maxAge: ${maxAge}`);
+    }); // Set cookie in the response with more explicit settings - IMPORTANT: domain must not be set for Vercel deployment
+    console.log(
+      `Setting session cookie for ${user.username}, maxAge: ${maxAge}`
+    );
     response.cookies.set({
       name: "session_token",
       value: sessionToken,
@@ -159,7 +170,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       maxAge,
       path: "/",
-      sameSite: "lax", // Less restrictive to work with port changes
+      sameSite: "lax", // Less restrictive to allow redirects
     });
 
     // Also set a non-httpOnly cookie for client-side detection
@@ -170,7 +181,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       maxAge,
       path: "/",
-      sameSite: "lax", // Less restrictive to work with port changes
+      sameSite: "lax", // Less restrictive to allow redirects
     });
 
     // Set additional headers to help the client
@@ -181,10 +192,9 @@ export async function POST(request: NextRequest) {
 
     // Log login time in database
     try {
-      await query(
-        `UPDATE users SET last_login = NOW() WHERE id = ?`,
-        [user.id]
-      );
+      await query(`UPDATE users SET last_login = NOW() WHERE id = ?`, [
+        user.id,
+      ]);
     } catch (updateError) {
       console.error(`Error updating last_login:`, updateError);
       // Continue login process even if update fails

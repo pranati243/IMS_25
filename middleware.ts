@@ -1,4 +1,5 @@
 // middleware.ts
+// Note: This file is at the root level, which takes precedence over app/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verify } from "jsonwebtoken";
@@ -13,6 +14,7 @@ const publicPaths = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
+  "/api/auth/me", // Add /api/auth/me to public paths to avoid verification loops
   "/api/auth/bypass-middleware",
   "/api/debug/auth",
   "/api/debug/auth-fix",
@@ -48,8 +50,9 @@ const apiPaths = [
   "/api/profile",
 ];
 
-// Hard-coded secret key for development to ensure consistency
-const JWT_SECRET = "your-secure-jwt-secret-for-ims-application-123";
+// Use env variable for JWT secret, with fallback to ensure consistency
+const JWT_SECRET =
+  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -208,7 +211,6 @@ export async function middleware(request: NextRequest) {
 
     return NextResponse.redirect(url);
   }
-
   try {
     // Verify the token with consistent secret
     verify(sessionToken, JWT_SECRET);
@@ -217,17 +219,21 @@ export async function middleware(request: NextRequest) {
     // Refresh the cookie in the response
     const response = NextResponse.next();
 
-    // Add session cookie to response to refresh it
-    response.cookies.set("session_token", sessionToken, {
+    // Add session cookie to response to refresh it - omitting Domain here
+    response.cookies.set({
+      name: "session_token",
+      value: sessionToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24, // 1 day
       path: "/",
-      sameSite: "lax", // Less restrictive to work with port changes
+      sameSite: "lax", // Less restrictive to work with redirects
     });
 
-    // Also set auth_status cookie
-    response.cookies.set("auth_status", "logged_in", {
+    // Also set auth_status cookie - omitting Domain here
+    response.cookies.set({
+      name: "auth_status",
+      value: "logged_in",
       httpOnly: false,
       secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24,

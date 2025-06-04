@@ -38,16 +38,11 @@ export default function LoginPage() {
     const cookies = document.cookie.split(";");
     return cookies.some((cookie) => cookie.trim().startsWith("auth_status="));
   };
-
   // Check if user is already logged in
   useEffect(() => {
     const redirectToDashboard = () => {
-      // Get the current server URL from the window location
-      const currentUrl = new URL(window.location.href);
-      // const serverPort = currentUrl.port || "3000";
-      const serverHost = currentUrl.hostname;
-      const protocol = currentUrl.protocol;
-      const baseUrl = `${protocol}//${serverHost}`;
+      // Use window.location.origin for reliable base URL in all environments
+      const baseUrl = window.location.origin;
       const targetUrl = baseUrl + (redirect || "/dashboard");
 
       console.log("Redirecting to dashboard:", targetUrl);
@@ -493,18 +488,13 @@ Password: password123
 
     return recommendations.join("\n");
   };
-
   // Function to directly go to dashboard
   const forceDashboard = () => {
     const currentUrl = new URL(window.location.href);
-    // const serverPort = currentUrl.port || "3000";
-    const serverHost = currentUrl.hostname;
-    const protocol = currentUrl.protocol;
-    const baseUrl = `${protocol}//${serverHost}`;
+    const baseUrl = `${window.location.origin}`;
 
     window.location.href = `${baseUrl}/dashboard`;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -512,8 +502,15 @@ Password: password123
 
     try {
       await login(username, password, rememberMe);
-      console.log("Login attempted, redirecting to:", redirect);
-      router.push(redirect);
+      console.log("Login successful, redirecting to:", redirect);
+
+      // Use window.location for more reliable navigation in deployed environment
+      setSuccessMessage("Login successful! Redirecting...");
+      // Allow cookies to be properly set before redirect
+      setTimeout(() => {
+        window.location.href =
+          window.location.origin + (redirect || "/dashboard");
+      }, 1000);
     } catch (err) {
       console.error("Login error:", err);
     } finally {
