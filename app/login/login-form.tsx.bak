@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/app/providers/auth-provider";
-import Link from "next/link";
+import Link fro        const errorData = await response.json();
+        setLocalError(errorData.message || "Login failed");
+        console.error("Login API error:", errorData);next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,7 +57,7 @@ export default function LoginPage() {
     // First store login state in sessionStorage as an immediate confirmation
     sessionStorage.setItem("loginSuccessful", "true");
     sessionStorage.setItem("loginRedirectPath", path);
-
+    
     // Add a preventLoop flag to avoid middleware redirecting back to login
     sessionStorage.setItem("preventAuthLoop", "true");
 
@@ -203,9 +205,7 @@ export default function LoginPage() {
       }
     } catch (err) {
       console.error("Login submission error:", err);
-      setLocalError(
-        "Login failed - please check your connection and try again"
-      );
+      setLocalError("Login failed - please check your connection and try again");
 
       // Fallback to context-based login as backup
       try {

@@ -1,7 +1,7 @@
 // middleware.ts - FIXED VERSION TO PREVENT REDIRECT LOOPS
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import * as jose from "jose"; // Using jose instead of jsonwebtoken for Edge compatibility
+import { verify } from "jsonwebtoken";
 
 // Define public paths that don't require authentication
 const publicPaths = [
@@ -26,7 +26,6 @@ const publicApiPaths = [
   "/api/auth/bypass-middleware",
   "/api/debug/auth",
   "/api/debug/auth-fix",
-  "/api/debug/auth-status",
   "/api/debug/cookies",
   "/api/debug/diagnostic",
   "/api/debug/direct-login",
@@ -39,57 +38,43 @@ const JWT_SECRET =
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
+  
   // Check if we're in a redirection loop
-  const redirectCount = parseInt(
-    request.headers.get("x-redirect-count") || "0"
-  );
+  const redirectCount = parseInt(request.headers.get("x-redirect-count") || "0");
   if (redirectCount > 2) {
     console.error(`Preventing redirect loop for path: ${pathname}`);
     return NextResponse.next();
   }
-
+  
   // 1. Special handling for login page - prevent loops between login and dashboard
   if (pathname === "/login" || pathname.startsWith("/login/")) {
     // If we have a valid session token and visiting login, redirect to dashboard
     const sessionToken = request.cookies.get("session_token")?.value;
     const authStatus = request.cookies.get("auth_status")?.value;
-    if (
-      sessionToken &&
-      (authStatus === "logged_in" || authStatus === "debug_login")
-    ) {
+    
+    if (sessionToken && (authStatus === "logged_in" || authStatus === "debug_login")) {
       try {
-        // Verify the token silently using jose instead of jsonwebtoken
-        // Create a TextEncoder
-        const encoder = new TextEncoder();
-        // Convert JWT_SECRET to Uint8Array for jose
-        const secretKey = encoder.encode(JWT_SECRET);
-
-        // Verify the token without decoding payload details
-        await jose.jwtVerify(sessionToken, secretKey);
-        console.log(
-          "Valid session detected when visiting login page, redirecting to dashboard"
-        );
-
+        // Verify the token silently
+        verify(sessionToken, JWT_SECRET);
+        console.log("Valid session detected when visiting login page, redirecting to dashboard");
+        
         // User is already logged in, redirect to dashboard
         const dashboardUrl = new URL("/dashboard", request.url);
         const response = NextResponse.redirect(dashboardUrl);
-
+        
         // Mark as redirected to track potential loops
         response.headers.set("x-redirect-count", String(redirectCount + 1));
         return response;
       } catch (error) {
         // Invalid token, continue to login page
-        console.log(
-          "Invalid session token when visiting login, allowing access"
-        );
+        console.log("Invalid session token when visiting login, allowing access");
       }
     }
-
+    
     // Otherwise, allow access to login page
     return NextResponse.next();
   }
-
+  
   // 2. Check if this is a public path that doesn't need authentication
   for (const path of publicPaths) {
     if (pathname === path || pathname.startsWith(path + "/")) {
@@ -118,13 +103,11 @@ export async function middleware(request: NextRequest) {
       maxAge: 0,
       path: "/",
     });
-
+    
     // Redirect to login
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    console.log(
-      `Auth cookies out of sync, redirecting to: ${loginUrl.toString()}`
-    );
+    console.log(`Auth cookies out of sync, redirecting to: ${loginUrl.toString()}`);
     return NextResponse.redirect(loginUrl);
   }
 
@@ -141,11 +124,12 @@ export async function middleware(request: NextRequest) {
     // For browser routes, redirect to login
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-
+    
     const response = NextResponse.redirect(loginUrl);
     response.headers.set("x-redirect-count", String(redirectCount + 1));
     return response;
   }
+
   // 5. Verify token validity
   try {
     interface JwtPayload {
@@ -153,33 +137,19 @@ export async function middleware(request: NextRequest) {
       role: string;
       exp?: number;
     }
-
-    // Create a TextEncoder
-    const encoder = new TextEncoder();
-    // Convert JWT_SECRET to Uint8Array for jose
-    const secretKey = encoder.encode(JWT_SECRET);
-
-    // Verify and decode the token using jose
-    const { payload } = await jose.jwtVerify(sessionToken, secretKey);
-
-    // Convert Jose payload to our expected format
-    const decoded = {
-      userId: payload.userId as number,
-      role: payload.role as string,
-      exp: payload.exp as number | undefined,
-    };
+    
+    const decoded = verify(sessionToken, JWT_SECRET) as JwtPayload;
 
     // Token is valid, update it in response
     const response = NextResponse.next();
 
     // Refresh the auth cookies only if they're about to expire (< 12 hours remaining)
     // This reduces unnecessary cookie writes
-    const expiresAt = decoded.exp || Math.floor(Date.now() / 1000) + 86400; // Default to 24 hours if exp is missing
+    const expiresAt = decoded.exp || (Math.floor(Date.now() / 1000) + 86400); // Default to 24 hours if exp is missing
     const now = Math.floor(Date.now() / 1000);
     const timeRemaining = expiresAt - now;
-
-    if (timeRemaining < 43200) {
-      // Less than 12 hours remaining
+    
+    if (timeRemaining < 43200) { // Less than 12 hours remaining
       response.cookies.set({
         name: "session_token",
         value: sessionToken,
@@ -189,7 +159,7 @@ export async function middleware(request: NextRequest) {
         path: "/",
         sameSite: "lax",
       });
-
+  
       response.cookies.set({
         name: "auth_status",
         value: "logged_in",
@@ -204,15 +174,12 @@ export async function middleware(request: NextRequest) {
     return response;
   } catch (error) {
     console.error(`Invalid token for path: ${pathname}`, error);
-
+    
     // Invalid token, clear cookies and redirect
-    const response = pathname.startsWith("/api/")
-      ? NextResponse.json(
-          { success: false, message: "Invalid authentication token" },
-          { status: 401 }
-        )
+    const response = pathname.startsWith("/api/") 
+      ? NextResponse.json({ success: false, message: "Invalid authentication token" }, { status: 401 })
       : NextResponse.redirect(new URL("/login", request.url));
-
+      
     // Clear the invalid cookies
     response.cookies.set({
       name: "session_token",
@@ -220,18 +187,18 @@ export async function middleware(request: NextRequest) {
       maxAge: 0,
       path: "/",
     });
-
+    
     response.cookies.set({
       name: "auth_status",
       value: "",
       maxAge: 0,
       path: "/",
     });
-
+    
     if (!pathname.startsWith("/api/")) {
       response.headers.set("x-redirect-count", String(redirectCount + 1));
     }
-
+    
     return response;
   }
 }
@@ -239,7 +206,6 @@ export async function middleware(request: NextRequest) {
 // Specify which paths this middleware should run on
 export const config = {
   matcher: [
-    "/login",
     "/dashboard/:path*",
     "/admin/:path*",
     "/faculty/:path*",
@@ -249,5 +215,6 @@ export const config = {
     "/departments/:path*",
     "/reports/:path*",
     "/api/:path*",
+    "/login", // Include login to handle redirect logic
   ],
 };

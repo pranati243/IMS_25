@@ -186,6 +186,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (isPublicRoute) return;
 
+    // Check if we should prevent auth loop (set by login-form.tsx)
+    const preventLoop = sessionStorage.getItem("preventAuthLoop") === "true";
+    if (preventLoop) {
+      // Clear the flag after using it
+      sessionStorage.removeItem("preventAuthLoop");
+      console.log("Preventing auth redirect loop due to flag");
+      return;
+    }
+
+    // Check if we have auth cookies (middleware should handle this, this is just a backup)
+    const cookies = document.cookie.split(";");
+    const hasAuthStatus = cookies.some((cookie) =>
+      cookie.trim().startsWith("auth_status=")
+    );
+    const hasSessionToken = cookies.some((cookie) =>
+      cookie.trim().startsWith("session_token=")
+    );
+
+    // Special case: If we have cookies but no user yet, don't redirect
+    // This prevents redirect loops with middleware - let middleware handle this
+    if ((hasAuthStatus || hasSessionToken) && !user) {
+      console.log(
+        "Auth cookies present but no user yet - waiting for user data"
+      );
+      // Get user data in the background without redirecting
+      fetch("/api/auth/me", {
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+        },
+      })
+        .then((response) => {
+          if (response.ok) {
+            response.json().then((data) => {
+              if (data.user) {
+                console.log("User data retrieved from API");
+                sessionStorage.setItem("authUser", JSON.stringify(data.user));
+                setUser(data.user);
+              }
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to get user data:", err);
+        });
+      return;
+    }
+
     // If not authenticated, redirect to login
     if (!user) {
       console.log(
@@ -196,12 +246,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Use window.location.origin for reliable base URL in all environments
       const baseUrl = window.location.origin;
 
-      // Delay the redirect slightly to avoid race conditions
-      setTimeout(() => {
-        window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
-          pathname
-        )}`;
-      }, 100);
+      // Let the middleware handle the redirect to avoid loops
+      // Only redirect if there are no auth cookies
+      if (!hasAuthStatus && !hasSessionToken) {
+        // Delay the redirect slightly to avoid race conditions
+        setTimeout(() => {
+          window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
+            pathname
+          )}`;
+        }, 300);
+      }
       return;
     }
 
@@ -230,9 +284,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.href = `${baseUrl}/unauthorized`;
     }
   }, [user, loading, pathname]);
-
   const login = async (
-    username: string, // Changed from email to username to match the API
+    username: string,
     password: string,
     rememberMe: boolean = false
   ) => {
@@ -240,17 +293,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      console.log("Login attempt for:", username); // Changed from email to username
+      console.log("Login attempt for:", username);
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          Pragma: "no-cache",
         },
-        // Make sure cookies are included
-        credentials: "include",
-        body: JSON.stringify({ username, password, rememberMe }), // Changed from email to username
+        credentials: "include", // Make sure cookies are included
+        body: JSON.stringify({ username, password, rememberMe }),
       });
 
       // Check for non-JSON response
@@ -282,6 +336,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Ensure auth state is stored in sessionStorage as well for redundancy
       sessionStorage.setItem("authUser", JSON.stringify(data.user));
+
+      // Set a flag to prevent redirect loops
+      sessionStorage.setItem("loginSuccessful", "true");
+
+      // Verify the cookies were set properly
+      setTimeout(() => {
+        const cookies = document.cookie.split(";");
+        const hasAuthStatus = cookies.some((cookie) =>
+          cookie.trim().startsWith("auth_status=")
+        );
+        const hasSessionToken = cookies.some((cookie) =>
+          cookie.trim().startsWith("session_token=")
+        );
+
+        if (!hasAuthStatus || !hasSessionToken) {
+          console.warn("Auth cookies not properly set after login");
+
+          // Attempt a cookie refresh
+          fetch("/api/auth/me", {
+            credentials: "include",
+            cache: "no-store",
+          }).catch((e) => console.error("Cookie refresh failed:", e));
+        }
+      }, 500);
 
       // Return the user data
       return data.user;

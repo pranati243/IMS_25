@@ -1,6 +1,6 @@
 // app/api/auth/me/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { verify } from "jsonwebtoken";
+import * as jose from "jose"; // Using jose instead of jsonwebtoken for Edge compatibility
 import { query } from "@/app/lib/db";
 
 // Use environment variable for JWT secret, with fallback for consistency
@@ -81,12 +81,21 @@ export async function GET(request: NextRequest) {
 
           const permissionNames = (permissions as any[]).map((p) => p.name);
 
-          // Create a new session token
-          const newToken = require("jsonwebtoken").sign(
-            { userId: user.id, role: user.role, debug: true },
-            JWT_SECRET,
-            { expiresIn: "24h" }
-          );
+          // Create a new session token using jose instead of jsonwebtoken
+          const encoder = new TextEncoder();
+          const secretKey = encoder.encode(JWT_SECRET);
+          const now = Math.floor(Date.now() / 1000);
+          const exp = now + 60 * 60 * 24; // 1 day
+
+          const newToken = await new jose.SignJWT({
+            userId: user.id,
+            role: user.role,
+            debug: true,
+          })
+            .setProtectedHeader({ alg: "HS256" })
+            .setIssuedAt()
+            .setExpirationTime(exp)
+            .sign(secretKey);
 
           // Return success response with the user data
           const response = NextResponse.json(
@@ -135,12 +144,17 @@ export async function GET(request: NextRequest) {
         { status: 401, headers }
       );
     }
-
     try {
-      // Verify JWT token
-      const decoded = verify(sessionToken, JWT_SECRET) as {
-        userId: number;
-        role: string;
+      // Verify JWT token using jose instead of jsonwebtoken
+      const encoder = new TextEncoder();
+      const secretKey = encoder.encode(JWT_SECRET);
+
+      // Verify and decode the token
+      const { payload } = await jose.jwtVerify(sessionToken, secretKey);
+
+      const decoded = {
+        userId: payload.userId as number,
+        role: payload.role as string,
       };
 
       console.log("Token verification successful for user ID:", decoded.userId);
@@ -210,12 +224,17 @@ export async function GET(request: NextRequest) {
           },
         }),
         { status: 200, headers }
+      ); // Generate a fresh token to extend the session
+      const newToken = require("jsonwebtoken").sign(
+        { userId: user.id, role: user.role },
+        JWT_SECRET,
+        { expiresIn: "24h" }
       );
 
-      // Set the token again in the response to refresh it
+      // Set the refreshed token in the response
       response.cookies.set({
         name: "session_token",
-        value: sessionToken,
+        value: newToken, // Use the new token to extend the session
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         maxAge: 60 * 60 * 24, // 1 day

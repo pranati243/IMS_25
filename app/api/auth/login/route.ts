@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { compare } from "bcrypt";
 import { query } from "@/app/lib/db";
-import { sign } from "jsonwebtoken";
+import * as jose from "jose"; // Using jose instead of jsonwebtoken for Edge compatibility
 import { cookies } from "next/headers";
 
 // Define types for query results
@@ -137,17 +137,22 @@ export async function POST(request: NextRequest) {
 
     // Set session duration based on rememberMe flag
     const expiresIn = rememberMe ? "30d" : "24h";
-    const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24; // 30 days or 1 day
+    const maxAge = rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24; // 30 days or 1 day    // Create session token using jose instead of jsonwebtoken
+    const encoder = new TextEncoder();
+    const secretKey = encoder.encode(JWT_SECRET);
 
-    // Create session token
-    const sessionToken = sign(
-      {
-        userId: user.id,
-        role: user.role,
-      },
-      JWT_SECRET,
-      { expiresIn }
-    );
+    // Calculate expiration time based on expiresIn
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + (rememberMe ? 60 * 60 * 24 * 30 : 60 * 60 * 24); // 30 days or 1 day
+
+    const sessionToken = await new jose.SignJWT({
+      userId: user.id,
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(exp)
+      .sign(secretKey);
 
     // Remove password from user object before sending response
     const { password: _, is_active, ...userWithoutPassword } = user;
