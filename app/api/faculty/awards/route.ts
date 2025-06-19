@@ -80,15 +80,13 @@ export async function GET(request: NextRequest) {
       // Table exists, fetch awards
       const awards = (await query(
         `SELECT 
-          id,
+          award_id,
           faculty_id,
-          title,
+          award_name,
           awarding_organization as organization,
-          description,
-          award_date as date,
-          category
-        FROM 
-          faculty_awards
+          award_description,
+          award_date as date
+        FROM faculty_awards
         WHERE 
           faculty_id = ?
         ORDER BY 
