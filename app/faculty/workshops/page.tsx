@@ -66,6 +66,7 @@ export default function FacultyWorkshopsPage() {
     title: "",
     description: "",
     start_date: new Date().toISOString().split("T")[0],
+    end_date: "", // ✅ instead of omitting it
     venue: "",
     type: "workshop",
     role: "attendee",
@@ -225,36 +226,38 @@ export default function FacultyWorkshopsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedWorkshop) return;
+const handleDelete = async () => {
+  if (!selectedWorkshop) return;
 
+  try {
+    const response = await fetch(
+      `/api/faculty/workshops/${selectedWorkshop.id}`,
+      { method: "DELETE" }
+    );
+
+    let data = {};
     try {
-      const response = await fetch(
-        `/api/faculty/workshops/${selectedWorkshop.id}`,
-        {
-          method: "DELETE",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to delete workshop");
-      }
-
-      toast.success("Workshop deleted successfully");
-      setDeleteDialogOpen(false);
-      setSelectedWorkshop(null);
-
-      // Refresh workshops list
-      await fetchWorkshops();
-    } catch (err) {
-      console.error("Error deleting workshop:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to delete workshop"
-      );
+      data = await response.json();
+    } catch {
+      // ignore JSON parse error if body is empty
     }
-  };
+
+    if (!response.ok || !(data as any).success) {
+      throw new Error((data as any).message || "Failed to delete workshop");
+    }
+
+    toast.success("Workshop deleted successfully");
+    setDeleteDialogOpen(false);
+    setSelectedWorkshop(null);
+    await fetchWorkshops(); // refresh list
+  } catch (err) {
+    console.error("Error deleting workshop:", err);
+    toast.error(
+      err instanceof Error ? err.message : "Failed to delete workshop"
+    );
+  }
+};
+
 
   const handleViewDetails = (workshop: Workshop) => {
     setSelectedWorkshop(workshop);
@@ -262,7 +265,7 @@ export default function FacultyWorkshopsPage() {
       title: workshop.title,
       description: workshop.description,
       start_date: workshop.start_date,
-      end_date: workshop.end_date || undefined,
+      end_date: workshop.end_date ?? "",//end_date: workshop.end_date || undefined,
       venue: workshop.venue,
       type: workshop.type,
       role: workshop.role,
