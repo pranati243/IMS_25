@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      facultyId = facultyResult[0].F_id;
+      facultyId = (facultyResult[0] as any).F_id;
     }
 
     // For admin or HOD roles, allow querying for any faculty
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     try {
       // Verify table exists
       const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_professional_body'"
+        "SHOW TABLES LIKE 'faculty_memberships'"
       );
 
       if ((tableCheck as any[]).length === 0) {
@@ -81,19 +81,20 @@ export async function GET(request: NextRequest) {
       // Table exists, fetch memberships
       const memberships = await query(
         `SELECT 
-          SrNo,
-          F_ID,
-          Organization_Name,
-          Membership_Type,
-          Membership_ID,
-          Start_Date,
-          End_Date
+          membership_id as SrNo,
+          faculty_id as F_ID,
+          organization,
+          membership_type as Membership_Type,
+          '' as Membership_ID,
+          start_date as Start_Date,
+          end_date as End_Date,
+          description
         FROM 
-          faculty_professional_body
+          faculty_memberships
         WHERE 
-          F_ID = ?
+          faculty_id = ?
         ORDER BY 
-          Start_Date DESC`,
+          start_date DESC`,
         [queryFacultyId]
       );
 
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       });
     } catch (error) {
       console.error(
-        "Error checking/querying faculty_professional_body table:",
+        "Error checking/querying faculty_memberships table:",
         error
       );
       return NextResponse.json({
@@ -176,17 +177,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      facultyId = facultyResult[0].F_id;
+      facultyId = (facultyResult[0] as any).F_id;
     }
 
     // Parse request body
     const {
-      Organization_Name,
+      organization,
       Membership_Type,
       Membership_ID,
       Start_Date,
       End_Date,
       F_ID,
+      description = "Faculty membership"
     } = await request.json();
 
     // For faculty role, ensure they can only add their own memberships
@@ -200,7 +202,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Organization_Name || !Membership_Type || !Start_Date) {
+    if (!organization || !Membership_Type || !Start_Date) {
       return NextResponse.json(
         {
           success: false,
@@ -213,37 +215,39 @@ export async function POST(request: NextRequest) {
 
     // Check if the table exists, create it if it doesn't
     const tableCheck = await query(
-      "SHOW TABLES LIKE 'faculty_professional_body'"
+      "SHOW TABLES LIKE 'faculty_memberships'"
     );
 
     if ((tableCheck as any[]).length === 0) {
       // Create the table if it doesn't exist
       await query(`
-        CREATE TABLE faculty_professional_body (
-          SrNo INT AUTO_INCREMENT PRIMARY KEY,
-          F_ID VARCHAR(50) NOT NULL,
-          Organization_Name VARCHAR(255) NOT NULL,
-          Membership_Type VARCHAR(100) NOT NULL,
-          Membership_ID VARCHAR(100),
-          Start_Date DATE NOT NULL,
-          End_Date DATE,
-          FOREIGN KEY (F_ID) REFERENCES faculty(F_id)
+        CREATE TABLE faculty_memberships (
+          membership_id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+          faculty_id bigint(20) NOT NULL,
+          organization varchar(255) NOT NULL,
+          membership_type varchar(100) NOT NULL,
+          start_date date NOT NULL,
+          end_date date DEFAULT NULL,
+          description text DEFAULT NULL,
+          created_at timestamp NULL DEFAULT current_timestamp(),
+          updated_at timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+          FOREIGN KEY (faculty_id) REFERENCES faculty(F_id)
         )
       `);
     }
 
     // Insert the membership
     const result = await query(
-      `INSERT INTO faculty_professional_body 
-        (F_ID, Organization_Name, Membership_Type, Membership_ID, Start_Date, End_Date) 
+      `INSERT INTO faculty_memberships 
+        (faculty_id, organization, membership_type, start_date, end_date, description) 
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         membershipFacultyId,
-        Organization_Name,
+        organization,
         Membership_Type,
-        Membership_ID || null,
         Start_Date,
         End_Date || null,
+        description
       ]
     );
 
@@ -251,13 +255,13 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Membership added successfully",
       data: {
-        SrNo: (result as any).insertId,
-        F_ID: membershipFacultyId,
-        Organization_Name,
-        Membership_Type,
-        Membership_ID,
-        Start_Date,
-        End_Date,
+        membership_id: (result as any).insertId,
+        faculty_id: membershipFacultyId,
+        organization,
+        membership_type: Membership_Type,
+        start_date: Start_Date,
+        end_date: End_Date,
+        description
       },
     });
   } catch (error) {
