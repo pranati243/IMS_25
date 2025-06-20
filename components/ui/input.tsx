@@ -1,11 +1,15 @@
+// components/ui/input.tsx
+"use client"  
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type = "text", value, onChange, ...props }, ref) => {
+    // normalize undefined → "" so it’s always controlled
+    const safeValue = value == null ? "" : value
+
     return (
       <input
         type={type}
@@ -14,11 +18,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        value={safeValue}
+        onChange={onChange}
         {...props}
       />
     )
   }
 )
 Input.displayName = "Input"
-
 export { Input }

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,21 +22,21 @@ import { Plus, Globe, Trash, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface Membership {
-  SrNo: number;
-  F_ID: string;
-  Organization_Name: string;
-  Membership_Type: string;
-  Membership_ID?: string;
-  Start_Date: string;
-  End_Date?: string;
+  SrNo: number; // This is actually membership_id
+  F_ID: string; // This is actually faculty_id
+  organization: string;
+  Membership_Type: string; // This is actually membership_type
+  Start_Date: string; // This is actually start_date
+  End_Date?: string; // This is actually end_date
+  description?: string;
 }
 
 interface MembershipFormData {
-  Organization_Name: string;
+  organization: string;
   Membership_Type: string;
-  Membership_ID?: string;
   Start_Date: string;
   End_Date?: string;
+  description?: string;
 }
 
 export default function FacultyMembershipsPage() {
@@ -50,10 +51,10 @@ export default function FacultyMembershipsPage() {
   const [selectedMembership, setSelectedMembership] =
     useState<Membership | null>(null);
   const [formData, setFormData] = useState<MembershipFormData>({
-    Organization_Name: "",
+    organization: "",
     Membership_Type: "",
-    Membership_ID: "",
     Start_Date: new Date().toISOString().split("T")[0],
+    description: ""
   });
 
   useEffect(() => {
@@ -103,7 +104,7 @@ export default function FacultyMembershipsPage() {
     e.preventDefault();
 
     if (
-      !formData.Organization_Name ||
+      !formData.organization ||
       !formData.Membership_Type ||
       !formData.Start_Date
     ) {
@@ -114,12 +115,20 @@ export default function FacultyMembershipsPage() {
     try {
       setIsSubmitting(true);
 
+      const payload = {
+        organization: formData.organization,
+        Membership_Type: formData.Membership_Type,
+        Start_Date: formData.Start_Date,
+        End_Date: formData.End_Date || null,
+        description: formData.description || "Faculty membership"
+      };
+
       const response = await fetch("/api/faculty/memberships", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -131,10 +140,10 @@ export default function FacultyMembershipsPage() {
       toast.success("Membership added successfully");
       setAddDialogOpen(false);
       setFormData({
-        Organization_Name: "",
+        organization: "",
         Membership_Type: "",
-        Membership_ID: "",
         Start_Date: new Date().toISOString().split("T")[0],
+        description: ""
       });
 
       // Refresh memberships list
@@ -155,7 +164,7 @@ export default function FacultyMembershipsPage() {
     if (!selectedMembership) return;
 
     if (
-      !formData.Organization_Name ||
+      !formData.organization ||
       !formData.Membership_Type ||
       !formData.Start_Date
     ) {
@@ -166,6 +175,14 @@ export default function FacultyMembershipsPage() {
     try {
       setIsSubmitting(true);
 
+      const payload = {
+        organization: formData.organization,
+        Membership_Type: formData.Membership_Type,
+        Start_Date: formData.Start_Date,
+        End_Date: formData.End_Date || null,
+        description: formData.description || "Faculty membership"
+      };
+
       const response = await fetch(
         `/api/faculty/memberships/${selectedMembership.SrNo}`,
         {
@@ -173,7 +190,7 @@ export default function FacultyMembershipsPage() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -233,11 +250,11 @@ export default function FacultyMembershipsPage() {
   const handleViewDetails = (membership: Membership) => {
     setSelectedMembership(membership);
     setFormData({
-      Organization_Name: membership.Organization_Name,
+      organization: membership.organization,
       Membership_Type: membership.Membership_Type,
-      Membership_ID: membership.Membership_ID || "",
       Start_Date: membership.Start_Date,
       End_Date: membership.End_Date || "",
+      description: membership.description || ""
     });
     setViewDialogOpen(true);
   };
@@ -278,10 +295,10 @@ export default function FacultyMembershipsPage() {
             className="flex items-center gap-2"
             onClick={() => {
               setFormData({
-                Organization_Name: "",
+                organization: "",
                 Membership_Type: "",
-                Membership_ID: "",
                 Start_Date: new Date().toISOString().split("T")[0],
+                description: ""
               });
               setAddDialogOpen(true);
             }}
@@ -320,17 +337,12 @@ export default function FacultyMembershipsPage() {
                   >
                     <div className="flex justify-between">
                       <h3 className="font-medium">
-                        {membership.Organization_Name}
+                        {membership.organization}
                       </h3>
                       <span className="text-sm bg-red-50 text-red-700 px-2 py-1 rounded">
                         {membership.Membership_Type}
                       </span>
                     </div>
-                    {membership.Membership_ID && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        ID: {membership.Membership_ID}
-                      </p>
-                    )}
                     <div className="flex justify-between mt-3">
                       <span className="text-xs text-gray-500">
                         {formatDate(membership.Start_Date)} -{" "}
@@ -366,14 +378,14 @@ export default function FacultyMembershipsPage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="Organization_Name">
+            <Label htmlFor="organization">
               Organization Name <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="Organization_Name"
-              name="Organization_Name"
+              id="organization"
+              name="organization"
               placeholder="Enter organization or society name"
-              value={formData.Organization_Name}
+              value={formData.organization}
               onChange={handleInputChange}
               required
             />
@@ -392,12 +404,12 @@ export default function FacultyMembershipsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="Membership_ID">Membership ID</Label>
-            <Input
-              id="Membership_ID"
-              name="Membership_ID"
-              placeholder="Enter membership ID (if any)"
-              value={formData.Membership_ID}
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              name="description"
+              placeholder="Enter a description for this membership"
+              value={formData.description}
               onChange={handleInputChange}
             />
           </div>
@@ -470,7 +482,7 @@ export default function FacultyMembershipsPage() {
             </div>
             <div className="space-y-2">
               <Label>Organization Name</Label>
-              <p className="text-sm">{selectedMembership.Organization_Name}</p>
+              <p className="text-sm">{selectedMembership.organization}</p>
             </div>
             <div className="space-y-2">
               <Label>Membership Type</Label>
@@ -478,12 +490,10 @@ export default function FacultyMembershipsPage() {
                 {selectedMembership.Membership_Type}
               </div>
             </div>
-            {selectedMembership.Membership_ID && (
-              <div className="space-y-2">
-                <Label>Membership ID</Label>
-                <p className="text-sm">{selectedMembership.Membership_ID}</p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <p className="text-sm">{selectedMembership.description || "No description available"}</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Start Date</Label>
@@ -521,9 +531,9 @@ export default function FacultyMembershipsPage() {
             </Label>
             <Input
               id="edit_org_name"
-              name="Organization_Name"
+              name="organization"
               placeholder="Enter organization or society name"
-              value={formData.Organization_Name}
+              value={formData.organization}
               onChange={handleInputChange}
               required
             />
@@ -542,12 +552,12 @@ export default function FacultyMembershipsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit_id">Membership ID</Label>
-            <Input
-              id="edit_id"
-              name="Membership_ID"
-              placeholder="Enter membership ID (if any)"
-              value={formData.Membership_ID}
+            <Label htmlFor="edit_description">Description</Label>
+            <Textarea
+              id="edit_description"
+              name="description"
+              placeholder="Enter a description for this membership"
+              value={formData.description}
               onChange={handleInputChange}
             />
           </div>
