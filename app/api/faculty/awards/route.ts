@@ -80,15 +80,14 @@ export async function GET(request: NextRequest) {
       // Table exists, fetch awards
       const awards = (await query(
         `SELECT 
-          id,
+          award_id,
           faculty_id,
-          title,
+          award_name,
+          category,
           awarding_organization as organization,
-          description,
-          award_date as date,
-          category
-        FROM 
-          faculty_awards
+          award_description,
+          award_date as date
+        FROM faculty_awards
         WHERE 
           faculty_id = ?
         ORDER BY 
@@ -134,7 +133,7 @@ export async function GET(request: NextRequest) {
         console.error("Error fetching awards from contributions table:", error);
         // Continue execution - don't fail if this query has issues
       }
-
+      // console.log(allAwards,"data from router");
       return NextResponse.json({
         success: true,
         data: allAwards,
@@ -218,15 +217,15 @@ export async function POST(request: NextRequest) {
     // Parse the request body as JSON
     const body = await request.json();
     const {
-      title,
+      award_name,
       awarding_organization,
-      description,
+      award_description,
       award_date,
-      category = "Achievement",
+      category,
     } = body;
-
+    // console.log("body POST ", body);
     // Validate required fields
-    if (!title || !awarding_organization || !award_date) {
+    if (!award_name || !awarding_organization || !award_date) {
       return NextResponse.json(
         {
           success: false,
@@ -246,9 +245,9 @@ export async function POST(request: NextRequest) {
           CREATE TABLE faculty_awards (
             id INT AUTO_INCREMENT PRIMARY KEY,
             faculty_id VARCHAR(50) NOT NULL,
-            title VARCHAR(255) NOT NULL,
+            award_name VARCHAR(255) NOT NULL,
             awarding_organization VARCHAR(255) NOT NULL,
-            description TEXT,
+            award_description TEXT,
             award_date DATE NOT NULL,
             category VARCHAR(50) DEFAULT 'Achievement',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -261,13 +260,13 @@ export async function POST(request: NextRequest) {
       // Insert the award
       const result = (await query(
         `INSERT INTO faculty_awards 
-          (faculty_id, title, awarding_organization, description, award_date, category) 
+          (faculty_id, award_name, awarding_organization, award_description, award_date, category) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
           facultyId,
-          title,
+          award_name,
           awarding_organization,
-          description || null,
+          award_description || null,
           award_date,
           category,
         ]
@@ -278,11 +277,11 @@ export async function POST(request: NextRequest) {
         success: true,
         message: "Award added successfully",
         data: {
-          id: result.insertId,
+          award_id: result.insertId,
           faculty_id: facultyId,
-          title,
+          award_name,
           organization: awarding_organization, // Return field name consistent with GET
-          description,
+          award_description,
           date: award_date, // Return field name consistent with GET
           category,
         },

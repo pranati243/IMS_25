@@ -233,7 +233,8 @@ export default function FacultyResearchProjectsPage() {
           ? parseFloat(formData.funding_amount)
           : null,
       };
-
+      console.log("selectedProject.id ", selectedProject.id);
+      console.log("payload ", payload);
       const response = await fetch(
         `/api/faculty/research-projects/${selectedProject.id}`,
         {
