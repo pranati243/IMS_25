@@ -115,29 +115,62 @@ export default function FacultyResearchProjectsPage() {
       [name]: value,
     }));
   };
-
   const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (
-      !formData.title ||
-      !formData.description ||
-      !formData.start_date ||
-      !formData.status
-    ) {
-      toast.error("Please fill in all required fields");
+    e.preventDefault(); // Check for required fields based on server error message
+    if (!formData.title) {
+      toast.error("Project title is required");
       return;
     }
 
+    if (!formData.start_date) {
+      toast.error("Start date is required");
+      return;
+    }
+
+    // Make description optional to match server validation
+    // if (!formData.description) {
+    //   toast.error("Description is required");
+    //   return;
+    // }
+
+    // Other required fields
+    if (!formData.status) {
+      toast.error("Project status is required");
+      return;
+    }
     try {
       setIsSubmitting(true);
 
+      // Make sure empty fields are null instead of empty strings for the backend
+      const cleanedFormData = { ...formData };
+      // Set empty strings to null/undefined
+      Object.keys(cleanedFormData).forEach((key) => {
+        // Skip the status field since it can't be undefined
+        if (key === "status") return;
+
+        if (cleanedFormData[key as keyof typeof cleanedFormData] === "") {
+          // Use type assertion to handle the TypeScript error
+          (cleanedFormData as any)[key] = undefined;
+        }
+      });
       const payload = {
-        ...formData,
-        funding_amount: formData.funding_amount
+        ...cleanedFormData,
+        // Convert field names to match API expectations
+        title: formData.title.trim(),
+        startDate: formData.start_date, // Changed from start_date to startDate
+        endDate: formData.end_date || undefined, // Changed from end_date to endDate
+        status: formData.status,
+        fundingAgency: formData.funding_agency || undefined, // Changed from funding_agency to fundingAgency
+        // Handle numbers properly
+        fundingAmount: formData.funding_amount // Changed from funding_amount to fundingAmount
           ? parseFloat(formData.funding_amount)
-          : null,
+          : undefined,
       };
+
+      console.log(
+        "Submitting research project payload:",
+        JSON.stringify(payload, null, 2)
+      );
 
       const response = await fetch("/api/faculty/research-projects", {
         method: "POST",
@@ -150,11 +183,13 @@ export default function FacultyResearchProjectsPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        console.error("API Error:", data);
         throw new Error(data.message || "Failed to add research project");
       }
-
       toast.success("Research project added successfully");
       setAddDialogOpen(false);
+
+      // Reset form to default state
       setFormData({
         title: "",
         description: "",
@@ -432,16 +467,14 @@ export default function FacultyResearchProjectsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">
-              Description <span className="text-red-500">*</span>
-            </Label>
+            {" "}
+            <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
               placeholder="Enter a description of the research project"
               value={formData.description}
               onChange={handleInputChange}
-              required
               rows={3}
             />
           </div>

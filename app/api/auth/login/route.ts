@@ -21,8 +21,7 @@ type Permission = {
 };
 
 // Use env variable for JWT secret, with fallback to ensure consistency
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function POST(request: NextRequest) {
   try {

@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportType, setReportType] = useState<
     "full" | "faculty" | "students" | "research"
-  >("full");
+  >("faculty");
   const [reportMessage, setReportMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -421,8 +421,8 @@ export default function DashboardPage() {
               className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               disabled={generatingReport}
             >
-              <option value="full">Full Report</option>
               <option value="faculty">Faculty Report</option>
+              <option value="full">Full Report</option>
               <option value="students">Students Report</option>
               <option value="research">Research Output Report</option>
             </select>

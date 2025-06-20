@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
-import { sign } from "jsonwebtoken";
+import * as jose from "jose"; // Using jose instead of jsonwebtoken for compatibility with middleware
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,22 +11,25 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     // Force content type to be application/json
     const headers = new Headers();
-    headers.set('Content-Type', 'application/json');
-    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    
+    headers.set("Content-Type", "application/json");
+    headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
+
     // Get credentials from request
     const { email, bypass } = await request.json();
-    
+
     if (!email || bypass !== "debug-mode-bypass") {
       return NextResponse.json(
         { success: false, message: "Invalid request" },
         { status: 400 }
       );
     }
-    
+
     // Find user directly
     const users = await query(
       `SELECT 
@@ -36,16 +39,16 @@ export async function POST(request: NextRequest) {
       LIMIT 1`,
       [email]
     );
-    
+
     if (!users || (users as any[]).length === 0) {
       return NextResponse.json(
         { success: false, message: "User not found" },
         { status: 404 }
       );
     }
-    
+
     const user = (users as any[])[0];
-    
+
     // Get permissions
     const permissions = await query(
       `SELECT p.name
@@ -54,30 +57,42 @@ export async function POST(request: NextRequest) {
       WHERE rp.role = ?`,
       [user.role]
     );
-    
-    const permissionNames = (permissions as any[]).map(p => p.name);
-    
-    // Create session token
-    const sessionToken = sign(
-      {
-        userId: user.id,
-        role: user.role,
-        directLogin: true
-      },
-      process.env.JWT_SECRET || "your-secret-key",
-      { expiresIn: "24h" }
-    );
-    
+
+    const permissionNames = (permissions as any[]).map((p) => p.name);
+    // Create session token using jose instead of jsonwebtoken
+    const JWT_SECRET = process.env.JWT_SECRET;
+
+    // Create a TextEncoder
+    const encoder = new TextEncoder();
+
+    // Convert JWT_SECRET to Uint8Array for jose
+    const secretKey = encoder.encode(JWT_SECRET);
+
+    // Calculate expiration time (24 hours from now)
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + 60 * 60 * 24; // 1 day
+
+    // Create the JWT token using jose
+    const sessionToken = await new jose.SignJWT({
+      userId: user.id,
+      role: user.role,
+      directLogin: true,
+    })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(exp)
+      .sign(secretKey);
+
     // Create response
     const response = NextResponse.json({
       success: true,
       message: "Direct login successful",
       user: {
         ...user,
-        permissions: permissionNames
-      }
+        permissions: permissionNames,
+      },
     });
-    
+
     // Set cookies
     response.cookies.set({
       name: "session_token",
@@ -88,20 +103,19 @@ export async function POST(request: NextRequest) {
       path: "/",
       sameSite: "lax",
     });
-    
     response.cookies.set({
       name: "auth_status",
-      value: "direct_login",
+      value: "logged_in", // Changed from direct_login to logged_in to match what middleware expects
       httpOnly: false,
       secure: false,
       maxAge: 60 * 60 * 24,
       path: "/",
       sameSite: "lax",
     });
-    
+
     // Set debug header
     response.headers.set("X-Direct-Login", "true");
-    
+
     return response;
   } catch (error) {
     console.error("Direct login error:", error);
@@ -114,4 +128,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
