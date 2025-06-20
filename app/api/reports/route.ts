@@ -150,7 +150,8 @@ interface FacultyData {
   Highest_Degree: string | null;
   Experience: number | null;
   Date_of_Joining: string | null;
-  is_hod: boolean | null;
+  // We'll determine HOD status by comparing with department.HOD_ID
+  isHOD?: boolean; // Calculated field, not from database
 }
 
 interface DepartmentStats {
@@ -195,55 +196,65 @@ async function generateFacultyReport(
   doc.setFontSize(11);
   doc.text(`Department: ${departmentId || "All Departments"}`, 14, 30);
   doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 36);
+
   // Fetch faculty data
-  let facultyQuery = `    SELECT 
-      f.F_id,
-      f.F_name,
-      f.F_dept,
-      fd.Email,
-      fd.Current_Designation,
-      fd.Highest_Degree,
-      fd.Experience,
-      fd.Date_of_Joining,
-      fd.is_hod
-    FROM faculty f
-    LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID
-  `;
+  let facultyQuery = `SELECT 
+    f.F_id,
+    f.F_name,
+    f.F_dept,
+    fd.Email,
+    fd.Current_Designation,
+    fd.Highest_Degree,
+    fd.Experience,
+    fd.Date_of_Joining,
+    (f.F_id = (
+      SELECT dd.HOD_ID 
+      FROM department d 
+      LEFT JOIN department_details dd ON d.Department_ID = dd.Department_ID 
+      WHERE d.Department_Name = f.F_dept
+    )) AS isHOD
+  FROM faculty f
+  LEFT JOIN faculty_details fd ON f.F_id = fd.F_ID`;
 
   const params: (string | number)[] = [];
   if (departmentId && departmentId !== "all") {
     facultyQuery += " WHERE f.F_dept = ?";
     params.push(departmentId);
-  } // Add ORDER BY clause with hierarchical sorting
-  // First priority - HOD status (using is_hod flag + departments.HOD_ID), then designation, then date of joining
-  facultyQuery += `
-    ORDER BY 
-      CASE 
-        WHEN fd.is_hod = TRUE OR f.F_id = (SELECT HOD_ID FROM departments WHERE Department_Name = f.F_dept) THEN 0
-        ELSE 1
-      END,
-      CASE 
-        WHEN fd.Current_Designation = 'Professor' THEN 1
-        WHEN fd.Current_Designation = 'Associate Professor' THEN 2
-        WHEN fd.Current_Designation = 'Assistant Professor' THEN 3
-        ELSE 4
-      END,
-      fd.Date_of_Joining
-  `;
+  }
+
+  // Add ORDER BY clause with hierarchical sorting
+  // First priority - HOD status (using departments.HOD_ID), then designation, then date of joining
+  facultyQuery += ` ORDER BY 
+    CASE 
+      WHEN f.F_id = (
+        SELECT dd.HOD_ID 
+        FROM department d 
+        LEFT JOIN department_details dd ON d.Department_ID = dd.Department_ID 
+        WHERE d.Department_Name = f.F_dept
+      ) THEN 0
+      ELSE 1
+    END,
+    CASE 
+      WHEN fd.Current_Designation = 'Professor' THEN 1
+      WHEN fd.Current_Designation = 'Associate Professor' THEN 2
+      WHEN fd.Current_Designation = 'Assistant Professor' THEN 3
+      ELSE 4
+    END,
+    fd.Date_of_Joining`;
 
   const facultyData = (await query(facultyQuery, params)) as FacultyData[];
-
   if (!facultyData || !Array.isArray(facultyData) || facultyData.length === 0) {
     doc.setFontSize(12);
     doc.setTextColor(255, 0, 0);
     doc.text("No faculty data found", 14, 50);
     return [doc, filename];
   }
+
   // Prepare data for table
   const tableData = facultyData.map((faculty) => [
     faculty.F_name,
     faculty.F_dept,
-    (faculty.is_hod ? "HoD - " : "") + (faculty.Current_Designation || "N/A"),
+    (faculty.isHOD ? "HoD - " : "") + (faculty.Current_Designation || "N/A"),
     faculty.Highest_Degree || "N/A",
     faculty.Experience?.toString() || "N/A",
     faculty.Date_of_Joining
@@ -408,10 +419,10 @@ async function generateResearchReport(
     SELECT 
       f.F_name,
       f.F_dept,
-      fc.Contribution_Title as Title,
+      fc.Description as Title,
       fc.Contribution_Type as Type,
-      fc.Year,
-      fc.Journal_Conference
+      fc.Contribution_Date,
+      fc.Recognized_By
     FROM faculty_contributions fc
     JOIN faculty f ON fc.F_ID = f.F_id
     WHERE fc.Contribution_Type IN ('journal', 'conference', 'publication', 'project')
@@ -423,7 +434,7 @@ async function generateResearchReport(
     params.push(departmentId);
   }
 
-  researchQuery += " ORDER BY fc.Year DESC, f.F_dept, f.F_name";
+  researchQuery += " ORDER BY fc.Contribution_Date DESC, f.F_dept, f.F_name";
 
   const researchData = (await query(researchQuery, params)) as ResearchItem[];
 
