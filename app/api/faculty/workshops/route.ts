@@ -228,15 +228,15 @@ export async function POST(request: NextRequest) {
     const {
       title,
       description,
-      startDate,
-      endDate,
+      start_date,
+      end_date,
       venue,
       type = "Workshop",
       role = "Participant",
     } = body;
 
     // Validate required fields
-    if (!title || !startDate || !venue) {
+    if (!title || !start_date || !venue) {
       return NextResponse.json(
         {
           success: false,
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
         await query(`
           CREATE TABLE faculty_workshops (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            faculty_id VARCHAR(50) NOT NULL,
+            faculty_id BIGINT NOT NULL,
             title VARCHAR(255) NOT NULL,
             description TEXT,
             start_date DATE NOT NULL,
@@ -279,8 +279,8 @@ export async function POST(request: NextRequest) {
           facultyId,
           title,
           description || null,
-          startDate,
-          endDate || null,
+          start_date,
+          end_date || null,
           venue,
           type,
           role,
@@ -296,8 +296,8 @@ export async function POST(request: NextRequest) {
           faculty_id: facultyId,
           title,
           description,
-          start_date: startDate,
-          end_date: endDate,
+          start_date: start_date,
+          end_date: end_date,
           venue,
           type,
           role,
