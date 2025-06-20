@@ -22,19 +22,19 @@ import { Plus, Award, Trash, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface FacultyAward {
-  id: number;
+  award_id: number;
   faculty_id: string;
-  title: string;
+  award_name: string;
   organization: string;
-  description: string;
+  award_description: string;
   date: string;
   category?: string;
 }
 
 interface AwardFormData {
-  title: string;
+  award_name: string;
   organization: string;
-  description: string;
+  award_description: string;
   date: string;
   category?: string;
 }
@@ -50,9 +50,9 @@ export default function FacultyAwardsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAward, setSelectedAward] = useState<FacultyAward | null>(null);
   const [formData, setFormData] = useState<AwardFormData>({
-    title: "",
+    award_name: "",
     organization: "",
-    description: "",
+    award_description: "",
     date: new Date().toISOString().split("T")[0],
     category: "",
   });
@@ -75,7 +75,7 @@ export default function FacultyAwardsPage() {
       if (!data.success) {
         throw new Error(data.message || "Failed to fetch awards");
       }
-
+      // console.log("data::", data);
       setAwards(data.data || []);
       setError(null);
     } catch (err) {
@@ -100,9 +100,9 @@ export default function FacultyAwardsPage() {
     e.preventDefault();
 
     if (
-      !formData.title ||
+      !formData.award_name ||
       !formData.organization ||
-      !formData.description ||
+      !formData.award_description ||
       !formData.date
     ) {
       toast.error("Please fill in all required fields");
@@ -117,8 +117,14 @@ export default function FacultyAwardsPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
-      });
+        body: JSON.stringify({
+          award_name: formData.award_name,
+          awarding_organization: formData.organization,
+          award_description: formData.award_description,
+          award_date: formData.date,
+          category: formData.category,
+})});
+
 
       const data = await response.json();
 
@@ -129,9 +135,9 @@ export default function FacultyAwardsPage() {
       toast.success("Award added successfully");
       setAddDialogOpen(false);
       setFormData({
-        title: "",
+        award_name: "",
         organization: "",
-        description: "",
+        award_description: "",
         date: new Date().toISOString().split("T")[0],
         category: "",
       });
@@ -152,9 +158,9 @@ export default function FacultyAwardsPage() {
     if (!selectedAward) return;
 
     if (
-      !formData.title ||
+      !formData.award_name ||
       !formData.organization ||
-      !formData.description ||
+      !formData.award_description ||
       !formData.date
     ) {
       toast.error("Please fill in all required fields");
@@ -164,13 +170,21 @@ export default function FacultyAwardsPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`/api/faculty/awards/${selectedAward.id}`, {
+      const response = await fetch(`/api/faculty/awards/${selectedAward.award_id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
-      });
+        body: JSON.stringify({
+          award_name: formData.award_name,
+          awarding_organization: formData.organization,
+          award_description: formData.award_description,
+          award_date: formData.date,
+          category: formData.category,
+        })
+      }
+);
+
 
       const data = await response.json();
 
@@ -198,7 +212,7 @@ export default function FacultyAwardsPage() {
     if (!selectedAward) return;
 
     try {
-      const response = await fetch(`/api/faculty/awards/${selectedAward.id}`, {
+      const response = await fetch(`/api/faculty/awards/${selectedAward.award_id}`, {
         method: "DELETE",
       });
 
@@ -224,10 +238,11 @@ export default function FacultyAwardsPage() {
 
   const handleViewDetails = (award: FacultyAward) => {
     setSelectedAward(award);
+    // console.log("within handle: ",award);
     setFormData({
-      title: award.title,
+      award_name: award.award_name,
       organization: award.organization,
-      description: award.description,
+      award_description: award.award_description,
       date: award.date,
       category: award.category || "",
     });
@@ -269,9 +284,9 @@ export default function FacultyAwardsPage() {
             className="flex items-center gap-2"
             onClick={() => {
               setFormData({
-                title: "",
+                award_name: "",
                 organization: "",
-                description: "",
+                award_description: "",
                 date: new Date().toISOString().split("T")[0],
                 category: "",
               });
@@ -304,41 +319,53 @@ export default function FacultyAwardsPage() {
               </p>
             ) : (
               <div className="space-y-4">
-                {awards.map((award) => (
-                  <div
-                    key={award.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex justify-between">
-                      <h3 className="font-medium">{award.title}</h3>
-                      {award.category && (
-                        <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                          {award.category}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-gray-600 mt-1">
-                      {award.organization}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {award.description.length > 150
-                        ? `${award.description.substring(0, 150)}...`
-                        : award.description}
-                    </p>
-                    <div className="flex justify-between mt-3">
-                      <span className="text-xs text-gray-500">
-                        {formatDate(award.date)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetails(award)}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                {awards.map((award) => {
+  /* console.log(
+    award.category,
+    awards.length,
+    award.award_name,
+    award.award_id,
+    award.date,
+    award.award_description,
+    award.faculty_id,
+    award.organization
+  );*/
+
+  return (
+    <div
+      key={award.award_id}
+      className="p-4 border rounded-lg hover:bg-gray-50"
+    >
+      <div className="flex justify-between">
+        <h3 className="font-medium">{award.award_name}</h3>
+        {award.category && (
+          <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">
+            {award.category}
+          </span>
+        )}
+      </div>
+      <p className="text-sm font-medium text-gray-600 mt-1">
+        {award.organization}
+      </p>
+      <p className="text-sm text-gray-600 mt-1">
+        {award.award_description && award.award_description.length > 150
+          ? `${award.award_description.substring(0, 150)}...`
+          : award.award_description}
+      </p>
+      <div className="flex justify-between mt-3">
+        <span className="text-xs text-gray-500">{formatDate(award.date)}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleViewDetails(award)}
+        >
+          View Details
+        </Button>
+      </div>
+    </div>
+  );
+})}
+
               </div>
             )}
           </CardContent>
@@ -357,14 +384,14 @@ export default function FacultyAwardsPage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">
+            <Label htmlFor="award_name">
               Award Title <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="title"
-              name="title"
+              id="award_name"
+              name="award_name"
               placeholder="Enter the title of your award"
-              value={formData.title}
+              value={formData.award_name}
               onChange={handleInputChange}
               required
             />
@@ -383,14 +410,14 @@ export default function FacultyAwardsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">
+            <Label htmlFor="award_description">
               Description <span className="text-red-500">*</span>
             </Label>
             <Textarea
-              id="description"
-              name="description"
+              id="award_description"
+              name="award_description"
               placeholder="Enter a description of the award and your achievement"
-              value={formData.description}
+              value={formData.award_description}
               onChange={handleInputChange}
               required
               rows={3}
@@ -433,8 +460,8 @@ export default function FacultyAwardsPage() {
           e.preventDefault();
           setViewDialogOpen(false);
         }}
-        submitLabel="Close"
-        cancelLabel="Close"
+  
+        
       >
         {selectedAward && (
           <div className="space-y-4">
@@ -462,7 +489,7 @@ export default function FacultyAwardsPage() {
             </div>
             <div className="space-y-2">
               <Label>Award Title</Label>
-              <p className="text-sm">{selectedAward.title}</p>
+              <p className="text-sm">{selectedAward.award_name}</p>
             </div>
             <div className="space-y-2">
               <Label>Awarding Organization</Label>
@@ -470,7 +497,7 @@ export default function FacultyAwardsPage() {
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <p className="text-sm">{selectedAward.description}</p>
+              <p className="text-sm">{selectedAward.award_description}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -504,14 +531,14 @@ export default function FacultyAwardsPage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="edit_title">
+            <Label htmlFor="edit_award_name">
               Award Title <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="edit_title"
-              name="title"
+              id="edit_award_name"
+              name="award_name"
               placeholder="Enter the title of your award"
-              value={formData.title}
+              value={formData.award_name}
               onChange={handleInputChange}
               required
             />
@@ -530,14 +557,14 @@ export default function FacultyAwardsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit_description">
+            <Label htmlFor="edit_award_description">
               Description <span className="text-red-500">*</span>
             </Label>
             <Textarea
-              id="edit_description"
-              name="description"
+              id="edit_award_description"
+              name="award_description"
               placeholder="Enter a description of the award and your achievement"
-              value={formData.description}
+              value={formData.award_description}
               onChange={handleInputChange}
               required
               rows={3}

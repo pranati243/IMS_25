@@ -30,9 +30,9 @@ export function DialogForm({
   onOpenChange,
   onSubmit,
   isSubmitting = false,
-  submitLabel = "Save",
-  cancelLabel = "Cancel",
-  showCancel = true,
+  submitLabel = "close",
+  
+  showCancel = false,
   showSubmit = true,
   children,
 }: DialogFormProps) {
@@ -55,7 +55,7 @@ export function DialogForm({
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                {cancelLabel}
+                
               </Button>
             )}
             {showSubmit && (

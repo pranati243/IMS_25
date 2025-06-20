@@ -110,6 +110,12 @@ export async function GET(request: NextRequest) {
         id = ?`,
       [facultyUsername]
     );
+    // Query awards count separately
+const awardsQuery = await query(
+  `SELECT COUNT(*) as awards FROM faculty_awards WHERE faculty_id = ?`,
+  [facultyUsername]
+);
+
 
     // Combine all the data
     const facultyData = {
@@ -139,6 +145,11 @@ export async function GET(request: NextRequest) {
         publicationsQuery.length > 0
           ? publicationsQuery[0].publications
           : 0,
+          awards:
+  awardsQuery && Array.isArray(awardsQuery) && awardsQuery.length > 0
+    ? awardsQuery[0].awards
+    : 0,
+
     };
 
     return NextResponse.json({
