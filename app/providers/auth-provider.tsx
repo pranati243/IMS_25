@@ -53,6 +53,7 @@ const publicRoutes = [
   "/reset-password",
   "/logout",
   "/unauthorized",
+  "/reports/faculty", // Public faculty reports
   "/_next", // Static Next.js resources
   "/api/auth", // Auth API routes
   "/api/debug", // Debug API routes

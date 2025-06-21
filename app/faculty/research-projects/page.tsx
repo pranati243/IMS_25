@@ -226,7 +226,6 @@ export default function FacultyResearchProjectsPage() {
 
     try {
       setIsSubmitting(true);
-
       const payload = {
         ...formData,
         funding_amount: formData.funding_amount
@@ -267,7 +266,6 @@ export default function FacultyResearchProjectsPage() {
       setIsSubmitting(false);
     }
   };
-
   const handleDelete = async () => {
     if (!selectedProject) return;
 
