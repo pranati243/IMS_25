@@ -108,12 +108,20 @@ export default function FacultyResearchProjectsPage() {
       [name]: value,
     }));
   };
-
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    if (name === "status") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value as "ongoing" | "completed" | "planned",
+        // Reset end_date if status is set to 'ongoing'
+        end_date: value === "ongoing" ? undefined : prev.end_date,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // Check for required fields based on server error message
@@ -127,17 +135,21 @@ export default function FacultyResearchProjectsPage() {
       return;
     }
 
-    // Make description optional to match server validation
-    // if (!formData.description) {
-    //   toast.error("Description is required");
-    //   return;
-    // }
-
     // Other required fields
     if (!formData.status) {
       toast.error("Project status is required");
       return;
     }
+
+    // Validate end date based on status
+    if (
+      (formData.status === "completed" || formData.status === "planned") &&
+      !formData.end_date
+    ) {
+      toast.error(`End date is required for ${formData.status} projects`);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -153,12 +165,20 @@ export default function FacultyResearchProjectsPage() {
           (cleanedFormData as any)[key] = undefined;
         }
       });
+
+      // Special handling for end date based on status
+      let endDate = formData.end_date;
+      if (formData.status === "ongoing") {
+        // For ongoing projects, don't send an end date
+        endDate = undefined;
+      }
+
       const payload = {
-        ...cleanedFormData,
         // Convert field names to match API expectations
         title: formData.title.trim(),
+        description: formData.description?.trim() || "Research Project",
         startDate: formData.start_date, // Changed from start_date to startDate
-        endDate: formData.end_date || undefined, // Changed from end_date to endDate
+        endDate: endDate, // Only include end date for non-ongoing projects
         status: formData.status,
         fundingAgency: formData.funding_agency || undefined, // Changed from funding_agency to fundingAgency
         // Handle numbers properly
@@ -208,7 +228,6 @@ export default function FacultyResearchProjectsPage() {
       setIsSubmitting(false);
     }
   };
-
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -224,10 +243,43 @@ export default function FacultyResearchProjectsPage() {
       return;
     }
 
+    // Validate end date based on status
+    if (
+      (formData.status === "completed" || formData.status === "planned") &&
+      !formData.end_date
+    ) {
+      toast.error(`End date is required for ${formData.status} projects`);
+      return;
+    }
+
     try {
-      setIsSubmitting(true);
+      setIsSubmitting(true); // Make sure empty fields are null instead of empty strings for the backend
+      const cleanedFormData = { ...formData };
+      // Set empty strings to null/undefined
+      Object.keys(cleanedFormData).forEach((key) => {
+        // Skip the status field since it can't be undefined
+        if (key === "status") return;
+
+        if (cleanedFormData[key as keyof typeof cleanedFormData] === "") {
+          // Use type assertion to handle the TypeScript error
+          (cleanedFormData as any)[key] = undefined;
+        }
+      });
+
+      // Special handling for end date based on status
+      let endDate = formData.end_date;
+      if (formData.status === "ongoing") {
+        // For ongoing projects, don't send an end date
+        endDate = undefined;
+      }
+
       const payload = {
-        ...formData,
+        title: formData.title.trim(),
+        description: formData.description?.trim() || "Research Project",
+        start_date: formData.start_date,
+        end_date: endDate, // Only include end date for non-ongoing projects
+        status: formData.status,
+        funding_agency: formData.funding_agency || undefined,
         funding_amount: formData.funding_amount
           ? parseFloat(formData.funding_amount)
           : null,
@@ -490,16 +542,28 @@ export default function FacultyResearchProjectsPage() {
                 onChange={handleInputChange}
                 required
               />
-            </div>
+            </div>{" "}
             <div className="space-y-2">
-              <Label htmlFor="end_date">End Date</Label>
+              <Label htmlFor="end_date">
+                End Date{" "}
+                {formData.status !== "ongoing" && (
+                  <span className="text-red-500">*</span>
+                )}
+              </Label>
               <Input
                 id="end_date"
                 name="end_date"
                 type="date"
-                value={formData.end_date}
+                value={formData.end_date || ""}
                 onChange={handleInputChange}
+                disabled={formData.status === "ongoing"}
+                required={formData.status !== "ongoing"}
               />
+              {formData.status === "ongoing" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Not applicable for ongoing projects
+                </p>
+              )}
             </div>
           </div>
           <div className="space-y-2">
@@ -696,14 +760,27 @@ export default function FacultyResearchProjectsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit_end_date">End Date</Label>
+              {" "}
+              <Label htmlFor="edit_end_date">
+                End Date{" "}
+                {formData.status !== "ongoing" && (
+                  <span className="text-red-500">*</span>
+                )}
+              </Label>
               <Input
                 id="edit_end_date"
                 name="end_date"
                 type="date"
-                value={formData.end_date}
+                value={formData.end_date || ""}
                 onChange={handleInputChange}
+                disabled={formData.status === "ongoing"}
+                required={formData.status !== "ongoing"}
               />
+              {formData.status === "ongoing" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Not applicable for ongoing projects
+                </p>
+              )}
             </div>
           </div>
           <div className="space-y-2">

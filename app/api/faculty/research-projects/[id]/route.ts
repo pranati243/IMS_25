@@ -5,11 +5,26 @@ import { RowDataPacket } from "mysql2";
 // Helper function to calculate duration between two dates in years
 function calculateDuration(startDate: string, endDate: string): string {
   try {
+    // Parse dates properly, accounting for different possible formats
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const durationMs = end.getTime() - start.getTime();
-    const durationYears = Math.ceil(durationMs / (1000 * 60 * 60 * 24 * 365));
-    return durationYears.toString();
+
+    // Check if dates are valid
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.warn("Invalid date format:", { startDate, endDate });
+      return "1"; // Default if dates are invalid
+    } // Calculate difference in milliseconds
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+
+    // Convert to days and then to years (accounting for leap years)
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffYears = (diffDays / 365.25).toFixed(1); // Using 365.25 to account for leap years
+
+    // Parse to float and ensure minimum of 0.1 years (about a month)
+    const years = Math.max(0.1, parseFloat(diffYears));
+
+    // Convert to string with 1 decimal place for MySQL's INTERVAL syntax
+    return years.toFixed(1);
   } catch (error) {
     console.error("Error calculating duration:", error);
     return "1"; // Default to 1 year if calculation fails
@@ -136,9 +151,16 @@ export async function PUT(
       if (facultyDetails.length > 0) {
         faculty = facultyDetails[0];
       }
-    }
+    } // Determine duration based on status and end date
+    let duration = "1"; // Default
 
-    // Update the research project
+    if (status === "ongoing" && !end_date) {
+      // For ongoing projects with no end date, set duration to empty/null
+      duration = "";
+    } else if ((status === "completed" || status === "planned") && end_date) {
+      // Calculate duration only for completed/planned projects with an end date
+      duration = calculateDuration(start_date, end_date);
+    } // Update the research project
     await query(
       `UPDATE research_project_consultancies 
        SET Name_Of_Project_Endownment = ?, 
@@ -151,9 +173,9 @@ export async function PUT(
        WHERE id = ?`,
       [
         title,
-        description || "Research Project",
+        description || "Research Project", // Use exact description provided by user
         start_date,
-        end_date ? calculateDuration(start_date, end_date) : "1",
+        duration, // Use calculated duration based on status and end date
         status || "approved",
         funding_agency || "N/A",
         funding_amount || "0",
