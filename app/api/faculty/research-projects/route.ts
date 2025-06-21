@@ -9,22 +9,22 @@ function calculateDuration(startDate: string, endDate: string): string {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    console.log("DEBUG - calculateDuration input:", { startDate, endDate });
+    console.log("DEBUG - Date objects:", {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      startYear: start.getFullYear(),
+      endYear: end.getFullYear(),
+    });
+
     // Check if dates are valid
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       console.warn("Invalid date format:", { startDate, endDate });
       return "1"; // Default if dates are invalid
-    } // Calculate difference in milliseconds
-    const diffTime = Math.abs(end.getTime() - start.getTime());
+    }
 
-    // Convert to days and then to years (accounting for leap years)
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const diffYears = (diffDays / 365.25).toFixed(1); // Using 365.25 to account for leap years
-
-    // Parse to float and ensure minimum of 0.1 years (about a month)
-    const years = Math.max(0.1, parseFloat(diffYears));
-
-    // Convert to string with 1 decimal place for MySQL's INTERVAL syntax
-    return years.toFixed(1);
+    // Return the actual end date instead of a calculated duration
+    return endDate;
   } catch (error) {
     console.error("Error calculating duration:", error);
     return "1"; // Default to 1 year if calculation fails
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
           Year_Of_Award AS start_date,
           CASE 
             WHEN STATUS = 'ongoing' OR Duration_Of_The_Project = '' THEN NULL
-            WHEN Duration_Of_The_Project REGEXP '^[0-9.]+$' THEN DATE_ADD(STR_TO_DATE(Year_Of_Award, '%Y-%m-%d'), INTERVAL CAST(Duration_Of_The_Project AS DECIMAL(10,1)) YEAR)
+            WHEN Duration_Of_The_Project REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN STR_TO_DATE(Duration_Of_The_Project, '%Y-%m-%d')
             ELSE NULL 
           END AS end_date,
           STATUS AS status,
@@ -122,6 +122,12 @@ export async function GET(request: NextRequest) {
           Year_Of_Award DESC`,
         [queryFacultyId]
       )) as RowDataPacket[];
+
+      // Log the projects to see what's coming back from the database
+      console.log(
+        "DEBUG - Projects from database:",
+        JSON.stringify(projects, null, 2)
+      );
 
       console.log(
         `Found ${projects.length} research projects for faculty ID ${queryFacultyId}`

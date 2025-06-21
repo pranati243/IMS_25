@@ -9,11 +9,21 @@ function calculateDuration(startDate: string, endDate: string): string {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    console.log("DEBUG - calculateDuration input:", { startDate, endDate });
+    console.log("DEBUG - Date objects:", {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      startYear: start.getFullYear(),
+      endYear: end.getFullYear(),
+    });
+
     // Check if dates are valid
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       console.warn("Invalid date format:", { startDate, endDate });
       return "1"; // Default if dates are invalid
-    } // Calculate difference in milliseconds
+    }
+
+    // Calculate difference in milliseconds
     const diffTime = Math.abs(end.getTime() - start.getTime());
 
     // Convert to days and then to years (accounting for leap years)
@@ -23,8 +33,16 @@ function calculateDuration(startDate: string, endDate: string): string {
     // Parse to float and ensure minimum of 0.1 years (about a month)
     const years = Math.max(0.1, parseFloat(diffYears));
 
-    // Convert to string with 1 decimal place for MySQL's INTERVAL syntax
-    return years.toFixed(1);
+    console.log("DEBUG - Duration calculation:", {
+      diffTime,
+      diffDays,
+      diffYears,
+      finalYears: years.toFixed(1),
+    });
+
+    // Instead of returning a decimal duration, let's return the exact end date to preserve it
+    // We need to store this end date in Duration_Of_The_Project for now since we don't have End_Date column
+    return endDate;
   } catch (error) {
     console.error("Error calculating duration:", error);
     return "1"; // Default to 1 year if calculation fails
