@@ -61,7 +61,7 @@ async function getStudentsReportData(
         s.year,
         s.enrollment_number
       FROM 
-        students s
+        student s
     `;
 
     // Add WHERE clause if departmentId is specified
@@ -78,7 +78,7 @@ async function getStudentsReportData(
     try {
       results = await query(sql, params);
     } catch (error) {
-      console.error("Error fetching students data:", error);
+      console.error("Error fetching student data:", error);
       results = [];
     }
 
@@ -87,7 +87,7 @@ async function getStudentsReportData(
 
     return [results, columns];
   } catch (error) {
-    console.error("Error fetching students data:", error);
+    console.error("Error fetching student data:", error);
     return [[], []];
   }
 }

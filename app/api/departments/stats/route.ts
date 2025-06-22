@@ -3,7 +3,7 @@
 
 // export async function GET() {
 //   try {
-//     // Get total students and faculty per department
+//     // Get total student and faculty per department
 //     const departmentStats = await query(`
 //       SELECT
 //         d.Department_ID,

@@ -13,6 +13,8 @@ import {
   BookMarked,
   Globe,
   Target,
+  FileBarChart,
+  Download,
 } from "lucide-react";
 import {
   Card,
@@ -48,6 +50,7 @@ export default function FacultyModules({ facultyId }: FacultyModulesProps) {
   const [facultyInfo, setFacultyInfo] = useState<FacultyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     const fetchFacultyInfo = async () => {
@@ -97,6 +100,62 @@ export default function FacultyModules({ facultyId }: FacultyModulesProps) {
 
     fetchFacultyInfo();
   }, [facultyId]);
+
+  const handleDownloadReport = async () => {
+    try {
+      setReportLoading(true);
+      const response = await fetch("/api/faculty/comprehensive-report");
+      
+      if (!response.ok) {
+        throw new Error("Failed to generate report");
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || "Failed to generate report");
+      }
+      
+      // Convert base64 to blob
+      const pdfBlob = base64ToBlob(data.data.pdfBase64, "application/pdf");
+      
+      // Create download link
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.data.filename || "faculty-report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+    } catch (err) {
+      console.error("Error downloading report:", err);
+      alert(err instanceof Error ? err.message : "Failed to download report");
+    } finally {
+      setReportLoading(false);
+    }
+  };
+  
+  // Helper function to convert base64 to blob
+  const base64ToBlob = (base64: string, mimeType: string) => {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: mimeType });
+  };
 
   if (loading) {
     return <FacultyModulesSkeleton />;
@@ -328,6 +387,15 @@ export default function FacultyModules({ facultyId }: FacultyModulesProps) {
             </Link>
           </CardFooter>
         </Card>
+        
+        
+      </div>
+
+      {/* Information Management System Footer */}
+      <div className="mt-8 text-center">
+        <p className="text-sm text-gray-500">
+          Information Management System | Faculty Portal
+        </p>
       </div>
     </div>
   );
@@ -342,15 +410,15 @@ function FacultyModulesSkeleton() {
         <CardHeader>
           <div className="flex items-center gap-4">
             <Skeleton className="w-16 h-16 rounded-full" />
-            <div>
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-72 mt-2" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-2/3 mt-2" />
+          <Skeleton className="h-4 w-3/4 mt-2" />
         </CardContent>
       </Card>
 
@@ -363,14 +431,19 @@ function FacultyModulesSkeleton() {
               <Skeleton className="h-6 w-32" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-4 w-full mt-2" />
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-4 w-full" />
             </CardContent>
             <CardFooter>
               <Skeleton className="h-10 w-full" />
             </CardFooter>
           </Card>
         ))}
+      </div>
+
+      {/* Footer Skeleton */}
+      <div className="mt-8 text-center">
+        <Skeleton className="h-4 w-64 mx-auto" />
       </div>
     </div>
   );

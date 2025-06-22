@@ -1,6 +1,88 @@
 // app/api/profile/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
+import { RowDataPacket } from "mysql2";
+
+// Define interfaces for type safety
+interface User extends RowDataPacket {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  name: string;
+  department_id: number | null;
+  is_active: boolean;
+  created_at: string;
+  last_login: string;
+}
+
+interface Department extends RowDataPacket {
+  Department_ID: number;
+  Department_Name: string;
+}
+
+interface FacultyDetails extends RowDataPacket {
+  F_ID: string;
+  Email: string | null;
+  Phone_Number: string | null;
+  Current_Designation: string | null;
+  Highest_Degree: string | null;
+  Experience: number | null;
+  total_contributions: number;
+  professional_memberships: number;
+  workshops_attended: number;
+}
+
+interface Publication extends RowDataPacket {
+  id: number;
+  title_of_the_paper: string;
+  name_of_the_conference: string;
+  Year_Of_Study: string;
+  paper_link: string;
+}
+
+interface Achievement extends RowDataPacket {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+}
+
+interface Student extends RowDataPacket {
+  id: number;
+  name: string;
+  department_id: number;
+  semester: number;
+  program: string;
+}
+
+interface ProfileData {
+  id: number;
+  username: string;
+  email: string;
+  name: string;
+  role: string;
+  department: number | null;
+  departmentName: string | null;
+  joinDate: string;
+  lastLogin: string;
+  profileImage: string;
+  facultyId?: string;
+  designation?: string | null;
+  qualification?: string | null;
+  experience?: number | null;
+  phone?: string | null;
+  professionalMemberships?: number;
+  totalContributions?: number;
+  publications?: Publication[];
+  achievements?: Achievement[];
+  researchProjects?: number;
+  workshopsAttended?: number;
+  studentId?: number;
+  enrollmentNo?: string;
+  semester?: number;
+  program?: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,7 +121,7 @@ export async function GET(request: NextRequest) {
       FROM users 
       WHERE id = ?`,
       [userId]
-    );
+    ) as User[];
 
     if (!userData || !Array.isArray(userData) || userData.length === 0) {
       return NextResponse.json(
@@ -56,7 +138,7 @@ export async function GET(request: NextRequest) {
       const departmentData = await query(
         `SELECT Department_Name FROM department WHERE Department_ID = ?`,
         [user.department_id]
-      );
+      ) as Department[];
 
       if (
         departmentData &&
@@ -68,7 +150,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Initialize profile object with base user data
-    const profile = {
+    const profile: ProfileData = {
       id: user.id,
       username: user.username,
       email: user.email,
@@ -102,7 +184,7 @@ export async function GET(request: NextRequest) {
           f.F_ID, f.Email, f.Phone_Number, f.Current_Designation, 
           f.Highest_Degree, f.Experience`,
         [username]
-      );
+      ) as FacultyDetails[];
 
       if (facultyData && Array.isArray(facultyData) && facultyData.length > 0) {
         const faculty = facultyData[0];
@@ -118,22 +200,29 @@ export async function GET(request: NextRequest) {
       }
 
       // Get publications
-      const publicationsData = await query(
-        `SELECT 
-          p.id, p.title_of_the_paper, p.name_of_the_conference as journal, p.Year_Of_Study, p.paper_link
-        FROM 
-          paper_publication p
-        INNER JOIN 
-          faculty f ON p.id = f.F_id
-        WHERE 
-          f.F_ID = ?
-        ORDER BY 
-          p.Year_Of_Study DESC`,
-        [username]
-      );
+      try {
+        const publicationsData = await query(
+          `SELECT 
+            p.id, 
+            p.title_of_the_paper, 
+            p.name_of_the_conference as journal, 
+            p.Year_Of_Study as year, 
+            p.paper_link as url
+          FROM 
+            paper_publication p
+          WHERE 
+            p.id = ?
+          ORDER BY 
+            p.Year_Of_Study DESC`,
+          [username]
+        ) as Publication[];
 
-      if (publicationsData && Array.isArray(publicationsData)) {
-        profile.publications = publicationsData;
+        if (publicationsData && Array.isArray(publicationsData)) {
+          profile.publications = publicationsData;
+        }
+      } catch (error) {
+        console.error("Error fetching publications:", error);
+        profile.publications = [];
       }
 
       // Get achievements
@@ -145,65 +234,123 @@ export async function GET(request: NextRequest) {
           c.Contribution_Date as date
         FROM 
           faculty_contributions c
-        INNER JOIN 
-          faculty f ON c.F_ID = f.F_id
         WHERE 
-          f.F_id = ?
+          c.F_ID = ?
         ORDER BY 
           c.Contribution_Date DESC`,
         [username]
-      );
+      ) as Achievement[];
 
       if (achievementsData && Array.isArray(achievementsData)) {
         profile.achievements = achievementsData;
       }
 
-      // Initialize research projects count to 0 (table doesn't exist yet)
-      profile.researchProjects = 0;
-
-      /* Commenting out research_projects query since the table doesn't exist yet
       // Get research projects count
-      const projectsData = await query(
-        `SELECT 
-          COUNT(*) as research_projects
-        FROM 
-          research_projects r
-        INNER JOIN 
-          faculty f ON r.faculty_id = f.F_id
-        WHERE 
-          f.Faculty_ID = ?`,
-        [username]
-      );
+      try {
+        const projectsData = await query(
+          `SELECT 
+            COUNT(*) as research_projects
+          FROM 
+            research_project_consultancies
+          WHERE 
+            user_id = ?`,
+          [username]
+        ) as RowDataPacket[];
 
-      if (
-        projectsData &&
-        Array.isArray(projectsData) &&
-        projectsData.length > 0
-      ) {
-        profile.researchProjects = projectsData[0].research_projects || 0;
+        if (projectsData && Array.isArray(projectsData) && projectsData.length > 0) {
+          profile.researchProjects = projectsData[0].research_projects || 0;
+        } else {
+          profile.researchProjects = 0;
+        }
+      } catch (error) {
+        console.error("Error fetching research projects count:", error);
+        profile.researchProjects = 0;
       }
-      */
+
+      // Get workshops count
+      try {
+        const workshopsData = await query(
+          `SELECT 
+            COUNT(*) as workshops_attended
+          FROM 
+            faculty_workshops
+          WHERE 
+            faculty_id = ?`,
+          [username]
+        ) as RowDataPacket[];
+
+        // Also check for workshop-like entries in contributions table
+        const workshopContributionsData = await query(
+          `SELECT 
+            COUNT(*) as workshop_contributions
+          FROM 
+            faculty_contributions
+          WHERE 
+            F_ID = ? AND 
+            (
+              Contribution_Type LIKE '%workshop%' OR 
+              Contribution_Type LIKE '%seminar%' OR 
+              Contribution_Type LIKE '%conference%' OR
+              Contribution_Type LIKE '%training%'
+            )`,
+          [username]
+        ) as RowDataPacket[];
+
+        const workshopsCount = 
+          (workshopsData && Array.isArray(workshopsData) && workshopsData.length > 0 
+            ? workshopsData[0].workshops_attended || 0 
+            : 0) +
+          (workshopContributionsData && Array.isArray(workshopContributionsData) && workshopContributionsData.length > 0
+            ? workshopContributionsData[0].workshop_contributions || 0
+            : 0);
+
+        profile.workshopsAttended = workshopsCount;
+      } catch (error) {
+        console.error("Error fetching workshops count:", error);
+        profile.workshopsAttended = 0;
+      }
+
+      // Get professional memberships count
+      try {
+        const membershipsData = await query(
+          `SELECT 
+            COUNT(*) as memberships
+          FROM 
+            faculty_memberships
+          WHERE 
+            faculty_id = ?`,
+          [username]
+        ) as RowDataPacket[];
+
+        if (membershipsData && Array.isArray(membershipsData) && membershipsData.length > 0) {
+          profile.professionalMemberships = membershipsData[0].memberships || 0;
+        } else {
+          profile.professionalMemberships = 0;
+        }
+      } catch (error) {
+        console.error("Error fetching memberships count:", error);
+        // Keep the current value or set to 0 if not already set
+        profile.professionalMemberships = profile.professionalMemberships || 0;
+      }
     } else if (userRole === "student") {
       // Get student data
       const studentData = await query(
         `SELECT 
-          s.id, s.name, s.enrollment_no, s.department_id,
+          s.id, s.name, s.department_id,
           s.semester, s.program
         FROM 
-          students s
-        INNER JOIN 
-          users u ON s.enrollment_no = u.username
+          student s
+
         WHERE 
           u.id = ?`,
         [userId]
-      );
+      ) as Student[];
 
       if (studentData && Array.isArray(studentData) && studentData.length > 0) {
         const student = studentData[0];
 
         // Extend profile with student data
         profile.studentId = student.id;
-        profile.enrollmentNo = student.enrollment_no;
         profile.semester = student.semester;
         profile.program = student.program;
       }

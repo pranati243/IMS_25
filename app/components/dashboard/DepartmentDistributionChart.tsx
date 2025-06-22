@@ -24,7 +24,7 @@ type DepartmentData = {
 };
 
 type DepartmentDistributionChartProps = {
-  dataKey?: "faculty" | "students";
+  dataKey?: "faculty" | "student";
   height?: number;
   data?: DepartmentData[];
 };
@@ -116,7 +116,7 @@ export default function DepartmentDistributionChart({
             studentsCount: number;
           }) => {
             const department = item.name;
-            // Choose count based on dataKey (faculty or students)
+            // Choose count based on dataKey (faculty or student)
             const count =
               dataKey === "faculty"
                 ? item.facultyCount || 0

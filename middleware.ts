@@ -247,7 +247,7 @@ export const config = {
     "/admin/:path*",
     "/faculty/:path*",
     "/profile/:path*",
-    "/students/:path*",
+    "/student/:path*",
     "/settings/:path*",
     "/departments/:path*",
     "/reports/:path*",

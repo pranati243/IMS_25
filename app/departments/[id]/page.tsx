@@ -228,9 +228,9 @@ export default function DepartmentDetailPage({
                 <div className="flex items-start">
                   <Users className="w-5 h-5 text-gray-500 mt-0.5 mr-3 flex-shrink-0" />
                   <div>
-                    <p className="font-medium text-gray-700">Faculty & Students</p>
+                    <p className="font-medium text-gray-700">Faculty & student</p>
                     <p className="text-gray-600">
-                      {department.Total_Faculty || '0'} faculty members, {department.Total_Students || '0'} students
+                      {department.Total_Faculty || '0'} faculty members, {department.Total_Students || '0'} student
                     </p>
                   </div>
                 </div>

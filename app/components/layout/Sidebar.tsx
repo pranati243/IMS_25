@@ -18,7 +18,7 @@ import {
 const sidebarItems = [
   { title: "Dashboard", href: "/dashboard", icon: HomeIcon },
   { title: "Faculty", href: "/faculty", icon: UsersIcon },
-  // { title: "Students", href: "/students", icon: AcademicCapIcon },
+  // { title: "student", href: "/student", icon: AcademicCapIcon },
   // { title: "Courses", href: "/courses", icon: BookOpenIcon },
   { title: "Departments", href: "/departments", icon: BuildingLibraryIcon },
   // { title: "Reports", href: "/reports", icon: ChartBarIcon },

@@ -384,11 +384,11 @@ export function DepartmentForm({
               name="Total_Students"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Total Students</FormLabel>
+                  <FormLabel>Total student</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
-                      placeholder="Enter number of students" 
+                      placeholder="Enter number of student" 
                       {...field} 
                     />
                   </FormControl>
