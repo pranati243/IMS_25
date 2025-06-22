@@ -1,6 +1,28 @@
 // app/api/faculty/me/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
+import { RowDataPacket } from "mysql2";
+
+interface FacultyRow extends RowDataPacket {
+  F_id: string;
+  F_name: string;
+  F_dept: string;
+}
+
+interface DetailsRow extends RowDataPacket {
+  Email: string;
+  Phone_Number: string;
+  Current_Designation: string;
+  Highest_Degree: string;
+  Experience: number;
+}
+
+interface CountRow extends RowDataPacket {
+  total_contributions: number;
+  professional_memberships: number;
+  memberships_count: number;
+  publications: number;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +66,7 @@ export async function GET(request: NextRequest) {
        FROM faculty 
        WHERE F_id = ?`,
       [facultyUsername]
-    );
+    ) as FacultyRow[];
 
     // If no direct match in the faculty table, try different approaches
     if (
@@ -76,7 +98,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         fd.F_ID = ?`,
       [facultyUsername]
-    );
+    ) as DetailsRow[];
 
     // Query contributions count separately
     const contribQuery = await query(
@@ -87,10 +109,10 @@ export async function GET(request: NextRequest) {
       WHERE 
         F_ID = ?`,
       [facultyUsername]
-    );
+    ) as CountRow[];
 
-    // Query professional memberships count separately
-    const membershipQuery = await query(
+    // Query professional memberships count from old table
+    const oldMembershipQuery = await query(
       `SELECT 
         COUNT(*) as professional_memberships
       FROM 
@@ -98,7 +120,30 @@ export async function GET(request: NextRequest) {
       WHERE 
         F_ID = ?`,
       [facultyUsername]
-    );
+    ) as CountRow[];
+
+    // Query memberships from new table
+    let newMembershipsCount = 0;
+    try {
+      const tableCheck = await query("SHOW TABLES LIKE 'faculty_memberships'");
+      if (Array.isArray(tableCheck) && tableCheck.length > 0) {
+        const newMembershipQuery = await query(
+          `SELECT 
+            COUNT(*) as memberships_count
+          FROM 
+            faculty_memberships
+          WHERE 
+            faculty_id = ?`,
+          [facultyUsername]
+        ) as CountRow[];
+        
+        if (Array.isArray(newMembershipQuery) && newMembershipQuery.length > 0) {
+          newMembershipsCount = newMembershipQuery[0].memberships_count || 0;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking faculty_memberships table:", error);
+    }
 
     // Query publications count separately
     const publicationsQuery = await query(
@@ -109,7 +154,17 @@ export async function GET(request: NextRequest) {
       WHERE 
         id = ?`,
       [facultyUsername]
-    );
+    ) as CountRow[];
+
+    // Calculate total memberships (old + new)
+    const oldMembershipsCount = 
+      oldMembershipQuery && 
+      Array.isArray(oldMembershipQuery) && 
+      oldMembershipQuery.length > 0
+        ? oldMembershipQuery[0].professional_memberships
+        : 0;
+    
+    const totalMemberships = oldMembershipsCount + newMembershipsCount;
 
     // Combine all the data
     const facultyData = {
@@ -127,12 +182,7 @@ export async function GET(request: NextRequest) {
         contribQuery && Array.isArray(contribQuery) && contribQuery.length > 0
           ? contribQuery[0].total_contributions
           : 0,
-      professional_memberships:
-        membershipQuery &&
-        Array.isArray(membershipQuery) &&
-        membershipQuery.length > 0
-          ? membershipQuery[0].professional_memberships
-          : 0,
+      professional_memberships: totalMemberships,
       publications:
         publicationsQuery &&
         Array.isArray(publicationsQuery) &&

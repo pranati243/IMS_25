@@ -4,6 +4,15 @@ import MainLayout from "@/app/components/layout/MainLayout";
 import PermissionGate from "@/app/components/auth/PermissionGate";
 import { Button } from "@/components/ui/button";
 import { query } from "@/app/lib/db";
+import { UserRole } from "@/app/types/auth";
+import { RowDataPacket } from "mysql2";
+
+interface FacultyData extends RowDataPacket {
+  F_id: string;
+  F_name: string;
+  department_id: number;
+  // Add other faculty fields as needed
+}
 
 export default async function FacultyDetailPage({
   params,
@@ -13,21 +22,21 @@ export default async function FacultyDetailPage({
   // Check if user is authenticated
   const session = await checkAuth({
     required: true,
-    resource: "faculty",
-    action: "read",
+    resource: "faculty" as string,
+    action: "read" as string,
   });
 
   // Get faculty details
   const facultyData = await query("SELECT * FROM faculty WHERE F_id = ?", [
     params.id,
-  ]);
+  ]) as FacultyData[];
 
   const faculty = facultyData[0];
 
   // Check if the current user is from the same department as the faculty
   const isSameDepartment =
-    session.user.role === "department_head" &&
-    session.user.departmentId === faculty.department_id;
+    session?.user.role === "department_head" &&
+    session?.user.departmentId === faculty.department_id;
 
   return (
     <MainLayout>
