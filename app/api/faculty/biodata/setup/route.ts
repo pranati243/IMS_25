@@ -68,7 +68,7 @@ async function createTablesIfNotExist() {
           DATE_SUB(CURRENT_DATE(), INTERVAL FLOOR(RAND() * 1000) DAY),
           CASE FLOOR(RAND() * 3)
             WHEN 0 THEN 'For outstanding contribution to teaching methodology'
-            WHEN 1 THEN 'For research excellence and mentoring students'
+            WHEN 1 THEN 'For research excellence and mentoring student'
             ELSE 'For innovation in education and learning practices'
           END
         FROM faculty f

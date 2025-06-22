@@ -593,7 +593,7 @@ ${
               <p className="text-xs text-gray-500">
                 For faculty/admin: Enter your Faculty ID
                 <br />
-                For students: Enter your Roll Number
+                For student: Enter your Roll Number
               </p>
             </div>
 

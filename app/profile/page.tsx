@@ -399,7 +399,7 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
-                    {/* Show enrollment number for students */}
+                    {/* Show enrollment number for student */}
                     {profile?.role === "student" && profile?.enrollmentNo && (
                       <div className="flex items-start gap-3">
                         <UserIcon className="h-5 w-5 text-gray-500 mt-0.5" />
@@ -410,7 +410,7 @@ export default function ProfilePage() {
                       </div>
                     )}
 
-                    {/* Show semester and program for students */}
+                    {/* Show semester and program for student */}
                     {profile?.role === "student" && profile?.semester && (
                       <div className="flex items-start gap-3">
                         <AcademicCapIcon className="h-5 w-5 text-gray-500 mt-0.5" />

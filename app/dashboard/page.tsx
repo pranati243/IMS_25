@@ -74,7 +74,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"naac" | "nba">("naac");
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportType, setReportType] = useState<
-    "full" | "faculty" | "students" | "research"
+    "full" | "faculty" | "student" | "research"
   >("faculty");
   const [reportMessage, setReportMessage] = useState<{
     type: "success" | "error";
@@ -415,7 +415,7 @@ export default function DashboardPage() {
               value={reportType}
               onChange={(e) =>
                 setReportType(
-                  e.target.value as "full" | "faculty" | "students" | "research"
+                  e.target.value as "full" | "faculty" | "student" | "research"
                 )
               }
               className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
@@ -423,7 +423,7 @@ export default function DashboardPage() {
             >
               <option value="faculty">Faculty Report</option>
               <option value="full">Full Report</option>
-              <option value="students">Students Report</option>
+              <option value="student">student Report</option>
               <option value="research">Research Output Report</option>
             </select>
             <button
@@ -462,7 +462,7 @@ export default function DashboardPage() {
             bgColor="bg-gradient-to-br from-indigo-50 to-white"
           />
           <StatsCard
-            title="Total Students"
+            title="Total student"
             value={formatNumber(totalStudents)}
             icon={<AcademicCapIcon className="h-6 w-6 text-purple-600" />}
             trend="up"
@@ -572,7 +572,7 @@ export default function DashboardPage() {
                 />
               </ChartCard>
               <ChartCard
-                title="Students by Department"
+                title="student by Department"
                 className="bg-white shadow-md hover:shadow-lg transition-shadow"
                 useGradient={true}
                 gradientFrom="from-purple-600"
@@ -639,7 +639,7 @@ export default function DashboardPage() {
                         scope="col"
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
-                        Students
+                        student
                       </th>
                       <th
                         scope="col"

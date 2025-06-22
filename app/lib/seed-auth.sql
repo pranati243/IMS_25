@@ -110,7 +110,7 @@ VALUES
 );
 
 -- Add some student accounts
--- Students would follow pattern: CE - 10001, 10002, ME - 20001, 20002, etc.
+-- student would follow pattern: CE - 10001, 10002, ME - 20001, 20002, etc.
 INSERT INTO `users` (
   `username`, `password`, `email`, `name`, `role`, 
   `department_id`, `student_id`, `is_active`, `default_password_changed`

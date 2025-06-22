@@ -12,11 +12,11 @@
 //   { path: "/api/faculty/update", resource: "faculty", action: "update" },
 //   { path: "/api/faculty/delete", resource: "faculty", action: "delete" },
 
-//   // Students
-//   { path: "/api/students", resource: "student", action: "read" },
-//   { path: "/api/students/create", resource: "student", action: "create" },
-//   { path: "/api/students/update", resource: "student", action: "update" },
-//   { path: "/api/students/delete", resource: "student", action: "delete" },
+//   // student
+//   { path: "/api/student", resource: "student", action: "read" },
+//   { path: "/api/student/create", resource: "student", action: "create" },
+//   { path: "/api/student/update", resource: "student", action: "update" },
+//   { path: "/api/student/delete", resource: "student", action: "delete" },
 
 //   // Departments
 //   { path: "/api/departments", resource: "department", action: "read" },
@@ -95,7 +95,7 @@ import { verify } from "jsonwebtoken";
 const protectedApiPaths = [
   "/api/departments",
   "/api/faculty",
-  "/api/students",
+  "/api/student",
   "/api/courses",
 ];
 
@@ -104,7 +104,7 @@ const protectedClientPaths = [
   "/dashboard",
   "/admin",
   "/faculty/manage",
-  "/students/manage",
+  "/student/manage",
   "/settings",
   "/departments",
   // "/profile", - temporarily removing profile from protected routes
@@ -209,7 +209,7 @@ export const config = {
     "/admin/:path*",
     "/profile/:path*",
     "/faculty/manage/:path*",
-    "/students/manage/:path*",
+    "/student/manage/:path*",
     "/settings/:path*",
     "/departments/:path*",
   ],
