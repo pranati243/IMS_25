@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     // Now query for additional details and counts with proper LEFT JOINs
     let detailsQuery: FacultyDetails[] = [];
     try {
-      detailsQuery = await query(
+      detailsQuery = (await query(
         `SELECT 
           fd.Email, 
           fd.Phone_Number,
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         WHERE 
           fd.F_ID = ?`,
         [facultyUsername]
-      ) as FacultyDetails[];
+      )) as FacultyDetails[];
     } catch (error) {
       console.error("Error fetching faculty details:", error);
     }
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     // Query contributions count separately
     let contribQuery: CountResult[] = [];
     try {
-      contribQuery = await query(
+      contribQuery = (await query(
         `SELECT 
           COUNT(*) as total_contributions
         FROM 
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         WHERE 
           F_ID = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching contributions count:", error);
     }
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
     // Query professional memberships count separately
     let membershipQuery: CountResult[] = [];
     try {
-      membershipQuery = await query(
+      membershipQuery = (await query(
         `SELECT 
           COUNT(*) as professional_memberships
         FROM 
@@ -129,34 +129,45 @@ export async function GET(request: NextRequest) {
         WHERE 
           faculty_id = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching memberships count:", error);
     }
 
-    // Query publications count separately
+    // Query publications count separately from faculty_publications and bookschapter tables
     let publicationsQuery: CountResult[] = [];
     try {
-      publicationsQuery = await query(
-        `SELECT 
-          COUNT(*) as publications
-        FROM 
-          paper_publication
-        WHERE 
-          id = ?`,
+      // Get count from faculty_publications
+      const facultyPubCount = (await query(
+        `SELECT COUNT(*) as count FROM faculty_publications WHERE faculty_id = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as { count: number }[];
+
+      // Get count from bookschapter (but not from faculty_contributions)
+      const bookChapterCount = (await query(
+        `SELECT COUNT(*) as count FROM bookschapter WHERE user_id = ? AND STATUS = 'approved'`,
+        [facultyUsername]
+      )) as { count: number }[];
+
+      // Calculate total count from both relevant tables
+      const totalCount =
+        (facultyPubCount?.[0]?.count || 0) +
+        (bookChapterCount?.[0]?.count || 0);
+
+      publicationsQuery = [{ publications: totalCount }] as CountResult[];
     } catch (error) {
       console.error("Error fetching publications count:", error);
+      // Provide default value in case of error
+      publicationsQuery = [{ publications: 0 }] as CountResult[];
     }
-    
+
     // Query awards count separately
     let awardsQuery: CountResult[] = [];
     try {
-      awardsQuery = await query(
+      awardsQuery = (await query(
         `SELECT COUNT(*) as awards FROM faculty_awards WHERE faculty_id = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching awards count:", error);
     }
@@ -164,7 +175,7 @@ export async function GET(request: NextRequest) {
     // Query research projects count separately
     let researchProjectsQuery: CountResult[] = [];
     try {
-      researchProjectsQuery = await query(
+      researchProjectsQuery = (await query(
         `SELECT 
           COUNT(*) as research_projects
         FROM 
@@ -172,7 +183,7 @@ export async function GET(request: NextRequest) {
         WHERE 
           user_id = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching research projects count:", error);
     }
@@ -180,7 +191,7 @@ export async function GET(request: NextRequest) {
     // Query workshops count separately - using the correct faculty_workshops table
     let workshopsQuery: CountResult[] = [];
     try {
-      workshopsQuery = await query(
+      workshopsQuery = (await query(
         `SELECT 
           COUNT(*) as workshops_attended
         FROM 
@@ -188,7 +199,7 @@ export async function GET(request: NextRequest) {
         WHERE 
           faculty_id = ?`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching workshops count:", error);
     }
@@ -196,7 +207,7 @@ export async function GET(request: NextRequest) {
     // Also check for workshop-like entries in contributions table
     let workshopContributionsQuery: CountResult[] = [];
     try {
-      workshopContributionsQuery = await query(
+      workshopContributionsQuery = (await query(
         `SELECT 
           COUNT(*) as workshop_contributions
         FROM 
@@ -210,7 +221,7 @@ export async function GET(request: NextRequest) {
             Contribution_Type LIKE '%training%'
           )`,
         [facultyUsername]
-      ) as CountResult[];
+      )) as CountResult[];
     } catch (error) {
       console.error("Error fetching workshop contributions count:", error);
     }
@@ -248,22 +259,22 @@ export async function GET(request: NextRequest) {
           ? awardsQuery[0].awards || 0
           : 0,
       research_projects:
-        researchProjectsQuery && 
-        Array.isArray(researchProjectsQuery) && 
+        researchProjectsQuery &&
+        Array.isArray(researchProjectsQuery) &&
         researchProjectsQuery.length > 0
           ? researchProjectsQuery[0].research_projects || 0
           : 0,
       workshops_attended:
-        (workshopsQuery && 
-        Array.isArray(workshopsQuery) && 
+        (workshopsQuery &&
+        Array.isArray(workshopsQuery) &&
         workshopsQuery.length > 0
           ? workshopsQuery[0].workshops_attended || 0
           : 0) +
-        (workshopContributionsQuery && 
-        Array.isArray(workshopContributionsQuery) && 
+        (workshopContributionsQuery &&
+        Array.isArray(workshopContributionsQuery) &&
         workshopContributionsQuery.length > 0
           ? workshopContributionsQuery[0].workshop_contributions || 0
-          : 0)
+          : 0),
     };
 
     return NextResponse.json({

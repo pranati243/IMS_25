@@ -155,6 +155,7 @@ export async function GET(request: Request) {
 
     // Check for publications table and add publications count
     let hasPublications = false;
+    let hasBookChapters = false;
     try {
       const publicationsCheck = await query(
         "SHOW TABLES LIKE 'faculty_publications'"
@@ -166,16 +167,34 @@ export async function GET(request: Request) {
 
       hasPublications = (publicationsCheck as any[]).length > 0;
 
-      // Add publications count with safe SQL
-      if (hasPublications) {
+      // Also check for bookschapter table
+      const booksCheck = await query("SHOW TABLES LIKE 'bookschapter'");
+      diagnosticInfo.tableCheck = {
+        ...diagnosticInfo.tableCheck,
+        bookschapter: (booksCheck as any[]).length > 0,
+      };
+
+      hasBookChapters = (booksCheck as any[]).length > 0;
+
+      // Add publications count with safe SQL combining both tables
+      if (hasPublications && hasBookChapters) {
+        sql += `,
+          (
+            (SELECT COUNT(*) FROM faculty_publications WHERE faculty_id = f.F_id) +
+            (SELECT COUNT(*) FROM bookschapter WHERE user_id = f.F_id AND STATUS = 'approved')
+          ) as publication_count`;
+      } else if (hasPublications) {
         sql += `,
           (SELECT COUNT(*) FROM faculty_publications WHERE faculty_id = f.F_id) as publication_count`;
+      } else if (hasBookChapters) {
+        sql += `,
+          (SELECT COUNT(*) FROM bookschapter WHERE user_id = f.F_id AND STATUS = 'approved') as publication_count`;
       } else {
         sql += `,
           0 as publication_count`;
       }
     } catch (error) {
-      console.error("Error checking faculty_publications:", error);
+      console.error("Error checking publications tables:", error);
       sql += `,
         0 as publication_count`;
     }
