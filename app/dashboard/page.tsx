@@ -690,42 +690,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Department Comparison Charts */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <ChartCard
-                title="Faculty Designation Distribution"
-                subtitle="Department-wise breakdown of faculty by designation"
-                className="bg-white shadow-md hover:shadow-lg transition-shadow"
-                useGradient={true}
-                gradientFrom="from-indigo-600"
-                gradientTo="to-blue-600"
-              >
-                <div className="h-80">
-                  {/* In a real implementation, add a stacked bar chart here */}
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-gray-500">
-                      Faculty designation chart will be displayed here
-                    </p>
-                  </div>
-                </div>
-              </ChartCard>
-              <ChartCard
-                title="Research Output Comparison"
-                subtitle="Department-wise research projects and publications"
-                className="bg-white shadow-md hover:shadow-lg transition-shadow"
-                useGradient={true}
-                gradientFrom="from-purple-600"
-                gradientTo="to-fuchsia-600"
-              >
-                <div className="h-80">
-                  {/* In a real implementation, add a grouped bar chart here */}
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-gray-500">
-                      Research output chart will be displayed here
-                    </p>
-                  </div>
-                </div>
-              </ChartCard>
-            </div>
+                        
           </div>
         )}
       </div>
