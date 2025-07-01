@@ -203,8 +203,12 @@ export async function POST(request: NextRequest) {
 
     if (userFacultyResponse.ok) {
       const userFacultyData = await userFacultyResponse.json();
-      if (userFacultyData.success && userFacultyData.faculty) {
-        facultyId = userFacultyData.faculty.F_id;
+      console.log(
+        "Faculty response structure:",
+        JSON.stringify(userFacultyData, null, 2)
+      );
+      if (userFacultyData.success && userFacultyData.data) {
+        facultyId = userFacultyData.data.F_id;
       }
     }
 
@@ -248,10 +252,10 @@ export async function POST(request: NextRequest) {
         data.type,
         data.role || "Attendee",
         new Date(data.start_date),
-        data.end_date ? new Date(data.end_date) : null
+        data.end_date ? new Date(data.end_date) : null,
       ]
     );
-    
+
     // Update workshops count in faculty information
     try {
       // First, try to increment the workshops_attended count directly in the faculty table
@@ -268,17 +272,17 @@ export async function POST(request: NextRequest) {
       // If above fails, try implementing a workaround by fetching current count
       try {
         // First get the current count of workshops from faculty_workshops table
-        const workshopCountResult = await query(
+        const workshopCountResult = (await query(
           `
           SELECT COUNT(*) as count 
           FROM faculty_workshops
           WHERE faculty_id = ?
           `,
           [facultyId]
-        ) as RowDataPacket[];
-        
+        )) as RowDataPacket[];
+
         const workshopCount = workshopCountResult[0]?.count || 1;
-        
+
         // Then update the workshops_attended field with the actual count
         await query(
           `
@@ -297,14 +301,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Workshop added successfully",
-      data: { id: (result as any).insertId }
+      data: { id: (result as any).insertId },
     });
   } catch (error) {
     console.error("Error in workshop creation:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        message: error instanceof Error ? error.message : "Failed to add workshop" 
+      {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to add workshop",
       },
       { status: 500 }
     );
