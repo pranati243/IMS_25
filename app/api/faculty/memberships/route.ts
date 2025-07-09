@@ -3,6 +3,14 @@ import { query } from "@/app/lib/db";
 
 export async function GET(request: NextRequest) {
   try {
+    // Aggregate by organization if requested
+    if (request.nextUrl.searchParams.get("aggregate") === "organization") {
+      // Group by organization and count
+      const orgCounts = await query(
+        `SELECT organization, COUNT(*) as count FROM faculty_memberships GROUP BY organization ORDER BY count DESC`
+      );
+      return NextResponse.json({ success: true, data: orgCounts });
+    }
     // Get user info from auth system
     const authResponse = await fetch(`${request.nextUrl.origin}/api/auth/me`, {
       headers: {

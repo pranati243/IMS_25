@@ -86,6 +86,7 @@ export default function DashboardPage() {
     filename?: string;
     reportType?: string;
   }>({});
+  const [orgCounts, setOrgCounts] = useState<{ organization: string; count: number }[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,6 +103,16 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "nba") {
+      fetch("/api/faculty/memberships?aggregate=organization")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) setOrgCounts(data.data);
+        });
+    }
+  }, [activeTab]);
 
   // Extract the needed data
   const {
@@ -385,6 +396,8 @@ export default function DashboardPage() {
   //     </div>
   //   );
   // }
+
+  const groupedOrgCounts = groupOrgCountsByCategory(orgCounts);
 
   return (
     <MainLayout>
@@ -690,7 +703,29 @@ export default function DashboardPage() {
             </div>
 
             {/* Department Comparison Charts */}
-                        
+
+            {/* Professional Memberships Organization Chart */}
+            <ChartCard
+              title="Professional Membership Organizations (All Faculty)"
+              className="bg-white shadow-md hover:shadow-lg transition-shadow"
+              useGradient={true}
+              gradientFrom="from-green-600"
+              gradientTo="to-blue-600"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {(["National", "International", "Others"] as const).map((cat) => (
+                  <div key={cat}>
+                    <h4 className="font-semibold text-center mb-2">{cat}</h4>
+                    <DepartmentBarChart
+                      data={groupedOrgCounts[cat].map((o: { name: string; count: number }) => ({ department: o.name, count: o.count }))}
+                      dataKey="count"
+                      barColor={cat === "National" ? "#059669" : cat === "International" ? "#2563eb" : "#a21caf"}
+                      height={300}
+                    />
+                  </div>
+                ))}
+              </div>
+            </ChartCard>
           </div>
         )}
       </div>
@@ -867,4 +902,56 @@ async function fetchDashboardData() {
       departmentDetails: [],
     };
   }
+}
+
+// Copy the ORGANIZATIONS constant from the form for grouping
+const ORGANIZATIONS: Record<string, { value: string; label: string }[]> = {
+  National: [
+    { value: "ISTE", label: "ISTE – Indian Society for Technical Education" },
+    { value: "IEI", label: "IEI – Institution of Engineers (India)" },
+    { value: "IETE", label: "IETE – Institution of Electronics and Telecommunication Engineers" },
+    { value: "CSI", label: "CSI – Computer Society of India" },
+    { value: "ISME", label: "ISME – Indian Society for Mechanical Engineers" },
+    { value: "IET India", label: "IET India – Institution of Engineering and Technology (India Chapter)" },
+    { value: "IEEE India Council", label: "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)" },
+    { value: "INAE", label: "INAE – Indian National Academy of Engineering" },
+    { value: "ACM India", label: "ACM India – Association for Computing Machinery (India Chapter)" },
+    { value: "SAEINDIA", label: "SAEINDIA – Society of Automotive Engineers India" },
+    { value: "ISTD", label: "ISTD – Indian Society for Training and Development" },
+    { value: "NAAC/NBA Panel Expert", label: "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation" },
+  ],
+  International: [
+    { value: "IEEE", label: "IEEE – Institute of Electrical and Electronics Engineers" },
+    { value: "ACM", label: "ACM – Association for Computing Machinery" },
+    { value: "ASME", label: "ASME – American Society of Mechanical Engineers" },
+    { value: "ASCE", label: "ASCE – American Society of Civil Engineers" },
+    { value: "SAE International", label: "SAE International – Society of Automotive Engineers (International)" },
+    { value: "IFAC", label: "IFAC – International Federation of Automatic Control" },
+    { value: "INFORMS", label: "INFORMS – Institute for Operations Research and the Management Sciences" },
+    { value: "AAAI", label: "AAAI – Association for the Advancement of Artificial Intelligence" },
+    { value: "IAENG", label: "IAENG – International Association of Engineers" },
+  ],
+};
+
+// Helper to group orgCounts by category
+function groupOrgCountsByCategory(orgCounts: { organization: string; count: number }[]) {
+  const result: Record<string, { name: string; count: number }[]> = {
+    National: [],
+    International: [],
+    Others: [],
+  };
+  const nationalSet = new Set(ORGANIZATIONS.National.map((o) => o.value));
+  const internationalSet = new Set(ORGANIZATIONS.International.map((o) => o.value));
+  for (const org of orgCounts) {
+    if (nationalSet.has(org.organization)) {
+      const label = ORGANIZATIONS.National.find((o) => o.value === org.organization)?.label || org.organization;
+      result.National.push({ name: label, count: org.count });
+    } else if (internationalSet.has(org.organization)) {
+      const label = ORGANIZATIONS.International.find((o) => o.value === org.organization)?.label || org.organization;
+      result.International.push({ name: label, count: org.count });
+    } else {
+      result.Others.push({ name: org.organization, count: org.count });
+    }
+  }
+  return result;
 }
