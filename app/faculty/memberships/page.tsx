@@ -26,6 +26,8 @@ interface Membership {
   F_ID: string; // This is actually faculty_id
   organization: string;
   Membership_Type: string; // This is actually membership_type
+  Membership_ID: string; // new
+  certificate_url: string; // new
   Start_Date: string; // This is actually start_date
   End_Date?: string; // This is actually end_date
   description?: string;
@@ -33,7 +35,13 @@ interface Membership {
 
 interface MembershipFormData {
   organization: string;
+  organizationCategory: string; // new
+  organizationOther?: string; // new
   Membership_Type: string;
+  Membership_Type_Other?: string; // new
+  Membership_ID: string;
+  certificateFile: File | null;
+  certificate_url?: string;
   Start_Date: string;
   End_Date?: string;
   description?: string;
@@ -52,8 +60,14 @@ export default function FacultyMembershipsPage() {
     useState<Membership | null>(null);
   const [formData, setFormData] = useState<MembershipFormData>({
     organization: "",
+    organizationCategory: "National",
+    organizationOther: "",
     Membership_Type: "",
+    Membership_Type_Other: "",
+    Membership_ID: "",
+    certificateFile: null,
     Start_Date: new Date().toISOString().split("T")[0],
+    End_Date: "",
     description: ""
   });
 
@@ -91,68 +105,84 @@ export default function FacultyMembershipsPage() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    const { name, value, type, files } = e.target as any;
+    if (type === "file") {
+      setFormData((prev) => ({ ...prev, certificateFile: files[0] }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (
       !formData.organization ||
       !formData.Membership_Type ||
+      !formData.Membership_ID ||
+      !formData.certificateFile ||
       !formData.Start_Date
     ) {
-      toast.error("Please fill in all required fields");
+      toast.error("Please fill in all required fields, including Membership ID and Certificate");
       return;
     }
-
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-
+      // 1. Upload certificate file
+      const certForm = new FormData();
+      certForm.append("file", formData.certificateFile);
+      // TODO: Replace with your actual upload endpoint
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: certForm,
+      });
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) {
+        throw new Error("Certificate upload failed");
+      }
+      // 2. Submit membership data
       const payload = {
-        organization: formData.organization,
-        Membership_Type: formData.Membership_Type,
+        organization: formData.organization === "Others" || formData.organizationCategory === "Others"
+          ? formData.organizationOther
+          : formData.organization,
+        organizationCategory: formData.organizationCategory,
+        Membership_Type: formData.Membership_Type === "Others"
+          ? formData.Membership_Type_Other
+          : formData.Membership_Type,
+        Membership_ID: formData.Membership_ID,
+        certificate_url: uploadData.url,
         Start_Date: formData.Start_Date,
         End_Date: formData.End_Date || null,
         description: formData.description || "Faculty membership"
       };
-
       const response = await fetch("/api/faculty/memberships", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const data = await response.json();
-
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Failed to add membership");
       }
-
       toast.success("Membership added successfully");
       setAddDialogOpen(false);
       setFormData({
         organization: "",
+        organizationCategory: "National",
+        organizationOther: "",
         Membership_Type: "",
+        Membership_Type_Other: "",
+        Membership_ID: "",
+        certificateFile: null,
         Start_Date: new Date().toISOString().split("T")[0],
+        End_Date: "",
         description: ""
       });
-
-      // Refresh memberships list
       await fetchMemberships();
     } catch (err) {
       console.error("Error adding membership:", err);
-      toast.error(
-        err instanceof Error ? err.message : "Failed to add membership"
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to add membership");
     } finally {
       setIsSubmitting(false);
     }
@@ -251,7 +281,12 @@ export default function FacultyMembershipsPage() {
     setSelectedMembership(membership);
     setFormData({
       organization: membership.organization,
+      organizationCategory: "National", // or infer if you have the info
+      organizationOther: "",
       Membership_Type: membership.Membership_Type,
+      Membership_Type_Other: "",
+      Membership_ID: membership.Membership_ID || "",
+      certificateFile: null,
       Start_Date: membership.Start_Date,
       End_Date: membership.End_Date || "",
       description: membership.description || ""
@@ -278,6 +313,36 @@ export default function FacultyMembershipsPage() {
     });
   };
 
+  const ORGANIZATION_CATEGORIES = ["National", "International", "Others"];
+  const ORGANIZATIONS: Record<string, { value: string; label: string }[]> = {
+    National: [
+      { value: "ISTE", label: "ISTE – Indian Society for Technical Education" },
+      { value: "IEI", label: "IEI – Institution of Engineers (India)" },
+      { value: "IETE", label: "IETE – Institution of Electronics and Telecommunication Engineers" },
+      { value: "CSI", label: "CSI – Computer Society of India" },
+      { value: "ISME", label: "ISME – Indian Society for Mechanical Engineers" },
+      { value: "IET India", label: "IET India – Institution of Engineering and Technology (India Chapter)" },
+      { value: "IEEE India Council", label: "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)" },
+      { value: "INAE", label: "INAE – Indian National Academy of Engineering" },
+      { value: "ACM India", label: "ACM India – Association for Computing Machinery (India Chapter)" },
+      { value: "SAEINDIA", label: "SAEINDIA – Society of Automotive Engineers India" },
+      { value: "ISTD", label: "ISTD – Indian Society for Training and Development" },
+      { value: "NAAC/NBA Panel Expert", label: "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation" },
+    ],
+    International: [
+      { value: "IEEE", label: "IEEE – Institute of Electrical and Electronics Engineers" },
+      { value: "ACM", label: "ACM – Association for Computing Machinery" },
+      { value: "ASME", label: "ASME – American Society of Mechanical Engineers" },
+      { value: "ASCE", label: "ASCE – American Society of Civil Engineers" },
+      { value: "SAE International", label: "SAE International – Society of Automotive Engineers (International)" },
+      { value: "IFAC", label: "IFAC – International Federation of Automatic Control" },
+      { value: "INFORMS", label: "INFORMS – Institute for Operations Research and the Management Sciences" },
+      { value: "AAAI", label: "AAAI – Association for the Advancement of Artificial Intelligence" },
+      { value: "IAENG", label: "IAENG – International Association of Engineers" },
+    ],
+  };
+  const MEMBERSHIP_TYPES = ["Senior Member", "Professional Member", "Fellow", "Others"];
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -296,8 +361,14 @@ export default function FacultyMembershipsPage() {
             onClick={() => {
               setFormData({
                 organization: "",
+                organizationCategory: "National",
+                organizationOther: "",
                 Membership_Type: "",
+                Membership_Type_Other: "",
+                Membership_ID: "",
+                certificateFile: null,
                 Start_Date: new Date().toISOString().split("T")[0],
+                End_Date: "",
                 description: ""
               });
               setAddDialogOpen(true);
@@ -378,30 +449,90 @@ export default function FacultyMembershipsPage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="organization">
-              Organization Name <span className="text-red-500">*</span>
+            <Label htmlFor="organizationCategory">
+              Organisation Category <span className="text-red-500">*</span>
             </Label>
-            <Input
-              id="organization"
-              name="organization"
-              placeholder="Enter organization or society name"
-              value={formData.organization}
+            <select
+              id="organizationCategory"
+              name="organizationCategory"
+              value={formData.organizationCategory}
               onChange={handleInputChange}
               required
-            />
+              className="w-full border rounded px-2 py-1"
+            >
+              {ORGANIZATION_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            {formData.organizationCategory === "Others" && (
+              <Input
+                id="organizationOther"
+                name="organizationOther"
+                placeholder="Specify other category"
+                value={formData.organizationOther}
+                onChange={handleInputChange}
+                required
+              />
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="organization">
+              Organisation Name <span className="text-red-500">*</span>
+            </Label>
+            {formData.organizationCategory !== "Others" ? (
+              <select
+                id="organization"
+                name="organization"
+                value={formData.organization}
+                onChange={handleInputChange}
+                required
+                className="w-full border rounded px-2 py-1"
+              >
+                <option value="">Select organisation</option>
+                {ORGANIZATIONS[formData.organizationCategory]?.map((org: { value: string; label: string }) => (
+                  <option key={org.value} value={org.value}>{org.label}</option>
+                ))}
+                <option value="Others">Others (Specify)</option>
+              </select>
+            ) : null}
+            {(formData.organizationCategory === "Others" || formData.organization === "Others") && (
+              <Input
+                id="organizationOther"
+                name="organizationOther"
+                placeholder="Specify other organisation"
+                value={formData.organizationOther}
+                onChange={handleInputChange}
+                required
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="Membership_Type">
               Membership Type <span className="text-red-500">*</span>
             </Label>
-            <Input
+            <select
               id="Membership_Type"
               name="Membership_Type"
-              placeholder="E.g., Lifetime, Annual, Fellow"
               value={formData.Membership_Type}
               onChange={handleInputChange}
               required
-            />
+              className="w-full border rounded px-2 py-1"
+            >
+              <option value="">Select type</option>
+              {MEMBERSHIP_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            {formData.Membership_Type === "Others" && (
+              <Input
+                id="Membership_Type_Other"
+                name="Membership_Type_Other"
+                placeholder="Specify other type"
+                value={formData.Membership_Type_Other}
+                onChange={handleInputChange}
+                required
+              />
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
@@ -440,6 +571,32 @@ export default function FacultyMembershipsPage() {
                 Leave empty for lifetime/current memberships
               </p>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="Membership_ID">
+              Membership ID <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="Membership_ID"
+              name="Membership_ID"
+              placeholder="Enter membership ID"
+              value={formData.Membership_ID}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="certificateFile">
+              Membership Certificate <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="certificateFile"
+              name="certificateFile"
+              type="file"
+              accept="application/pdf,image/*"
+              onChange={handleInputChange}
+              required
+            />
           </div>
         </div>
       </DialogForm>
@@ -509,6 +666,21 @@ export default function FacultyMembershipsPage() {
                     : "Present / Lifetime"}
                 </p>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Membership ID</Label>
+              <p className="text-sm">{selectedMembership.Membership_ID}</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Certificate</Label>
+              <a
+                href={selectedMembership.certificate_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                View Certificate
+              </a>
             </div>
           </div>
         )}

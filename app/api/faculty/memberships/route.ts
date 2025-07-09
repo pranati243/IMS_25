@@ -85,7 +85,8 @@ export async function GET(request: NextRequest) {
           faculty_id as F_ID,
           organization,
           membership_type as Membership_Type,
-          '' as Membership_ID,
+          membership_identifier as Membership_ID,
+          certificate_url,
           start_date as Start_Date,
           end_date as End_Date,
           description
@@ -184,10 +185,11 @@ export async function POST(request: NextRequest) {
     const {
       organization,
       Membership_Type,
-      Membership_ID,
+      Membership_ID, // new, required
       Start_Date,
       End_Date,
       F_ID,
+      certificate_url, // new, required
       description = "Faculty membership"
     } = await request.json();
 
@@ -202,12 +204,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!organization || !Membership_Type || !Start_Date) {
+    if (!organization || !Membership_Type || !Membership_ID || !certificate_url || !Start_Date) {
       return NextResponse.json(
         {
           success: false,
           message:
-            "Organization name, membership type, and start date are required",
+            "Organization name, membership type, membership ID, certificate, and start date are required",
         },
         { status: 400 }
       );
@@ -226,6 +228,8 @@ export async function POST(request: NextRequest) {
           faculty_id bigint(20) NOT NULL,
           organization varchar(255) NOT NULL,
           membership_type varchar(100) NOT NULL,
+          membership_identifier varchar(100) NOT NULL,
+          certificate_url varchar(255) NOT NULL,
           start_date date NOT NULL,
           end_date date DEFAULT NULL,
           description text DEFAULT NULL,
@@ -239,12 +243,14 @@ export async function POST(request: NextRequest) {
     // Insert the membership
     const result = await query(
       `INSERT INTO faculty_memberships 
-        (faculty_id, organization, membership_type, start_date, end_date, description) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        (faculty_id, organization, membership_type, membership_identifier, certificate_url, start_date, end_date, description) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         membershipFacultyId,
         organization,
         Membership_Type,
+        Membership_ID,
+        certificate_url,
         Start_Date,
         End_Date || null,
         description
@@ -259,6 +265,8 @@ export async function POST(request: NextRequest) {
         faculty_id: membershipFacultyId,
         organization,
         membership_type: Membership_Type,
+        membership_identifier: Membership_ID,
+        certificate_url,
         start_date: Start_Date,
         end_date: End_Date,
         description
