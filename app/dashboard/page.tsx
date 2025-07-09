@@ -398,6 +398,8 @@ export default function DashboardPage() {
   // }
 
   const groupedOrgCounts = groupOrgCountsByCategory(orgCounts);
+  const nationalChartData = getOrgChartData(orgCounts, 'National');
+  const internationalChartData = getOrgChartData(orgCounts, 'International');
 
   return (
     <MainLayout>
@@ -702,30 +704,37 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Department Comparison Charts */}
-
-            {/* Professional Memberships Organization Chart */}
-            <ChartCard
-              title="Professional Membership Organizations (All Faculty)"
-              className="bg-white shadow-md hover:shadow-lg transition-shadow"
-              useGradient={true}
-              gradientFrom="from-green-600"
-              gradientTo="to-blue-600"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(["National", "International", "Others"] as const).map((cat) => (
-                  <div key={cat}>
-                    <h4 className="font-semibold text-center mb-2">{cat}</h4>
-                    <DepartmentBarChart
-                      data={groupedOrgCounts[cat].map((o: { name: string; count: number }) => ({ department: o.name, count: o.count }))}
-                      dataKey="count"
-                      barColor={cat === "National" ? "#059669" : cat === "International" ? "#2563eb" : "#a21caf"}
-                      height={300}
-                    />
-                  </div>
-                ))}
-              </div>
-            </ChartCard>
+            {/* Professional Memberships Organization Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <ChartCard
+                title="National Professional Memberships"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-green-600"
+                gradientTo="to-blue-600"
+              >
+                <DepartmentBarChart
+                  data={nationalChartData}
+                  dataKey="count"
+                  barColor="#059669"
+                  height={350}
+                />
+              </ChartCard>
+              <ChartCard
+                title="International Professional Memberships"
+                className="bg-white shadow-md hover:shadow-lg transition-shadow"
+                useGradient={true}
+                gradientFrom="from-blue-600"
+                gradientTo="to-purple-600"
+              >
+                <DepartmentBarChart
+                  data={internationalChartData}
+                  dataKey="count"
+                  barColor="#2563eb"
+                  height={350}
+                />
+              </ChartCard>
+            </div>
           </div>
         )}
       </div>
@@ -954,4 +963,29 @@ function groupOrgCountsByCategory(orgCounts: { organization: string; count: numb
     }
   }
   return result;
+}
+
+// Helper to group orgCounts for each category, with an Others bar
+function getOrgChartData(orgCounts: { organization: string; count: number }[], category: 'National' | 'International') {
+  const orgList = ORGANIZATIONS[category].map((o) => o.value);
+  const orgLabelMap = Object.fromEntries(ORGANIZATIONS[category].map((o) => [o.value, o.label]));
+  const data: { department: string; count: number }[] = [];
+  let othersCount = 0;
+  for (const org of orgCounts) {
+    if (orgList.includes(org.organization)) {
+      data.push({ department: orgLabelMap[org.organization] || org.organization, count: org.count });
+    } else {
+      othersCount += org.count;
+    }
+  }
+  if (othersCount > 0) {
+    data.push({ department: 'Others', count: othersCount });
+  }
+  // Ensure all official orgs are present (even if count is 0)
+  for (const org of ORGANIZATIONS[category]) {
+    if (!data.find((d) => d.department === org.label)) {
+      data.push({ department: org.label, count: 0 });
+    }
+  }
+  return data;
 }

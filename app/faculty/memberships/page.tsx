@@ -447,7 +447,7 @@ export default function FacultyMembershipsPage() {
         isSubmitting={isSubmitting}
         submitLabel="Add Membership"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
           <div className="space-y-2">
             <Label htmlFor="organizationCategory">
               Organisation Category <span className="text-red-500">*</span>
