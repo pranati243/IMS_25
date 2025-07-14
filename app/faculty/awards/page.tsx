@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MainLayout from "@/app/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
 import { DialogForm } from "@/app/components/ui/dialog-form";
 import { Plus, Award, Trash, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/app/providers/auth-provider";
 
 interface FacultyAward {
   award_id: number;
@@ -29,6 +30,7 @@ interface FacultyAward {
   award_description: string;
   date: string;
   category?: string;
+  certificate?: string; // Added for certificate URL
 }
 
 interface AwardFormData {
@@ -40,8 +42,9 @@ interface AwardFormData {
 }
 
 export default function FacultyAwardsPage() {
+  const { user, loading } = useAuth();
   const [awards, setAwards] = useState<FacultyAward[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [awardsLoading, setAwardsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -57,14 +60,24 @@ export default function FacultyAwardsPage() {
     category: "",
   });
 
+  const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    fetchAwards();
-  }, []);
+    if (!loading && user?.username) {
+      fetchAwards();
+    }
+  }, [loading, user]);
 
   const fetchAwards = async () => {
     try {
-      setLoading(true);
-      const response = await fetch("/api/faculty/awards");
+      setAwardsLoading(true);
+      if (!user?.username) {
+        throw new Error("User not authenticated. Please log in again.");
+      }
+      const response = await fetch(
+        `/api/faculty/awards?facultyId=${user.username}`
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch awards");
@@ -82,7 +95,7 @@ export default function FacultyAwardsPage() {
       console.error("Error fetching awards:", err);
       setError(err instanceof Error ? err.message : "Failed to load awards");
     } finally {
-      setLoading(false);
+      setAwardsLoading(false);
     }
   };
 
@@ -96,9 +109,23 @@ export default function FacultyAwardsPage() {
     }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && file.type !== "application/pdf") {
+      toast.error("Only PDF files are allowed for certificates.");
+      setCertificateFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setCertificateFile(file);
+  };
+
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!certificateFile) {
+      toast.error("Certificate (PDF) is required");
+      return;
+    }
     if (
       !formData.award_name ||
       !formData.organization ||
@@ -108,23 +135,24 @@ export default function FacultyAwardsPage() {
       toast.error("Please fill in all required fields");
       return;
     }
-
+    if (!user?.username) {
+      toast.error("User not authenticated. Please log in again.");
+      return;
+    }
     try {
       setIsSubmitting(true);
-
+      const form = new FormData();
+      form.append("award_name", formData.award_name);
+      form.append("awarding_organization", formData.organization);
+      form.append("award_description", formData.award_description);
+      form.append("award_date", formData.date);
+      form.append("category", formData.category || "");
+      form.append("certificate", certificateFile);
+      form.append("facultyId", user.username);
       const response = await fetch("/api/faculty/awards", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          award_name: formData.award_name,
-          awarding_organization: formData.organization,
-          award_description: formData.award_description,
-          award_date: formData.date,
-          category: formData.category,
-})});
-
+        body: form,
+      });
 
       const data = await response.json();
 
@@ -142,7 +170,8 @@ export default function FacultyAwardsPage() {
         category: "",
       });
 
-      // Refresh awards list
+      setCertificateFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       await fetchAwards();
     } catch (err) {
       console.error("Error adding award:", err);
@@ -170,21 +199,42 @@ export default function FacultyAwardsPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(`/api/faculty/awards/${selectedAward.award_id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          award_name: formData.award_name,
-          awarding_organization: formData.organization,
-          award_description: formData.award_description,
-          award_date: formData.date,
-          category: formData.category,
-        })
+      let response;
+      // If a new certificate file is chosen, use FormData and multipart/form-data
+      if (certificateFile) {
+        const form = new FormData();
+        form.append("award_name", formData.award_name);
+        form.append("awarding_organization", formData.organization);
+        form.append("award_description", formData.award_description);
+        form.append("award_date", formData.date);
+        form.append("category", formData.category || "");
+        form.append("certificate", certificateFile);
+        response = await fetch(
+          `/api/faculty/awards?awardId=${selectedAward.award_id}`,
+          {
+            method: "PUT",
+            body: form,
+          }
+        );
+      } else {
+        // Otherwise, send JSON as before
+        response = await fetch(
+          `/api/faculty/awards?awardId=${selectedAward.award_id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              award_name: formData.award_name,
+              awarding_organization: formData.organization,
+              award_description: formData.award_description,
+              award_date: formData.date,
+              category: formData.category,
+            }),
+          }
+        );
       }
-);
-
 
       const data = await response.json();
 
@@ -212,9 +262,12 @@ export default function FacultyAwardsPage() {
     if (!selectedAward) return;
 
     try {
-      const response = await fetch(`/api/faculty/awards/${selectedAward.award_id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/faculty/awards?awardId=${selectedAward.award_id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const data = await response.json();
 
@@ -290,6 +343,8 @@ export default function FacultyAwardsPage() {
                 date: new Date().toISOString().split("T")[0],
                 category: "",
               });
+              setCertificateFile(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
               setAddDialogOpen(true);
             }}
           >
@@ -307,7 +362,7 @@ export default function FacultyAwardsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {awardsLoading ? (
               <p>Loading awards...</p>
             ) : error ? (
               <div className="bg-red-50 text-red-500 p-4 rounded">
@@ -320,7 +375,7 @@ export default function FacultyAwardsPage() {
             ) : (
               <div className="space-y-4">
                 {awards.map((award) => {
-  /* console.log(
+                  /* console.log(
     award.category,
     awards.length,
     award.award_name,
@@ -331,41 +386,43 @@ export default function FacultyAwardsPage() {
     award.organization
   );*/
 
-  return (
-    <div
-      key={award.award_id}
-      className="p-4 border rounded-lg hover:bg-gray-50"
-    >
-      <div className="flex justify-between">
-        <h3 className="font-medium">{award.award_name}</h3>
-        {award.category && (
-          <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">
-            {award.category}
-          </span>
-        )}
-      </div>
-      <p className="text-sm font-medium text-gray-600 mt-1">
-        {award.organization}
-      </p>
-      <p className="text-sm text-gray-600 mt-1">
-        {award.award_description && award.award_description.length > 150
-          ? `${award.award_description.substring(0, 150)}...`
-          : award.award_description}
-      </p>
-      <div className="flex justify-between mt-3">
-        <span className="text-xs text-gray-500">{formatDate(award.date)}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleViewDetails(award)}
-        >
-          View Details
-        </Button>
-      </div>
-    </div>
-  );
-})}
-
+                  return (
+                    <div
+                      key={award.award_id}
+                      className="p-4 border rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="flex justify-between">
+                        <h3 className="font-medium">{award.award_name}</h3>
+                        {award.category && (
+                          <span className="text-sm bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                            {award.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-gray-600 mt-1">
+                        {award.organization}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {award.award_description &&
+                        award.award_description.length > 150
+                          ? `${award.award_description.substring(0, 150)}...`
+                          : award.award_description}
+                      </p>
+                      <div className="flex justify-between mt-3">
+                        <span className="text-xs text-gray-500">
+                          {formatDate(award.date)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(award)}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -448,6 +505,37 @@ export default function FacultyAwardsPage() {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="certificate">
+              Certificate (PDF) <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md border border-gray-300 hover:bg-gray-300 transition text-sm font-medium"
+                onClick={() =>
+                  fileInputRef.current && fileInputRef.current.click()
+                }
+              >
+                Choose PDF
+              </button>
+              <span className="text-gray-700 text-sm">
+                {certificateFile ? certificateFile.name : "No file chosen"}
+              </span>
+            </div>
+            <input
+              id="certificate"
+              type="file"
+              accept="application/pdf"
+              required
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              className="hidden"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Only PDF files are allowed. Max size: 30MB.
+            </p>
+          </div>
         </div>
       </DialogForm>
 
@@ -460,8 +548,6 @@ export default function FacultyAwardsPage() {
           e.preventDefault();
           setViewDialogOpen(false);
         }}
-  
-        
       >
         {selectedAward && (
           <div className="space-y-4">
@@ -515,6 +601,18 @@ export default function FacultyAwardsPage() {
                 )}
               </div>
             </div>
+            {selectedAward.certificate && (
+              <div className="mt-4">
+                <a
+                  href={selectedAward.certificate}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-sm font-medium hover:bg-blue-200 transition"
+                >
+                  View Certificate
+                </a>
+              </div>
+            )}
           </div>
         )}
       </DialogForm>
@@ -594,6 +692,37 @@ export default function FacultyAwardsPage() {
                 onChange={handleInputChange}
               />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="certificate">
+              Certificate (PDF) <span className="text-red-500">*</span>
+            </Label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md border border-gray-300 hover:bg-gray-300 transition text-sm font-medium"
+                onClick={() =>
+                  fileInputRef.current && fileInputRef.current.click()
+                }
+              >
+                Choose PDF
+              </button>
+              <span className="text-gray-700 text-sm">
+                {certificateFile ? certificateFile.name : "No file chosen"}
+              </span>
+            </div>
+            <input
+              id="certificate"
+              type="file"
+              accept="application/pdf"
+              required
+              onChange={handleFileChange}
+              ref={fileInputRef}
+              className="hidden"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Only PDF files are allowed. Max size: 30MB.
+            </p>
           </div>
         </div>
       </DialogForm>

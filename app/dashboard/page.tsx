@@ -21,7 +21,7 @@ import DepartmentBarChart from "@/app/components/dashboard/DepartmentBarChart";
 import { DashboardStats } from "@/app/lib/types";
 import { NavHelper } from "./nav-helper";
 import { useAuth } from "@/app/providers/auth-provider";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EnhancedReportPreview } from "@/app/components/ui/enhanced-report-preview";
 
 interface DepartmentStat {
@@ -86,7 +86,15 @@ export default function DashboardPage() {
     filename?: string;
     reportType?: string;
   }>({});
-  const [orgCounts, setOrgCounts] = useState<{ organization: string; count: number }[]>([]);
+  const [orgCounts, setOrgCounts] = useState<
+    { organization: string; count: number }[]
+  >([]);
+  const [biodataLoading, setBiodataLoading] = useState(false);
+  const [biodataReportData, setBiodataReportData] = useState<{
+    pdfBase64?: string;
+    filename?: string;
+  }>({});
+  const [biodataPreviewOpen, setBiodataPreviewOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -258,6 +266,39 @@ export default function DashboardPage() {
     }
   };
 
+  const handleGenerateBiodata = async () => {
+    if (!user || !user.username) return;
+    try {
+      setBiodataLoading(true);
+      try {
+        await fetch(`/api/faculty/biodata/setup`);
+      } catch (setupError) {
+        console.warn("Setup endpoint error:", setupError);
+      }
+      const response = await fetch(
+        `/api/faculty/biodata?facultyId=${user.username}`
+      );
+      if (!response.ok)
+        throw new Error(`Failed to generate biodata: ${response.status}`);
+      const result = await response.json();
+      if (!result.success)
+        throw new Error(result.message || "Failed to generate biodata");
+      setBiodataReportData({
+        pdfBase64: result.data.pdfBase64,
+        filename: result.data.filename,
+      });
+      setBiodataPreviewOpen(true);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while generating biodata"
+      );
+    } finally {
+      setBiodataLoading(false);
+    }
+  };
+
   // You can create a loading state if needed
   if (loading || authLoading) {
     return (
@@ -398,8 +439,8 @@ export default function DashboardPage() {
   // }
 
   const groupedOrgCounts = groupOrgCountsByCategory(orgCounts);
-  const nationalChartData = getOrgChartData(orgCounts, 'National');
-  const internationalChartData = getOrgChartData(orgCounts, 'International');
+  const nationalChartData = getOrgChartData(orgCounts, "National");
+  const internationalChartData = getOrgChartData(orgCounts, "International");
 
   return (
     <MainLayout>
@@ -414,6 +455,13 @@ export default function DashboardPage() {
           ?.charAt(0)
           .toUpperCase()}${reportData.reportType?.slice(1)} Report`}
         reportType={reportData.reportType}
+      />
+      <EnhancedReportPreview
+        isOpen={biodataPreviewOpen}
+        onClose={() => setBiodataPreviewOpen(false)}
+        pdfBase64={biodataReportData.pdfBase64}
+        filename={biodataReportData.filename}
+        title="Faculty CV/Biodata"
       />
       <div className="space-y-8">
         {/* Page title with report generation options */}
@@ -449,6 +497,18 @@ export default function DashboardPage() {
               <DocumentArrowDownIcon className="h-5 w-5" />
               {generatingReport ? "Generating..." : "Generate Report"}
             </button>
+            {/* Generate CV/Biodata button for faculty only */}
+            {user?.role === "faculty" && (
+              <button
+                onClick={handleGenerateBiodata}
+                disabled={biodataLoading}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors disabled:bg-gray-200"
+                style={{ minWidth: "180px" }}
+              >
+                <DocumentArrowDownIcon className="h-5 w-5" />
+                {biodataLoading ? "Generating..." : "Generate CV/Biodata"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -918,45 +978,96 @@ const ORGANIZATIONS: Record<string, { value: string; label: string }[]> = {
   National: [
     { value: "ISTE", label: "ISTE – Indian Society for Technical Education" },
     { value: "IEI", label: "IEI – Institution of Engineers (India)" },
-    { value: "IETE", label: "IETE – Institution of Electronics and Telecommunication Engineers" },
+    {
+      value: "IETE",
+      label:
+        "IETE – Institution of Electronics and Telecommunication Engineers",
+    },
     { value: "CSI", label: "CSI – Computer Society of India" },
     { value: "ISME", label: "ISME – Indian Society for Mechanical Engineers" },
-    { value: "IET India", label: "IET India – Institution of Engineering and Technology (India Chapter)" },
-    { value: "IEEE India Council", label: "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)" },
+    {
+      value: "IET India",
+      label:
+        "IET India – Institution of Engineering and Technology (India Chapter)",
+    },
+    {
+      value: "IEEE India Council",
+      label:
+        "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)",
+    },
     { value: "INAE", label: "INAE – Indian National Academy of Engineering" },
-    { value: "ACM India", label: "ACM India – Association for Computing Machinery (India Chapter)" },
-    { value: "SAEINDIA", label: "SAEINDIA – Society of Automotive Engineers India" },
-    { value: "ISTD", label: "ISTD – Indian Society for Training and Development" },
-    { value: "NAAC/NBA Panel Expert", label: "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation" },
+    {
+      value: "ACM India",
+      label: "ACM India – Association for Computing Machinery (India Chapter)",
+    },
+    {
+      value: "SAEINDIA",
+      label: "SAEINDIA – Society of Automotive Engineers India",
+    },
+    {
+      value: "ISTD",
+      label: "ISTD – Indian Society for Training and Development",
+    },
+    {
+      value: "NAAC/NBA Panel Expert",
+      label:
+        "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation",
+    },
   ],
   International: [
-    { value: "IEEE", label: "IEEE – Institute of Electrical and Electronics Engineers" },
+    {
+      value: "IEEE",
+      label: "IEEE – Institute of Electrical and Electronics Engineers",
+    },
     { value: "ACM", label: "ACM – Association for Computing Machinery" },
     { value: "ASME", label: "ASME – American Society of Mechanical Engineers" },
     { value: "ASCE", label: "ASCE – American Society of Civil Engineers" },
-    { value: "SAE International", label: "SAE International – Society of Automotive Engineers (International)" },
-    { value: "IFAC", label: "IFAC – International Federation of Automatic Control" },
-    { value: "INFORMS", label: "INFORMS – Institute for Operations Research and the Management Sciences" },
-    { value: "AAAI", label: "AAAI – Association for the Advancement of Artificial Intelligence" },
+    {
+      value: "SAE International",
+      label:
+        "SAE International – Society of Automotive Engineers (International)",
+    },
+    {
+      value: "IFAC",
+      label: "IFAC – International Federation of Automatic Control",
+    },
+    {
+      value: "INFORMS",
+      label:
+        "INFORMS – Institute for Operations Research and the Management Sciences",
+    },
+    {
+      value: "AAAI",
+      label:
+        "AAAI – Association for the Advancement of Artificial Intelligence",
+    },
     { value: "IAENG", label: "IAENG – International Association of Engineers" },
   ],
 };
 
 // Helper to group orgCounts by category
-function groupOrgCountsByCategory(orgCounts: { organization: string; count: number }[]) {
+function groupOrgCountsByCategory(
+  orgCounts: { organization: string; count: number }[]
+) {
   const result: Record<string, { name: string; count: number }[]> = {
     National: [],
     International: [],
     Others: [],
   };
   const nationalSet = new Set(ORGANIZATIONS.National.map((o) => o.value));
-  const internationalSet = new Set(ORGANIZATIONS.International.map((o) => o.value));
+  const internationalSet = new Set(
+    ORGANIZATIONS.International.map((o) => o.value)
+  );
   for (const org of orgCounts) {
     if (nationalSet.has(org.organization)) {
-      const label = ORGANIZATIONS.National.find((o) => o.value === org.organization)?.label || org.organization;
+      const label =
+        ORGANIZATIONS.National.find((o) => o.value === org.organization)
+          ?.label || org.organization;
       result.National.push({ name: label, count: org.count });
     } else if (internationalSet.has(org.organization)) {
-      const label = ORGANIZATIONS.International.find((o) => o.value === org.organization)?.label || org.organization;
+      const label =
+        ORGANIZATIONS.International.find((o) => o.value === org.organization)
+          ?.label || org.organization;
       result.International.push({ name: label, count: org.count });
     } else {
       result.Others.push({ name: org.organization, count: org.count });
@@ -966,20 +1077,28 @@ function groupOrgCountsByCategory(orgCounts: { organization: string; count: numb
 }
 
 // Helper to group orgCounts for each category, with an Others bar
-function getOrgChartData(orgCounts: { organization: string; count: number }[], category: 'National' | 'International') {
+function getOrgChartData(
+  orgCounts: { organization: string; count: number }[],
+  category: "National" | "International"
+) {
   const orgList = ORGANIZATIONS[category].map((o) => o.value);
-  const orgLabelMap = Object.fromEntries(ORGANIZATIONS[category].map((o) => [o.value, o.label]));
+  const orgLabelMap = Object.fromEntries(
+    ORGANIZATIONS[category].map((o) => [o.value, o.label])
+  );
   const data: { department: string; count: number }[] = [];
   let othersCount = 0;
   for (const org of orgCounts) {
     if (orgList.includes(org.organization)) {
-      data.push({ department: orgLabelMap[org.organization] || org.organization, count: org.count });
+      data.push({
+        department: orgLabelMap[org.organization] || org.organization,
+        count: org.count,
+      });
     } else {
       othersCount += org.count;
     }
   }
   if (othersCount > 0) {
-    data.push({ department: 'Others', count: othersCount });
+    data.push({ department: "Others", count: othersCount });
   }
   // Ensure all official orgs are present (even if count is 0)
   for (const org of ORGANIZATIONS[category]) {
