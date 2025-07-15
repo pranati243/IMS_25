@@ -1,8 +1,8 @@
 -- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
--- Host: localhost    Database: ims2025
+-- Host: centerbeam.proxy.rlwy.net    Database: ims2025
 -- ------------------------------------------------------
--- Server version	8.0.41
+-- Server version	9.3.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -67,7 +67,7 @@ CREATE TABLE `bookschapter` (
   `user_id` varchar(255) NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=77 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -95,7 +95,7 @@ CREATE TABLE `branchadmins` (
   `email` varchar(100) NOT NULL,
   `verify_token` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1009 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1009 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -126,7 +126,7 @@ CREATE TABLE `career_guidance` (
   `user_id` varchar(255) NOT NULL,
   `STATUS` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=88 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -164,7 +164,7 @@ CREATE TABLE `certificates` (
   `STATUS` varchar(100) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=118 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=118 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -191,7 +191,7 @@ CREATE TABLE `clubadmin` (
   `email` varchar(255) NOT NULL,
   `verify_token` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -256,7 +256,7 @@ CREATE TABLE `collaborative_activities` (
   `user_id` int NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -289,7 +289,7 @@ CREATE TABLE `competitive_exams` (
   `user_id` int NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=80 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -341,7 +341,7 @@ CREATE TABLE `conference_publications` (
   UNIQUE KEY `id` (`id`),
   KEY `fk_faculty` (`faculty_id`),
   CONSTRAINT `fk_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=199 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=199 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -379,7 +379,7 @@ CREATE TABLE `courses` (
   `user_id` varchar(255) NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3435 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3435 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -407,7 +407,7 @@ CREATE TABLE `credentials` (
   `email` varchar(100) NOT NULL,
   `verify_token` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=185 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=185 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -431,7 +431,7 @@ CREATE TABLE `department` (
   `Department_ID` int NOT NULL AUTO_INCREMENT,
   `Department_Name` varchar(255) NOT NULL,
   PRIMARY KEY (`Department_ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=51 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -473,7 +473,7 @@ CREATE TABLE `department_details` (
   KEY `HOD_ID` (`HOD_ID`),
   CONSTRAINT `department_details_ibfk_1` FOREIGN KEY (`Department_ID`) REFERENCES `department` (`Department_ID`) ON DELETE CASCADE,
   CONSTRAINT `department_details_ibfk_2` FOREIGN KEY (`HOD_ID`) REFERENCES `faculty` (`F_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -498,7 +498,7 @@ CREATE TABLE `faculty` (
   `F_name` varchar(255) NOT NULL,
   `F_dept` text NOT NULL,
   PRIMARY KEY (`F_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=140 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=140 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -530,7 +530,7 @@ CREATE TABLE `faculty_achievements` (
   `user_id` int NOT NULL,
   `STATUS` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -557,12 +557,13 @@ CREATE TABLE `faculty_awards` (
   `awarding_organization` varchar(255) NOT NULL,
   `award_date` date NOT NULL,
   `award_description` text,
+  `category` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`award_id`),
   KEY `faculty_id` (`faculty_id`),
   CONSTRAINT `fk_faculty_awards_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -571,7 +572,7 @@ CREATE TABLE `faculty_awards` (
 
 LOCK TABLES `faculty_awards` WRITE;
 /*!40000 ALTER TABLE `faculty_awards` DISABLE KEYS */;
-INSERT INTO `faculty_awards` VALUES (1,99,'Best Teacher Award 2021','University Excellence Committee','2023-04-15','For innovation in education and learning practices','2025-05-10 13:19:10','2025-05-10 13:19:10'),(2,100,'Best Teacher Award 2021','University Excellence Committee','2023-02-06','For innovation in education and learning practices','2025-05-10 13:19:10','2025-05-10 13:19:10'),(3,111,'Best Teacher Award 2024','Department of Higher Education','2023-05-23','For research excellence and mentoring students','2025-05-10 13:19:10','2025-05-10 13:19:10'),(4,112,'Best Teacher Award 2022','National Education Society','2023-05-14','For research excellence and mentoring students','2025-05-10 13:19:10','2025-05-10 13:19:10'),(5,113,'Best Teacher Award 2025','Department of Higher Education','2024-02-01','For research excellence and mentoring students','2025-05-10 13:19:10','2025-05-10 13:19:10'),(6,114,'Best Teacher Award 2021','Department of Higher Education','2024-02-09','For outstanding contribution to teaching methodology','2025-05-10 13:19:10','2025-05-10 13:19:10'),(7,115,'Best Teacher Award 2022','National Education Society','2025-04-10','For research excellence and mentoring students','2025-05-10 13:19:10','2025-05-10 13:19:10'),(8,116,'Best Teacher Award 2023','Department of Higher Education','2024-02-01','For innovation in education and learning practices','2025-05-10 13:19:10','2025-05-10 13:19:10'),(9,117,'Best Teacher Award 2025','National Education Society','2022-11-02','For research excellence and mentoring students','2025-05-10 13:19:10','2025-05-10 13:19:10'),(10,118,'Best Teacher Award 2025','Department of Higher Education','2025-03-17','For outstanding contribution to teaching methodology','2025-05-10 13:19:10','2025-05-10 13:19:10');
+INSERT INTO `faculty_awards` VALUES (1,99,'Best Teacher Award 2025','University Excellence Committee','2023-03-18','For innovation in education and learning practices',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(2,100,'Best Teacher Award 2024','University Excellence Committee','2023-02-26','For outstanding contribution to teaching methodology',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(3,111,'Best Teacher Award 2025','University Excellence Committee','2023-05-18','For outstanding contribution to teaching methodology',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(4,112,'Best Teacher Award 2024','Department of Higher Education','2025-03-17','For research excellence and mentoring students',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(5,113,'Best Teacher Award 2021','National Education Society','2024-07-07','For outstanding contribution to teaching methodology',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(6,114,'Best Teacher Award 2021','University Excellence Committee','2024-11-11','For research excellence and mentoring students',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(7,115,'Best Teacher Award 2023','University Excellence Committee','2024-06-01','For research excellence and mentoring students',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(8,116,'Best Teacher Award 2021','National Education Society','2025-06-27','For research excellence and mentoring students','Teaching','2025-06-18 12:01:31','2025-06-21 14:52:51'),(9,117,'Best Teacher Award 2023','University Excellence Committee','2023-01-07','For outstanding contribution to teaching methodology',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31'),(10,118,'Best Teacher Award 2022','University Excellence Committee','2024-06-04','For outstanding contribution to teaching methodology',NULL,'2025-06-18 12:01:31','2025-06-18 12:01:31');
 /*!40000 ALTER TABLE `faculty_awards` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -595,7 +596,7 @@ CREATE TABLE `faculty_contributions` (
   PRIMARY KEY (`Contribution_ID`),
   KEY `F_ID` (`F_ID`),
   CONSTRAINT `faculty_contributions_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -604,7 +605,7 @@ CREATE TABLE `faculty_contributions` (
 
 LOCK TABLES `faculty_contributions` WRITE;
 /*!40000 ALTER TABLE `faculty_contributions` DISABLE KEYS */;
-INSERT INTO `faculty_contributions` VALUES (1,116,'Professional Service','Being Professional','2025-05-10',NULL,NULL,NULL,NULL);
+INSERT INTO `faculty_contributions` VALUES (1,116,'Department Service','23d2ed','2025-06-18',NULL,NULL,NULL,NULL),(2,116,'Guest Lecture','guest lecture at VJTI','2025-06-18',NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `faculty_contributions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -646,7 +647,7 @@ CREATE TABLE `faculty_details` (
   UNIQUE KEY `Aadhaar_Number` (`Aadhaar_Number`),
   KEY `F_ID` (`F_ID`),
   CONSTRAINT `faculty_details_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -714,7 +715,7 @@ CREATE TABLE `faculty_memberships` (
   PRIMARY KEY (`membership_id`),
   KEY `faculty_id` (`faculty_id`),
   CONSTRAINT `fk_faculty_memberships_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -723,7 +724,7 @@ CREATE TABLE `faculty_memberships` (
 
 LOCK TABLES `faculty_memberships` WRITE;
 /*!40000 ALTER TABLE `faculty_memberships` DISABLE KEYS */;
-INSERT INTO `faculty_memberships` VALUES (1,99,'ISTE','Senior Member','2024-11-19','2026-06-09','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(2,100,'Institution of Engineers','Professional Member','2025-04-09','2026-06-15','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(3,111,'ISTE','Professional Member','2020-05-23','2025-06-11','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(4,112,'ISTE','Professional Member','2021-03-30','2026-03-16','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(5,113,'ACM','Professional Member','2025-02-14','2025-11-22','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(6,114,'Institution of Engineers','Professional Member','2023-02-03',NULL,'Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(7,115,'IEEE','Senior Member','2022-10-20',NULL,'Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(8,116,'Institution of Engineers','Senior Member','2021-11-08','2025-07-09','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(9,117,'Computer Society of India','Senior Member','2020-04-26','2025-09-27','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10'),(10,118,'ACM','Professional Member','2024-09-14','2026-07-15','Active member participating in various technical activities','2025-05-10 13:19:10','2025-05-10 13:19:10');
+INSERT INTO `faculty_memberships` VALUES (1,99,'ISTE','Senior Member','2020-06-22','2025-07-16','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(2,100,'ISTE','Fellow','2020-06-22',NULL,'Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(3,111,'IEEE','Senior Member','2021-09-07','2026-05-28','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(4,112,'ACM','Fellow','2024-03-20','2026-08-03','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(5,113,'Institution of Engineers','Senior Member','2025-03-07','2026-02-24','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(6,114,'ISTE','Professional Member','2021-05-13','2026-09-22','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(7,115,'ACM','Fellow','2025-01-31',NULL,'Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(8,116,'Computer Society of India','Senior Members','2025-06-28','2025-06-30','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-21 05:40:12'),(9,117,'IEEE','Senior Member','2021-02-02','2025-10-25','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33'),(10,118,'ISTE','Fellow','2020-09-08','2026-02-20','Active member participating in various technical activities','2025-06-18 12:01:33','2025-06-18 12:01:33');
 /*!40000 ALTER TABLE `faculty_memberships` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -756,7 +757,7 @@ CREATE TABLE `faculty_professional_body` (
   UNIQUE KEY `Unique_ID` (`Unique_ID`),
   KEY `F_ID` (`F_ID`),
   CONSTRAINT `faculty_professional_body_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -792,7 +793,7 @@ CREATE TABLE `faculty_publications` (
   PRIMARY KEY (`id`),
   KEY `faculty_id` (`faculty_id`),
   CONSTRAINT `fk_faculty_publications_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -801,7 +802,7 @@ CREATE TABLE `faculty_publications` (
 
 LOCK TABLES `faculty_publications` WRITE;
 /*!40000 ALTER TABLE `faculty_publications` DISABLE KEYS */;
-INSERT INTO `faculty_publications` VALUES (1,116,'Visual Sentinel: Data Analytics for Missing Subject Identification',NULL,'Cardoz, F., Infenda, L., Cleetus, D., Deshpande, A., More, J.','2023-12-14','conference','2023 IEEE Pune Section International Conference (PuneCon)','10.1109/PuneCon58714.2023.10450061','https://doi.org/10.1109/punecon58714.2023.10450061',1,'2025-05-10 18:20:15','2025-05-10 18:20:15'),(2,116,'Visual Sentinel 2: Data Analytics for Missing Subject Identification','hee hee hee','Cardoz, F., Infenda, L., Cleetus, D., Deshpande, A., More, J.','2023-12-14','conference','2023 IEEE Pune Section International Conference (PuneCon)','10.1109/PuneCon58714.2023.10450061','https://doi.org/10.1109/punecon58714.2023.10450061',1,'2025-05-10 18:34:29','2025-05-10 18:34:29');
+INSERT INTO `faculty_publications` VALUES (1,116,'Some demo title here',NULL,'Dr. Smita Dange, Arjun Varshney','2025-06-18','journal','2023 IEEE Pune Section International Conference (PuneCon)','10.1109/PuneCon58714.2023.10450061','https://doi.org/10.1109/punecon58714.2023.10450061',10,'2025-06-18 05:15:32','2025-06-18 05:15:32'),(3,116,'Scott’s Editing: History, Polyphony, Authority','some abstract here','Mayer, R.','2015-05-01','journal','Modern Philology','10.1086/679716','https://doi.org/10.1086/679716',6,'2025-06-18 11:29:10','2025-06-18 11:29:10');
 /*!40000 ALTER TABLE `faculty_publications` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -820,7 +821,7 @@ CREATE TABLE `faculty_qualifications` (
   `certificate_path` varchar(255) DEFAULT NULL,
   KEY `f_id` (`f_id`),
   CONSTRAINT `faculty_qualifications_ibfk_1` FOREIGN KEY (`f_id`) REFERENCES `faculty` (`F_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -857,7 +858,7 @@ CREATE TABLE `faculty_resource_person` (
   `Faculty_Name` varchar(255) DEFAULT NULL,
   KEY `F_ID` (`F_ID`),
   CONSTRAINT `faculty_resource_person_ibfk_1` FOREIGN KEY (`F_ID`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -867,6 +868,40 @@ CREATE TABLE `faculty_resource_person` (
 LOCK TABLES `faculty_resource_person` WRITE;
 /*!40000 ALTER TABLE `faculty_resource_person` DISABLE KEYS */;
 /*!40000 ALTER TABLE `faculty_resource_person` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `faculty_workshops`
+--
+
+DROP TABLE IF EXISTS `faculty_workshops`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `faculty_workshops` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `faculty_id` bigint NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `description` text,
+  `start_date` date NOT NULL,
+  `end_date` date DEFAULT NULL,
+  `venue` varchar(255) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `role` varchar(50) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `faculty_id` (`faculty_id`),
+  CONSTRAINT `faculty_workshops_ibfk_1` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `faculty_workshops`
+--
+
+LOCK TABLES `faculty_workshops` WRITE;
+/*!40000 ALTER TABLE `faculty_workshops` DISABLE KEYS */;
+/*!40000 ALTER TABLE `faculty_workshops` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -893,7 +928,7 @@ CREATE TABLE `fdp_sttp_attended` (
   `user_id` int NOT NULL,
   `STATUS` varchar(50) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=474 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=474 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -930,7 +965,7 @@ CREATE TABLE `fdp_sttp_organised` (
   `user_id` varchar(255) NOT NULL,
   `STATUS` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=36 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -967,7 +1002,7 @@ CREATE TABLE `financial_support` (
   `STATUS` varchar(255) NOT NULL,
   `user_id` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=103 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=103 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -999,7 +1034,7 @@ CREATE TABLE `higher_studies` (
   `STATUS` varchar(255) NOT NULL,
   `roll_no` int NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=153 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=153 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1095,7 +1130,7 @@ CREATE TABLE `internship_details` (
   `user_id` int NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5238 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5238 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1142,7 +1177,7 @@ CREATE TABLE `journal_publications` (
   PRIMARY KEY (`id`),
   KEY `fk_faculty_journal` (`faculty_id`),
   CONSTRAINT `fk_faculty_journal` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1211,7 +1246,7 @@ CREATE TABLE `outreachprogram` (
   `STATUS` varchar(110) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=177 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=177 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1284,7 +1319,7 @@ CREATE TABLE `password_reset_tokens` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1344,7 +1379,7 @@ CREATE TABLE `permissions` (
   `description` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `name_UNIQUE` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1366,16 +1401,16 @@ DROP TABLE IF EXISTS `placed_student_data`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `placed_student_data` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `year` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `type_activity` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `branch` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `others` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `no_of_participants` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `names_of_participants` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `year` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `type_activity` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `branch` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `title` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `others` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `no_of_participants` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `names_of_participants` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
-  `pdffile1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `pdffile1` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `user_id` int NOT NULL,
   `STATUS` varchar(110) NOT NULL,
   `source` varchar(255) NOT NULL,
@@ -1436,7 +1471,7 @@ CREATE TABLE `placementcell` (
   `email` varchar(100) NOT NULL,
   `verify_token` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1507,7 +1542,7 @@ CREATE TABLE `research_project_consultancies` (
   `STATUS` varchar(255) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1516,7 +1551,7 @@ CREATE TABLE `research_project_consultancies` (
 
 LOCK TABLES `research_project_consultancies` WRITE;
 /*!40000 ALTER TABLE `research_project_consultancies` DISABLE KEYS */;
-INSERT INTO `research_project_consultancies` VALUES (9,' 2023-24 ',' Research Consultancy ','EXTC',' Assessment of Bone density using optical sensors ','',' EXTC ',' 2022 ',' 0 ',' 1 year',' Trish I R&D Private Limited, a startup at IIT Mandi ','-',' Non-Government ','Trish-I Project Proposal_Near Infrared.pdf',28,'approved',''),(10,'2023-24','Research Project','Humanities','Development of eco friendly membrane filter for the adsorption of  dyes in waste water','Dr. Snehal Kargirwar, Dr S. M. Khot, Ms. Jweshwari Tupe','Basic Sciences and Humanities Department','2023','175000','01','Institute Level Research Funding Scheme, FCRIT, Vashi','','Non-Government','ILRF Letter.pdf',140,'approved',''),(11,'2023-24','Research Project','IT','Institute Management System (IMS)','Dr. Archana Shirke','IT','2023','150000','2','FCRIT','','Non-Government','IMS_Report SH2023.pdf',48,'approved',''),(12,'2023-24','Research Project','IT','Fault Diagnosis of Gearbox and Roller Element Bearing Using Dimension Analysis and Support Vector Ma','Dr. Vishal Salunke, Dr. S.M.Khot, Dr.Mini Rajeev,Dr.SHubhangi Vaikole','Mechanical Engineering','2023','200000','1','Fr.C.Rodrigues Institute of Technology','https://fcrit.ac.in/redirectportal','Non-Government','ILRF Sanction Letter SLV SH 23.jpeg',45,'approved',''),(13,'   2023-24   ','   Research Project   ','IT','Fault Diagnosis of Rotating System using Machine Learning ','Ms. Shamim Pathan,Mr. Praseed Kumar , Mrs. Rupali Deshmukh ','   Mechanical   ','   2023   ','   50000   ','   1   ','Fr. C. Rodrigues Institute of Technology','https://fcrit.ac.in/','   Non-Government   ','Research Praposal 2023-24 (2).pdf',54,'approved',''),(14,'     2023-24     ','     Research Project     ','IT','Development of Closed-Loop  Active Control Method for Suppression of     Thermo-Acoustic Instability','Mr Afzal Ansari,Mrs Rupali Deshmukh and Dr.Nilaj Deshmukh','     Mechanical    ','     2023     ','     80000     ','     1     ','Fr. C. Rodrigues Institute of Technology   ','https://fcrit.ac.in/','     Non-Government     ','sanction proposal.pdf',54,'approved',''),(15,'  2024-25  ','  Research Project  ','Mechanical',' Enhancing High Temperature Oxidation and Corrosion Protection through Nickel based Alloy Coating ',' Dr. Sanjay W. Rukhande (PI), Dr. Aqleem Siddiqui (Co-PI), Mr. Badal Kudachi (Co-PI) ','  Mechanical Engineering  ','  2023  ','  100000  ','  1  ','  Agnel Charities, Fr. C. Rodrigues Institute of Technology, Vashi  ','https://fcrit.ac.in/','  Non-Government  ','ILRF_letter.pdf',74,'approved',''),(16,' 2023-24 ',' Research Project ','IT','Institute Management System (IMS)- FH2024','Dr. Archana Shirke',' IT ',' 2024',' 150000 ',' 2 ',' FCRIT ','fcrit.ac.in',' Non-Government ','Need based project-IMS.pdf',48,'approved',''),(18,'2023-24','Research Consultancy','Mechanical','Welding consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','600000','1','SS Stainless equipment and systems Pvt Ltd, Rabale','','Non-Government','FCRIT_Quality International_Concultancy.pdf',84,'approved',''),(20,'   2023-24   ','   Research Consultancy   ','Mechanical','   Welding and Metallurgy Consultancy   ','Dr. Krishnan Sivaraman','   Mechanical Engineering   ','   2024   ','   450000   ','   1   ','   Fluidine Va;ves International Pvt Ltd, Ahmedabad   ','https://www.fluidlinevalves.com/','   Non-Government   ','FCRIT_EXACTA_2024-25_Signed Contract.pdf',84,'approved',''),(21,'2023-24','Research Consultancy','Mechanical','Fault Diagnosis of Rotating System using Machine Learning','Shamim Sattarkhan Pathan , Praseed Kumar, Rupali Deshmukh','Mechanical','2023','50000','1','Institute Level Research Fund Scheme , FC. Rodrigues Institute of Technology , Vashi, Navi, Mumbai - INDIA','https://fcrit.ac.in','Non-Government','Fault Diagnosis of Rotating Machine usig Machine Learning.pdf',73,'approved',''),(22,'     2022-23     ','   Research Consultancy   ','Mechanical','  Vibration Testing of Coal Mills  ','  Dr. V. G Salunkhe','   Mechanical Engineering Department   ','    2023     ','   25000   ','   1 (Year)  ','     IIT Bombay     ','https://www.tatapower.com/plants-projects/thermal-generation-projects/trombay-930mw.aspx','     Non-Government     ','IIT Bombay Consultancy.pdf',86,'approved',''),(23,' 2022-23 ',' Research Consultancy ','Mechanical','Vibration Testing of Hydraulic Jack and Patent','Dr. V. G Salunkhe',' Mechanical Engineering ',' 2023 ',' 25000 ',' 1 (Year)',' IIT Bombay ','https://www.tankjackingequipments.com/',' Non-Government ','Bell Fluidics Consultancy.pdf',86,'approved',''),(24,'2023-24','Research Project','Mechanical','Fault Diagnosis of Gearbox and Roller Element Bearing Using Dimension Analysis and Support Vector Ma','Dr. V. G Salunkhe/Dr. S. M. Khot/Dr. Mini Rajeev/Dr. Shubhangi Vaikole','Mechanical Engineering','2024','200000','1','ILRF, FCRIT','','Non-Government','ILRF Scheme.pdf',86,'approved',''),(26,' 2023-24 ',' Research Project ','Mechanical','Bearing Fault Diagnosis','Dr. V. G Salunkhe','Mechanical Engineering  ',' 2024 ',' 0 ',' 1 (Year)',' Bell Fluidtechnics ','https://bellhyd.com/',' Non-Government ','Need Based Project Report.pdf',86,'approved',''),(37,'2020-21','  Research Consultancy  ','','ims','oim','      DUMMYDATA      ','      3      ','      2      ','       3       ','      asd      ','https://scholar.google.com/','\r\n                                ','2020-21_asd_ims.pdf',1,'PENDING','club'),(39,'2024-25','Research Project','IT','Information Management System','Dr. Archana Shirke','IT','2024','150000','1','FCRIT','www.fcrit.ac.in','Non-Government','5. IMS Report SH2024 v4.pdf',48,'approved',''),(41,'2024-25','Research Consultancy','Mechanical','Welding and Metallurgy consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','200000','1','Crystal Industrial syndicate Pvt Ltd','','Non-Government','Crystal_2024-25.pdf',84,'approved',''),(42,'2024-25','Research Consultancy','Mechanical','Welding and Metallurgy consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','600000','1','ISGEC Heavy Engineering','','Non-Government','ISGEC_2024-25.pdf',84,'approved',''),(43,'2023-24','Research Project','Mechanical','Faults Diagnosis of Rotating System using Machine Learning ','Shamim Pathan','Mechanical Engineering','2023','50000','1','Fr.C.Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','IQAC report_1_SH2024.pdf',75,'approved',''),(47,'2024-25','Research Project','Mechanical','Enhancing High Temperature Oxidation and Corrosion Protection through Nickel based Alloy Coating','Dr Sanjay W Rukhande, Dr. Aqleem Siddiqui, Mr. Badal Kudachi','Mechanical Engineering Department','2023','100000','2','Fr. C. Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','Report_ILRF_Sanjay R_Oct 24.pdf',74,'approved',''),(48,' 2024-25 ',' Research Project ','Mechanical',' Technology Development for Controlled Fabrication of 2D and 3D Net- Shaped Microstructures using Li',' Dr. Bharatbhushan S. Kale ',' Mechanical Engineering ',' 2023 ',' 4343823 ',' 2 Years','  Department of Science and Technology ','https://dst.gov.in/',' Government ','DST Grant.pdf',81,'approved',''),(49,'2024-25','Research Project','Mechanical','Faults Diagnosis of Rotating System using Machine Learning ','Shamim Pathan','Mechanical Engineering','2023','50000','1','Fr.C.Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','IQAC report_1_SH24.pdf',75,'approved',''),(50,'2024-25','Research Project','Mechanical','Fabrication, Performance and Reliability evaluation of solar cell made of novel lead-free perovskite','Dr. Dhananjay Panchagade (CO-PI), Dr. Amrita Mandal Bera (PI), Dr. Mini Rajeev (CO-PI)','Mechanical Engineering','2023','175000','1','FCRIT','https://fcrit.ac.in/','Non-Government','Dhananjay_ILRF_report.pdf',66,'approved',''),(52,'2024-25','Research Project','Mechanical','Development of Closed-Loop Active Control Method for Suppression of Thermo-Acoustic Instability usin','Mr. Afzal Ansari (PI), Ms. Rupali Deshmukh (CO-PI), Dr. Nilaj Deshmukh (CO-PI)','Mechanical Engineering','2023','80000','1','Fr. C. Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','ILRF Progress Report-Afzal.pdf',62,'approved',''),(53,'2023-24','Research Project','Electrical','Fault diagnosis of gear box and roller element bearing using DA and SVM with motor load variations','Dr.V G Salunkhe','Mechanical','2023','200000','1','FCRIT','www.fcrit.ac.in','Non-Government','ILRF_Mini Rajeev.pdf',89,'PENDING',''),(54,'2023-24','Research Project','Electrical','Fabrication, Performance and  Reliability evaluation of solar cell made of novel lead-free perovskit','Dr.Amrita Mandal Bera','Humanities and Basic Science','2023','175000','1','FCRIT','www.fcrit.ac.in','Non-Government','ILRF2_Amrita_perovskite.pdf',89,'PENDING',''),(55,'2023-24','Research Consultancy','Mechanical','Consultancy services for Exotic Material equipment fabrication        ','Dr. Krishnan Sivaraman ',' Mechanical Engineering  ','2024','1500000','1',' Lubrizol Advanced Materials India Pvt Itd, Dahej        ','https://lubrizol.com/en/Our-Company/Business-Segments/Lubrizol-Advanced-Materials','Non-Government','Adobe Scan 27-Feb-2025.pdf',84,'approved','');
+INSERT INTO `research_project_consultancies` VALUES (9,' 2023-24 ',' Research Consultancy ','EXTC',' Assessment of Bone density using optical sensors ','',' EXTC ',' 2022 ',' 0 ',' 1 year',' Trish I R&D Private Limited, a startup at IIT Mandi ','-',' Non-Government ','Trish-I Project Proposal_Near Infrared.pdf',28,'approved',''),(10,'2023-24','Research Project','Humanities','Development of eco friendly membrane filter for the adsorption of  dyes in waste water','Dr. Snehal Kargirwar, Dr S. M. Khot, Ms. Jweshwari Tupe','Basic Sciences and Humanities Department','2023','175000','01','Institute Level Research Funding Scheme, FCRIT, Vashi','','Non-Government','ILRF Letter.pdf',140,'approved',''),(11,'2023-24','Research Project','IT','Institute Management System (IMS)','Dr. Archana Shirke','IT','2023','150000','2','FCRIT','','Non-Government','IMS_Report SH2023.pdf',48,'approved',''),(12,'2023-24','Research Project','IT','Fault Diagnosis of Gearbox and Roller Element Bearing Using Dimension Analysis and Support Vector Ma','Dr. Vishal Salunke, Dr. S.M.Khot, Dr.Mini Rajeev,Dr.SHubhangi Vaikole','Mechanical Engineering','2023','200000','1','Fr.C.Rodrigues Institute of Technology','https://fcrit.ac.in/redirectportal','Non-Government','ILRF Sanction Letter SLV SH 23.jpeg',45,'approved',''),(13,'   2023-24   ','   Research Project   ','IT','Fault Diagnosis of Rotating System using Machine Learning ','Ms. Shamim Pathan,Mr. Praseed Kumar , Mrs. Rupali Deshmukh ','   Mechanical   ','   2023   ','   50000   ','   1   ','Fr. C. Rodrigues Institute of Technology','https://fcrit.ac.in/','   Non-Government   ','Research Praposal 2023-24 (2).pdf',54,'approved',''),(14,'     2023-24     ','     Research Project     ','IT','Development of Closed-Loop  Active Control Method for Suppression of     Thermo-Acoustic Instability','Mr Afzal Ansari,Mrs Rupali Deshmukh and Dr.Nilaj Deshmukh','     Mechanical    ','     2023     ','     80000     ','     1     ','Fr. C. Rodrigues Institute of Technology   ','https://fcrit.ac.in/','     Non-Government     ','sanction proposal.pdf',54,'approved',''),(15,'  2024-25  ','  Research Project  ','Mechanical',' Enhancing High Temperature Oxidation and Corrosion Protection through Nickel based Alloy Coating ',' Dr. Sanjay W. Rukhande (PI), Dr. Aqleem Siddiqui (Co-PI), Mr. Badal Kudachi (Co-PI) ','  Mechanical Engineering  ','  2023  ','  100000  ','  1  ','  Agnel Charities, Fr. C. Rodrigues Institute of Technology, Vashi  ','https://fcrit.ac.in/','  Non-Government  ','ILRF_letter.pdf',74,'approved',''),(16,' 2023-24 ',' Research Project ','IT','Institute Management System (IMS)- FH2024','Dr. Archana Shirke',' IT ',' 2024',' 150000 ',' 2 ',' FCRIT ','fcrit.ac.in',' Non-Government ','Need based project-IMS.pdf',48,'approved',''),(18,'2023-24','Research Consultancy','Mechanical','Welding consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','600000','1','SS Stainless equipment and systems Pvt Ltd, Rabale','','Non-Government','FCRIT_Quality International_Concultancy.pdf',84,'approved',''),(20,'   2023-24   ','   Research Consultancy   ','Mechanical','   Welding and Metallurgy Consultancy   ','Dr. Krishnan Sivaraman','   Mechanical Engineering   ','   2024   ','   450000   ','   1   ','   Fluidine Va;ves International Pvt Ltd, Ahmedabad   ','https://www.fluidlinevalves.com/','   Non-Government   ','FCRIT_EXACTA_2024-25_Signed Contract.pdf',84,'approved',''),(21,'2023-24','Research Consultancy','Mechanical','Fault Diagnosis of Rotating System using Machine Learning','Shamim Sattarkhan Pathan , Praseed Kumar, Rupali Deshmukh','Mechanical','2023','50000','1','Institute Level Research Fund Scheme , FC. Rodrigues Institute of Technology , Vashi, Navi, Mumbai - INDIA','https://fcrit.ac.in','Non-Government','Fault Diagnosis of Rotating Machine usig Machine Learning.pdf',73,'approved',''),(22,'     2022-23     ','   Research Consultancy   ','Mechanical','  Vibration Testing of Coal Mills  ','  Dr. V. G Salunkhe','   Mechanical Engineering Department   ','    2023     ','   25000   ','   1 (Year)  ','     IIT Bombay     ','https://www.tatapower.com/plants-projects/thermal-generation-projects/trombay-930mw.aspx','     Non-Government     ','IIT Bombay Consultancy.pdf',86,'approved',''),(23,' 2022-23 ',' Research Consultancy ','Mechanical','Vibration Testing of Hydraulic Jack and Patent','Dr. V. G Salunkhe',' Mechanical Engineering ',' 2023 ',' 25000 ',' 1 (Year)',' IIT Bombay ','https://www.tankjackingequipments.com/',' Non-Government ','Bell Fluidics Consultancy.pdf',86,'approved',''),(24,'2023-24','Research Project','Mechanical','Fault Diagnosis of Gearbox and Roller Element Bearing Using Dimension Analysis and Support Vector Ma','Dr. V. G Salunkhe/Dr. S. M. Khot/Dr. Mini Rajeev/Dr. Shubhangi Vaikole','Mechanical Engineering','2024','200000','1','ILRF, FCRIT','','Non-Government','ILRF Scheme.pdf',86,'approved',''),(26,' 2023-24 ',' Research Project ','Mechanical','Bearing Fault Diagnosis','Dr. V. G Salunkhe','Mechanical Engineering  ',' 2024 ',' 0 ',' 1 (Year)',' Bell Fluidtechnics ','https://bellhyd.com/',' Non-Government ','Need Based Project Report.pdf',86,'approved',''),(37,'2020-21','  Research Consultancy  ','','ims','oim','      DUMMYDATA      ','      3      ','      2      ','       3       ','      asd      ','https://scholar.google.com/','\r\n                                ','2020-21_asd_ims.pdf',1,'PENDING','club'),(39,'2024-25','Research Project','IT','Information Management System','Dr. Archana Shirke','IT','2024','150000','1','FCRIT','www.fcrit.ac.in','Non-Government','5. IMS Report SH2024 v4.pdf',48,'approved',''),(41,'2024-25','Research Consultancy','Mechanical','Welding and Metallurgy consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','200000','1','Crystal Industrial syndicate Pvt Ltd','','Non-Government','Crystal_2024-25.pdf',84,'approved',''),(42,'2024-25','Research Consultancy','Mechanical','Welding and Metallurgy consultancy','Dr Krishnan Sivaraman','Mechanical Engineering','2024','600000','1','ISGEC Heavy Engineering','','Non-Government','ISGEC_2024-25.pdf',84,'approved',''),(43,'2023-24','Research Project','Mechanical','Faults Diagnosis of Rotating System using Machine Learning ','Shamim Pathan','Mechanical Engineering','2023','50000','1','Fr.C.Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','IQAC report_1_SH2024.pdf',75,'approved',''),(47,'2024-25','Research Project','Mechanical','Enhancing High Temperature Oxidation and Corrosion Protection through Nickel based Alloy Coating','Dr Sanjay W Rukhande, Dr. Aqleem Siddiqui, Mr. Badal Kudachi','Mechanical Engineering Department','2023','100000','2','Fr. C. Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','Report_ILRF_Sanjay R_Oct 24.pdf',74,'approved',''),(48,' 2024-25 ',' Research Project ','Mechanical',' Technology Development for Controlled Fabrication of 2D and 3D Net- Shaped Microstructures using Li',' Dr. Bharatbhushan S. Kale ',' Mechanical Engineering ',' 2023 ',' 4343823 ',' 2 Years','  Department of Science and Technology ','https://dst.gov.in/',' Government ','DST Grant.pdf',81,'approved',''),(49,'2024-25','Research Project','Mechanical','Faults Diagnosis of Rotating System using Machine Learning ','Shamim Pathan','Mechanical Engineering','2023','50000','1','Fr.C.Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','IQAC report_1_SH24.pdf',75,'approved',''),(50,'2024-25','Research Project','Mechanical','Fabrication, Performance and Reliability evaluation of solar cell made of novel lead-free perovskite','Dr. Dhananjay Panchagade (CO-PI), Dr. Amrita Mandal Bera (PI), Dr. Mini Rajeev (CO-PI)','Mechanical Engineering','2023','175000','1','FCRIT','https://fcrit.ac.in/','Non-Government','Dhananjay_ILRF_report.pdf',66,'approved',''),(52,'2024-25','Research Project','Mechanical','Development of Closed-Loop Active Control Method for Suppression of Thermo-Acoustic Instability usin','Mr. Afzal Ansari (PI), Ms. Rupali Deshmukh (CO-PI), Dr. Nilaj Deshmukh (CO-PI)','Mechanical Engineering','2023','80000','1','Fr. C. Rodrigues Institute of Technology, Vashi','https://fcrit.ac.in/','Non-Government','ILRF Progress Report-Afzal.pdf',62,'approved',''),(53,'2023-24','Research Project','Electrical','Fault diagnosis of gear box and roller element bearing using DA and SVM with motor load variations','Dr.V G Salunkhe','Mechanical','2023','200000','1','FCRIT','www.fcrit.ac.in','Non-Government','ILRF_Mini Rajeev.pdf',89,'PENDING',''),(54,'2023-24','Research Project','Electrical','Fabrication, Performance and  Reliability evaluation of solar cell made of novel lead-free perovskit','Dr.Amrita Mandal Bera','Humanities and Basic Science','2023','175000','1','FCRIT','www.fcrit.ac.in','Non-Government','ILRF2_Amrita_perovskite.pdf',89,'PENDING',''),(55,'2023-24','Research Consultancy','Mechanical','Consultancy services for Exotic Material equipment fabrication        ','Dr. Krishnan Sivaraman ',' Mechanical Engineering  ','2024','1500000','1',' Lubrizol Advanced Materials India Pvt Itd, Dahej        ','https://lubrizol.com/en/Our-Company/Business-Segments/Lubrizol-Advanced-Materials','Non-Government','Adobe Scan 27-Feb-2025.pdf',84,'approved',''),(56,'2025-2026','Research Project','Computer Engineering','wef2fwe','Dr. Smita Dange','Computer Engineering','2025-06-21','3000','1','2333','','Government','',116,'ongoing','Faculty Portal');
 /*!40000 ALTER TABLE `research_project_consultancies` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1535,7 +1570,7 @@ CREATE TABLE `role_permissions` (
   UNIQUE KEY `role_permission_UNIQUE` (`role`,`permission_id`),
   KEY `fk_role_permissions_permission` (`permission_id`),
   CONSTRAINT `fk_role_permissions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=99 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=99 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1565,7 +1600,7 @@ CREATE TABLE `sessions` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   KEY `expires` (`expires`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1593,7 +1628,7 @@ CREATE TABLE `student` (
   `email` varchar(100) NOT NULL,
   `verify_token` varchar(100) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3083 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3083 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1633,7 +1668,7 @@ CREATE TABLE `student_achievements` (
   `user_id` varchar(255) NOT NULL,
   `STATUS` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2553 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2553 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1745,7 +1780,7 @@ CREATE TABLE `superadmin` (
   `email` varchar(100) NOT NULL,
   `verify_token` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1781,7 +1816,7 @@ CREATE TABLE `tech_nontech` (
   `STATUS` varchar(110) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1816,7 +1851,7 @@ CREATE TABLE `testing` (
   `STATUS` varchar(110) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1858,7 +1893,7 @@ CREATE TABLE `users` (
   KEY `fk_users_faculty` (`faculty_id`),
   CONSTRAINT `fk_users_department` FOREIGN KEY (`department_id`) REFERENCES `department` (`Department_ID`) ON DELETE SET NULL,
   CONSTRAINT `fk_users_faculty` FOREIGN KEY (`faculty_id`) REFERENCES `faculty` (`F_id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=103 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=103 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1867,7 +1902,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (100,'hindavi','$2b$10$SSEgEklZvITus8PesUwdcOI9ICy09OBIvIqttL1azga8ewTETnyT2','hindavi815@gmail.com','Hindavi Bhagyawant','admin',50,NULL,NULL,1,'2025-05-01 08:01:41','2025-05-10 04:46:25','2025-05-10 04:46:25',0),(101,'99','$2b$10$d5tY5tXL65lG1sU54ztjZuTwjWHN/FrbMtuS3Ia2BNJPQ1ViGuRvK','hleetcode2024@gmail.com','xyz','faculty',20,99,NULL,1,'2025-05-03 15:23:46','2025-05-10 04:51:12','2025-05-10 04:51:12',0),(102,'116','$2b$10$HLU.MJNR8aQ/XCF/4RtV5Or02Zy3Im3E3C9OzORy7VD69n6cpMjSy','arjun.varshney1423@gmail.com','Dr. Smita Dange','faculty',10,116,NULL,1,'2025-05-04 13:50:03','2025-05-11 05:28:53','2025-05-11 05:28:53',0);
+INSERT INTO `users` VALUES (100,'hindavi','$2b$10$SSEgEklZvITus8PesUwdcOI9ICy09OBIvIqttL1azga8ewTETnyT2','hindavi815@gmail.com','Hindavi Bhagyawant','admin',50,NULL,NULL,1,'2025-05-01 08:01:41','2025-05-10 04:46:25','2025-05-10 04:46:25',0),(101,'99','$2b$10$d5tY5tXL65lG1sU54ztjZuTwjWHN/FrbMtuS3Ia2BNJPQ1ViGuRvK','hleetcode2024@gmail.com','xyz','faculty',20,99,NULL,1,'2025-05-03 15:23:46','2025-05-10 04:51:12','2025-05-10 04:51:12',0),(102,'116','$2b$10$HLU.MJNR8aQ/XCF/4RtV5Or02Zy3Im3E3C9OzORy7VD69n6cpMjSy','arjun.varshney1423@gmail.com','Dr. Smita Dange','faculty',10,116,NULL,1,'2025-05-04 13:50:03','2025-06-21 14:18:41','2025-06-21 14:18:41',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1895,7 +1930,7 @@ CREATE TABLE `workshops` (
   `STATUS` varchar(110) NOT NULL,
   `Source` varchar(255) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=332 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=332 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1917,4 +1952,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-06-04 19:37:39
+-- Dump completed on 2025-06-22  3:25:24

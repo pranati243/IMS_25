@@ -2,6 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 import { RowDataPacket } from "mysql2";
 
+// Helper function to calculate duration between two dates in years
+function calculateDuration(startDate: string, endDate: string): string {
+  try {
+    // Parse dates properly, accounting for different possible formats
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    console.log("DEBUG - calculateDuration input:", { startDate, endDate });
+    console.log("DEBUG - Date objects:", {
+      start: start.toISOString(),
+      end: end.toISOString(),
+      startYear: start.getFullYear(),
+      endYear: end.getFullYear(),
+    });
+
+    // Check if dates are valid
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      console.warn("Invalid date format:", { startDate, endDate });
+      return "1"; // Default if dates are invalid
+    }
+
+    // Return the actual end date instead of a calculated duration
+    return endDate;
+  } catch (error) {
+    console.error("Error calculating duration:", error);
+    return "1"; // Default to 1 year if calculation fails
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user info from auth system
@@ -36,7 +65,7 @@ export async function GET(request: NextRequest) {
       const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
         [username]
-      )) as any[];
+      )) as RowDataPacket[];
 
       if (
         !facultyResult ||
@@ -49,7 +78,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      facultyId = facultyResult[0].F_id;
+      facultyId = (facultyResult[0] as RowDataPacket).F_id;
     }
 
     // For admin or HOD roles, allow querying for any faculty
@@ -65,40 +94,40 @@ export async function GET(request: NextRequest) {
 
     // Check if table exists and fetch research projects
     try {
-      // Verify table exists
-      const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_research_projects'"
-      );
-
-      if ((tableCheck as any[]).length === 0) {
-        // Return an empty array if the table doesn't exist yet
-        return NextResponse.json({
-          success: true,
-          data: [],
-          message: "No research projects found (table doesn't exist)",
-        });
-      }
-
-      // Table exists, fetch research projects
+      // Query from the existing research_project_consultancies table
       const projects = (await query(
         `SELECT 
           id,
-          faculty_id,
-          title,
-          description,
-          start_date,
-          end_date,
-          status,
-          funding_agency,
-          funding_amount
+          Name_Of_Principal_Investigator_CoInvestigator AS faculty_name,
+          Name_Of_Project_Endownment AS title,
+          Type_Research_Project_Consultancy AS description,
+          Year_Of_Award AS start_date,
+          CASE 
+            WHEN STATUS = 'ongoing' OR Duration_Of_The_Project = '' THEN NULL
+            WHEN Duration_Of_The_Project REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN STR_TO_DATE(Duration_Of_The_Project, '%Y-%m-%d')
+            ELSE NULL 
+          END AS end_date,
+          STATUS AS status,
+          Name_Of_The_Funding_Agency AS funding_agency,
+          Amount_Sanctioned AS funding_amount,
+          Department_Of_Principal_Investigator AS department,
+          Type_Govt_NonGovt AS funding_type,
+          Academic_year,
+          Duration_Of_The_Project AS duration
         FROM 
-          faculty_research_projects
+          research_project_consultancies
         WHERE 
-          faculty_id = ?
+          user_id = ?
         ORDER BY 
-          start_date DESC`,
+          Year_Of_Award DESC`,
         [queryFacultyId]
-      )) as any[];
+      )) as RowDataPacket[];
+
+      // Log the projects to see what's coming back from the database
+      console.log(
+        "DEBUG - Projects from database:",
+        JSON.stringify(projects, null, 2)
+      );
 
       console.log(
         `Found ${projects.length} research projects for faculty ID ${queryFacultyId}`
@@ -174,10 +203,10 @@ export async function POST(request: NextRequest) {
       const facultyResult = (await query(
         "SELECT F_id FROM faculty WHERE F_id = ?",
         [authData.user.username]
-      )) as any[];
+      )) as RowDataPacket[];
 
       if (Array.isArray(facultyResult) && facultyResult.length > 0) {
-        facultyId = facultyResult[0].F_id;
+        facultyId = (facultyResult[0] as RowDataPacket).F_id;
       }
     }
 
@@ -208,63 +237,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure the faculty_research_projects table exists
+    // Insert into the existing research_project_consultancies table
     try {
-      const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_research_projects'"
-      );
+      // Check if faculty exists
+      const facultyDetails = (await query(
+        `SELECT F_name, F_dept FROM faculty WHERE F_id = ?`,
+        [facultyId]
+      )) as RowDataPacket[];
 
-      if ((tableCheck as any[]).length === 0) {
-        // Create the table if it doesn't exist
-        await query(`
-          CREATE TABLE faculty_research_projects (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            faculty_id VARCHAR(50) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            start_date DATE NOT NULL,
-            end_date DATE,
-            status VARCHAR(50) NOT NULL,
-            funding_agency VARCHAR(255),
-            funding_amount DECIMAL(15,2),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
-          )
-        `);
+      if (
+        !facultyDetails ||
+        !Array.isArray(facultyDetails) ||
+        facultyDetails.length === 0
+      ) {
+        return NextResponse.json(
+          { success: false, message: "Faculty not found" },
+          { status: 404 }
+        );
       }
 
-      // Insert the research project
-      const result = await query(
-        `INSERT INTO faculty_research_projects 
-          (faculty_id, title, description, start_date, end_date, status, funding_agency, funding_amount) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      const faculty = facultyDetails[0] as RowDataPacket;
+      const currentAcademicYear = new Date().getFullYear();
+      const academicYear = `${currentAcademicYear}-${currentAcademicYear + 1}`;
+
+      // Determine duration based on status and end date
+      let duration = "1"; // Default
+
+      if (status === "ongoing" && !endDate) {
+        // For ongoing projects with no end date, set duration to empty/null
+        duration = "";
+      } else if ((status === "completed" || status === "planned") && endDate) {
+        // Calculate duration only for completed/planned projects with an end date
+        duration = calculateDuration(startDate, endDate);
+      }
+
+      // Insert the research project into the existing table
+      const result = (await query(
+        `INSERT INTO research_project_consultancies 
+          (Academic_year, Type_Research_Project_Consultancy, Branch, 
+           Name_Of_Project_Endownment, Name_Of_Principal_Investigator_CoInvestigator, 
+           Department_Of_Principal_Investigator, Year_Of_Award, Amount_Sanctioned, 
+           Duration_Of_The_Project, Name_Of_The_Funding_Agency, 
+           Funding_Agency_Website_Link, Type_Govt_NonGovt, pdffile1, user_id, STATUS, Source) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          facultyId,
+          academicYear,
+          description || "Research Project", // Use the actual description provided by the user
+          faculty.F_dept || "N/A",
           title,
-          description || null,
+          faculty.F_name,
+          faculty.F_dept || "N/A",
           startDate,
-          endDate || null,
-          status,
-          fundingAgency || null,
-          fundingAmount || null,
+          fundingAmount || "0",
+          duration, // Store calculated duration or empty string for ongoing projects
+          fundingAgency || "N/A",
+          "", // Website link not provided
+          fundingAgency ? "Government" : "N/A", // Default to Government if funding agency provided
+          "", // No PDF file
+          facultyId,
+          status || "approved",
+          "Faculty Portal",
         ]
-      );
+      )) as any; // Type assertion to any to handle insertId
 
       // Return success response
       return NextResponse.json({
         success: true,
         message: "Research project added successfully",
         data: {
-          id: (result as any).insertId,
+          id: result.insertId,
           faculty_id: facultyId,
+          faculty_name: faculty.F_name,
           title,
           description,
+          department: faculty.F_dept,
+          academic_year: academicYear,
           start_date: startDate,
           end_date: endDate,
           status,
           funding_agency: fundingAgency,
           funding_amount: fundingAmount,
+          funding_type: fundingAgency ? "Government" : "N/A",
         },
       });
     } catch (error) {
@@ -286,3 +339,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// Note: PUT and DELETE handlers have been moved to [id]/route.ts to properly handle dynamic routes

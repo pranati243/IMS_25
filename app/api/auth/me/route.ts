@@ -4,8 +4,7 @@ import * as jose from "jose"; // Using jose instead of jsonwebtoken for Edge com
 import { query } from "@/app/lib/db";
 
 // Use environment variable for JWT secret, with fallback for consistency
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function GET(request: NextRequest) {
   try {

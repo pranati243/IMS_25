@@ -1,28 +1,6 @@
 // app/api/faculty/me/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
-import { RowDataPacket } from "mysql2";
-
-interface FacultyRow extends RowDataPacket {
-  F_id: string;
-  F_name: string;
-  F_dept: string;
-}
-
-interface DetailsRow extends RowDataPacket {
-  Email: string;
-  Phone_Number: string;
-  Current_Designation: string;
-  Highest_Degree: string;
-  Experience: number;
-}
-
-interface CountRow extends RowDataPacket {
-  total_contributions: number;
-  professional_memberships: number;
-  memberships_count: number;
-  publications: number;
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -98,7 +76,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         fd.F_ID = ?`,
       [facultyUsername]
-    ) as DetailsRow[];
+    );
 
     // Query contributions count separately
     const contribQuery = await query(
@@ -109,10 +87,10 @@ export async function GET(request: NextRequest) {
       WHERE 
         F_ID = ?`,
       [facultyUsername]
-    ) as CountRow[];
+    );
 
-    // Query professional memberships count from old table
-    const oldMembershipQuery = await query(
+    // Query professional memberships count separately
+    const membershipQuery = await query(
       `SELECT 
         COUNT(*) as professional_memberships
       FROM 
@@ -120,30 +98,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         F_ID = ?`,
       [facultyUsername]
-    ) as CountRow[];
-
-    // Query memberships from new table
-    let newMembershipsCount = 0;
-    try {
-      const tableCheck = await query("SHOW TABLES LIKE 'faculty_memberships'");
-      if (Array.isArray(tableCheck) && tableCheck.length > 0) {
-        const newMembershipQuery = await query(
-          `SELECT 
-            COUNT(*) as memberships_count
-          FROM 
-            faculty_memberships
-          WHERE 
-            faculty_id = ?`,
-          [facultyUsername]
-        ) as CountRow[];
-        
-        if (Array.isArray(newMembershipQuery) && newMembershipQuery.length > 0) {
-          newMembershipsCount = newMembershipQuery[0].memberships_count || 0;
-        }
-      }
-    } catch (error) {
-      console.error("Error checking faculty_memberships table:", error);
-    }
+    );
 
     // Query publications count separately
     const publicationsQuery = await query(
@@ -154,17 +109,7 @@ export async function GET(request: NextRequest) {
       WHERE 
         id = ?`,
       [facultyUsername]
-    ) as CountRow[];
-
-    // Calculate total memberships (old + new)
-    const oldMembershipsCount = 
-      oldMembershipQuery && 
-      Array.isArray(oldMembershipQuery) && 
-      oldMembershipQuery.length > 0
-        ? oldMembershipQuery[0].professional_memberships
-        : 0;
-    
-    const totalMemberships = oldMembershipsCount + newMembershipsCount;
+    );
 
     // Combine all the data
     const facultyData = {
@@ -180,15 +125,41 @@ export async function GET(request: NextRequest) {
           }),
       total_contributions:
         contribQuery && Array.isArray(contribQuery) && contribQuery.length > 0
-          ? contribQuery[0].total_contributions
+          ? contribQuery[0].total_contributions || 0
           : 0,
-      professional_memberships: totalMemberships,
+      professional_memberships:
+        membershipQuery &&
+        Array.isArray(membershipQuery) &&
+        membershipQuery.length > 0
+          ? membershipQuery[0].professional_memberships
+          : 0,
       publications:
         publicationsQuery &&
         Array.isArray(publicationsQuery) &&
         publicationsQuery.length > 0
-          ? publicationsQuery[0].publications
+          ? publicationsQuery[0].publications || 0
           : 0,
+      awards:
+        awardsQuery && Array.isArray(awardsQuery) && awardsQuery.length > 0
+          ? awardsQuery[0].awards || 0
+          : 0,
+      research_projects:
+        researchProjectsQuery &&
+        Array.isArray(researchProjectsQuery) &&
+        researchProjectsQuery.length > 0
+          ? researchProjectsQuery[0].research_projects || 0
+          : 0,
+      workshops_attended:
+        (workshopsQuery &&
+        Array.isArray(workshopsQuery) &&
+        workshopsQuery.length > 0
+          ? workshopsQuery[0].workshops_attended || 0
+          : 0) +
+        (workshopContributionsQuery &&
+        Array.isArray(workshopContributionsQuery) &&
+        workshopContributionsQuery.length > 0
+          ? workshopContributionsQuery[0].workshop_contributions || 0
+          : 0),
     };
 
     return NextResponse.json({

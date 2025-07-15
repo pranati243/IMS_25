@@ -3,8 +3,7 @@ import { query } from "@/app/lib/db";
 import { sign } from "jsonwebtoken";
 
 // Use env variable for JWT secret, with fallback to ensure consistency
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Development-only endpoint to fix authentication issues
 export async function GET(request: NextRequest) {
@@ -145,7 +144,7 @@ export async function GET(request: NextRequest) {
     // Create a new session token with extended expiration
     const sessionToken = sign(
       { userId: user.id, role: user.role, debug: true },
-      JWT_SECRET,
+      JWT_SECRET!,
       { expiresIn: "7d" } // 7 days for development
     );
 

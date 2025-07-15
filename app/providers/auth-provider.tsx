@@ -53,6 +53,7 @@ const publicRoutes = [
   "/reset-password",
   "/logout",
   "/unauthorized",
+  "/reports/faculty", // Public faculty reports
   "/_next", // Static Next.js resources
   "/api/auth", // Auth API routes
   "/api/debug", // Debug API routes
@@ -72,7 +73,7 @@ const roleAccess: Record<string, UserRole[]> = {
   "/faculty/publications": ["admin", "hod", "faculty"],
   "/faculty/memberships": ["admin", "hod", "faculty"],
   "/faculty/achievements": ["admin", "hod", "faculty"],
-  "/students": ["admin", "hod", "faculty", "staff"],
+  "/student": ["admin", "hod", "faculty", "staff"],
   "/courses": ["admin", "hod", "faculty", "staff", "student"],
   "/departments": ["admin", "hod"],
   "/admin": ["admin"],

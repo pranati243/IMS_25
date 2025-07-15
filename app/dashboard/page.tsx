@@ -21,7 +21,7 @@ import DepartmentBarChart from "@/app/components/dashboard/DepartmentBarChart";
 import { DashboardStats } from "@/app/lib/types";
 import { NavHelper } from "./nav-helper";
 import { useAuth } from "@/app/providers/auth-provider";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EnhancedReportPreview } from "@/app/components/ui/enhanced-report-preview";
 
 interface DepartmentStat {
@@ -74,8 +74,8 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"naac" | "nba">("naac");
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportType, setReportType] = useState<
-    "full" | "faculty" | "students" | "research"
-  >("full");
+    "full" | "faculty" | "student" | "research"
+  >("faculty");
   const [reportMessage, setReportMessage] = useState<{
     type: "success" | "error";
     text: string;
@@ -86,6 +86,15 @@ export default function DashboardPage() {
     filename?: string;
     reportType?: string;
   }>({});
+  const [orgCounts, setOrgCounts] = useState<
+    { organization: string; count: number }[]
+  >([]);
+  const [biodataLoading, setBiodataLoading] = useState(false);
+  const [biodataReportData, setBiodataReportData] = useState<{
+    pdfBase64?: string;
+    filename?: string;
+  }>({});
+  const [biodataPreviewOpen, setBiodataPreviewOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,6 +111,16 @@ export default function DashboardPage() {
 
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "nba") {
+      fetch("/api/faculty/memberships?aggregate=organization")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) setOrgCounts(data.data);
+        });
+    }
+  }, [activeTab]);
 
   // Extract the needed data
   const {
@@ -247,6 +266,39 @@ export default function DashboardPage() {
     }
   };
 
+  const handleGenerateBiodata = async () => {
+    if (!user || !user.username) return;
+    try {
+      setBiodataLoading(true);
+      try {
+        await fetch(`/api/faculty/biodata/setup`);
+      } catch (setupError) {
+        console.warn("Setup endpoint error:", setupError);
+      }
+      const response = await fetch(
+        `/api/faculty/biodata?facultyId=${user.username}`
+      );
+      if (!response.ok)
+        throw new Error(`Failed to generate biodata: ${response.status}`);
+      const result = await response.json();
+      if (!result.success)
+        throw new Error(result.message || "Failed to generate biodata");
+      setBiodataReportData({
+        pdfBase64: result.data.pdfBase64,
+        filename: result.data.filename,
+      });
+      setBiodataPreviewOpen(true);
+    } catch (err) {
+      alert(
+        err instanceof Error
+          ? err.message
+          : "An error occurred while generating biodata"
+      );
+    } finally {
+      setBiodataLoading(false);
+    }
+  };
+
   // You can create a loading state if needed
   if (loading || authLoading) {
     return (
@@ -268,123 +320,127 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold mb-2">Not Authenticated</h1>
-          <p className="text-gray-500 mb-4">
-            Please log in to access the dashboard
-          </p>
+  // if (!user) {
+  //   return (
+  //     <div className="flex min-h-screen items-center justify-center">
+  //       <div className="text-center">
+  //         <h1 className="text-xl font-semibold mb-2">Not Authenticated</h1>
+  //         <p className="text-gray-500 mb-4">
+  //           Please log in to access the dashboard
+  //         </p>
 
-          <div className="flex flex-col space-y-4">
-            <Link
-              href="/login"
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Go to Login
-            </Link>
+  //         <div className="flex flex-col space-y-4">
+  //           <Link
+  //             href="/login"
+  //             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+  //           >
+  //             Go to Login
+  //           </Link>
 
-            <button
-              onClick={async () => {
-                try {
-                  setLoadingDiag(true);
-                  // Call the bypass-auth endpoint for development use
-                  const response = await fetch("/api/debug/bypass-auth", {
-                    method: "GET",
-                    credentials: "include", // Important: This ensures cookies are sent and stored
-                    headers: {
-                      Accept: "application/json",
-                      "Content-Type": "application/json",
-                    },
-                  });
+  //           <button
+  //             onClick={async () => {
+  //               try {
+  //                 setLoadingDiag(true);
+  //                 // Call the bypass-auth endpoint for development use
+  //                 const response = await fetch("/api/debug/bypass-auth", {
+  //                   method: "GET",
+  //                   credentials: "include", // Important: This ensures cookies are sent and stored
+  //                   headers: {
+  //                     Accept: "application/json",
+  //                     "Content-Type": "application/json",
+  //                   },
+  //                 });
 
-                  if (response.ok) {
-                    const data = await response.json();
-                    // Store user data in sessionStorage for immediate use
-                    if (data.success && data.user) {
-                      sessionStorage.setItem(
-                        "authUser",
-                        JSON.stringify(data.user)
-                      );
-                      // Force reload to apply the new authentication state
-                      window.location.reload();
-                    } else {
-                      alert("Auth bypass returned success=false");
-                    }
-                  } else {
-                    alert("Bypass auth failed: " + response.statusText);
-                  }
-                } catch (error) {
-                  alert(
-                    "Error: " +
-                      (error instanceof Error ? error.message : String(error))
-                  );
-                } finally {
-                  setLoadingDiag(false);
-                }
-              }}
-              className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-            >
-              Try Auth Bypass (Dev Mode)
-            </button>
+  //                 if (response.ok) {
+  //                   const data = await response.json();
+  //                   // Store user data in sessionStorage for immediate use
+  //                   if (data.success && data.user) {
+  //                     sessionStorage.setItem(
+  //                       "authUser",
+  //                       JSON.stringify(data.user)
+  //                     );
+  //                     // Force reload to apply the new authentication state
+  //                     window.location.reload();
+  //                   } else {
+  //                     alert("Auth bypass returned success=false");
+  //                   }
+  //                 } else {
+  //                   alert("Bypass auth failed: " + response.statusText);
+  //                 }
+  //               } catch (error) {
+  //                 alert(
+  //                   "Error: " +
+  //                     (error instanceof Error ? error.message : String(error))
+  //                 );
+  //               } finally {
+  //                 setLoadingDiag(false);
+  //               }
+  //             }}
+  //             className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+  //           >
+  //             Try Auth Bypass (Dev Mode)
+  //           </button>
 
-            <button
-              onClick={async () => {
-                try {
-                  setLoadingDiag(true);
-                  // Call the new auth-fix endpoint
-                  const response = await fetch("/api/debug/auth-fix", {
-                    method: "GET",
-                    credentials: "include",
-                    headers: {
-                      Accept: "application/json",
-                      "Content-Type": "application/json",
-                    },
-                  });
+  //           <button
+  //             onClick={async () => {
+  //               try {
+  //                 setLoadingDiag(true);
+  //                 // Call the new auth-fix endpoint
+  //                 const response = await fetch("/api/debug/auth-fix", {
+  //                   method: "GET",
+  //                   credentials: "include",
+  //                   headers: {
+  //                     Accept: "application/json",
+  //                     "Content-Type": "application/json",
+  //                   },
+  //                 });
 
-                  if (response.ok) {
-                    const data = await response.json();
-                    // Store user data in sessionStorage
-                    if (data.success && data.user) {
-                      sessionStorage.setItem(
-                        "authUser",
-                        JSON.stringify(data.user)
-                      );
-                      alert("Authentication fixed! Reloading page...");
-                      // Force reload with a slight delay
-                      setTimeout(() => window.location.reload(), 500);
-                    } else {
-                      alert("Auth fix returned success=false");
-                    }
-                  } else {
-                    alert("Auth fix failed: " + response.statusText);
-                  }
-                } catch (error) {
-                  alert(
-                    "Error: " +
-                      (error instanceof Error ? error.message : String(error))
-                  );
-                } finally {
-                  setLoadingDiag(false);
-                }
-              }}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Fix Authentication (Recommended)
-            </button>
-          </div>
+  //                 if (response.ok) {
+  //                   const data = await response.json();
+  //                   // Store user data in sessionStorage
+  //                   if (data.success && data.user) {
+  //                     sessionStorage.setItem(
+  //                       "authUser",
+  //                       JSON.stringify(data.user)
+  //                     );
+  //                     alert("Authentication fixed! Reloading page...");
+  //                     // Force reload with a slight delay
+  //                     setTimeout(() => window.location.reload(), 500);
+  //                   } else {
+  //                     alert("Auth fix returned success=false");
+  //                   }
+  //                 } else {
+  //                   alert("Auth fix failed: " + response.statusText);
+  //                 }
+  //               } catch (error) {
+  //                 alert(
+  //                   "Error: " +
+  //                     (error instanceof Error ? error.message : String(error))
+  //                 );
+  //               } finally {
+  //                 setLoadingDiag(false);
+  //               }
+  //             }}
+  //             className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+  //           >
+  //             Fix Authentication (Recommended)
+  //           </button>
+  //         </div>
 
-          {diagnostic && (
-            <div className="mt-8 p-4 bg-gray-100 rounded text-left max-w-lg mx-auto text-xs overflow-auto">
-              <h2 className="font-semibold mb-2">Diagnostic Info:</h2>
-              <pre>{JSON.stringify(diagnostic, null, 2)}</pre>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  //         {diagnostic && (
+  //           <div className="mt-8 p-4 bg-gray-100 rounded text-left max-w-lg mx-auto text-xs overflow-auto">
+  //             <h2 className="font-semibold mb-2">Diagnostic Info:</h2>
+  //             <pre>{JSON.stringify(diagnostic, null, 2)}</pre>
+  //           </div>
+  //         )}
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  const groupedOrgCounts = groupOrgCountsByCategory(orgCounts);
+  const nationalChartData = getOrgChartData(orgCounts, "National");
+  const internationalChartData = getOrgChartData(orgCounts, "International");
 
   return (
     <MainLayout>
@@ -399,6 +455,13 @@ export default function DashboardPage() {
           ?.charAt(0)
           .toUpperCase()}${reportData.reportType?.slice(1)} Report`}
         reportType={reportData.reportType}
+      />
+      <EnhancedReportPreview
+        isOpen={biodataPreviewOpen}
+        onClose={() => setBiodataPreviewOpen(false)}
+        pdfBase64={biodataReportData.pdfBase64}
+        filename={biodataReportData.filename}
+        title="Faculty CV/Biodata"
       />
       <div className="space-y-8">
         {/* Page title with report generation options */}
@@ -415,15 +478,15 @@ export default function DashboardPage() {
               value={reportType}
               onChange={(e) =>
                 setReportType(
-                  e.target.value as "full" | "faculty" | "students" | "research"
+                  e.target.value as "full" | "faculty" | "student" | "research"
                 )
               }
               className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
               disabled={generatingReport}
             >
-              <option value="full">Full Report</option>
               <option value="faculty">Faculty Report</option>
-              <option value="students">Students Report</option>
+              <option value="full">Full Report</option>
+              <option value="student">student Report</option>
               <option value="research">Research Output Report</option>
             </select>
             <button
@@ -434,6 +497,18 @@ export default function DashboardPage() {
               <DocumentArrowDownIcon className="h-5 w-5" />
               {generatingReport ? "Generating..." : "Generate Report"}
             </button>
+            {/* Generate CV/Biodata button for faculty only */}
+            {user?.role === "faculty" && (
+              <button
+                onClick={handleGenerateBiodata}
+                disabled={biodataLoading}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 transition-colors disabled:bg-gray-200"
+                style={{ minWidth: "180px" }}
+              >
+                <DocumentArrowDownIcon className="h-5 w-5" />
+                {biodataLoading ? "Generating..." : "Generate CV/Biodata"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -462,7 +537,7 @@ export default function DashboardPage() {
             bgColor="bg-gradient-to-br from-indigo-50 to-white"
           />
           <StatsCard
-            title="Total Students"
+            title="Total student"
             value={formatNumber(totalStudents)}
             icon={<AcademicCapIcon className="h-6 w-6 text-purple-600" />}
             trend="up"
@@ -572,7 +647,7 @@ export default function DashboardPage() {
                 />
               </ChartCard>
               <ChartCard
-                title="Students by Department"
+                title="student by Department"
                 className="bg-white shadow-md hover:shadow-lg transition-shadow"
                 useGradient={true}
                 gradientFrom="from-purple-600"
@@ -639,7 +714,7 @@ export default function DashboardPage() {
                         scope="col"
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
-                        Students
+                        student
                       </th>
                       <th
                         scope="col"
@@ -689,41 +764,35 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Department Comparison Charts */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            {/* Professional Memberships Organization Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <ChartCard
-                title="Faculty Designation Distribution"
-                subtitle="Department-wise breakdown of faculty by designation"
+                title="National Professional Memberships"
                 className="bg-white shadow-md hover:shadow-lg transition-shadow"
                 useGradient={true}
-                gradientFrom="from-indigo-600"
+                gradientFrom="from-green-600"
                 gradientTo="to-blue-600"
               >
-                <div className="h-80">
-                  {/* In a real implementation, add a stacked bar chart here */}
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-gray-500">
-                      Faculty designation chart will be displayed here
-                    </p>
-                  </div>
-                </div>
+                <DepartmentBarChart
+                  data={nationalChartData}
+                  dataKey="count"
+                  barColor="#059669"
+                  height={350}
+                />
               </ChartCard>
               <ChartCard
-                title="Research Output Comparison"
-                subtitle="Department-wise research projects and publications"
+                title="International Professional Memberships"
                 className="bg-white shadow-md hover:shadow-lg transition-shadow"
                 useGradient={true}
-                gradientFrom="from-purple-600"
-                gradientTo="to-fuchsia-600"
+                gradientFrom="from-blue-600"
+                gradientTo="to-purple-600"
               >
-                <div className="h-80">
-                  {/* In a real implementation, add a grouped bar chart here */}
-                  <div className="flex h-full items-center justify-center">
-                    <p className="text-gray-500">
-                      Research output chart will be displayed here
-                    </p>
-                  </div>
-                </div>
+                <DepartmentBarChart
+                  data={internationalChartData}
+                  dataKey="count"
+                  barColor="#2563eb"
+                  height={350}
+                />
               </ChartCard>
             </div>
           </div>
@@ -902,4 +971,140 @@ async function fetchDashboardData() {
       departmentDetails: [],
     };
   }
+}
+
+// Copy the ORGANIZATIONS constant from the form for grouping
+const ORGANIZATIONS: Record<string, { value: string; label: string }[]> = {
+  National: [
+    { value: "ISTE", label: "ISTE – Indian Society for Technical Education" },
+    { value: "IEI", label: "IEI – Institution of Engineers (India)" },
+    {
+      value: "IETE",
+      label:
+        "IETE – Institution of Electronics and Telecommunication Engineers",
+    },
+    { value: "CSI", label: "CSI – Computer Society of India" },
+    { value: "ISME", label: "ISME – Indian Society for Mechanical Engineers" },
+    {
+      value: "IET India",
+      label:
+        "IET India – Institution of Engineering and Technology (India Chapter)",
+    },
+    {
+      value: "IEEE India Council",
+      label:
+        "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)",
+    },
+    { value: "INAE", label: "INAE – Indian National Academy of Engineering" },
+    {
+      value: "ACM India",
+      label: "ACM India – Association for Computing Machinery (India Chapter)",
+    },
+    {
+      value: "SAEINDIA",
+      label: "SAEINDIA – Society of Automotive Engineers India",
+    },
+    {
+      value: "ISTD",
+      label: "ISTD – Indian Society for Training and Development",
+    },
+    {
+      value: "NAAC/NBA Panel Expert",
+      label:
+        "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation",
+    },
+  ],
+  International: [
+    {
+      value: "IEEE",
+      label: "IEEE – Institute of Electrical and Electronics Engineers",
+    },
+    { value: "ACM", label: "ACM – Association for Computing Machinery" },
+    { value: "ASME", label: "ASME – American Society of Mechanical Engineers" },
+    { value: "ASCE", label: "ASCE – American Society of Civil Engineers" },
+    {
+      value: "SAE International",
+      label:
+        "SAE International – Society of Automotive Engineers (International)",
+    },
+    {
+      value: "IFAC",
+      label: "IFAC – International Federation of Automatic Control",
+    },
+    {
+      value: "INFORMS",
+      label:
+        "INFORMS – Institute for Operations Research and the Management Sciences",
+    },
+    {
+      value: "AAAI",
+      label:
+        "AAAI – Association for the Advancement of Artificial Intelligence",
+    },
+    { value: "IAENG", label: "IAENG – International Association of Engineers" },
+  ],
+};
+
+// Helper to group orgCounts by category
+function groupOrgCountsByCategory(
+  orgCounts: { organization: string; count: number }[]
+) {
+  const result: Record<string, { name: string; count: number }[]> = {
+    National: [],
+    International: [],
+    Others: [],
+  };
+  const nationalSet = new Set(ORGANIZATIONS.National.map((o) => o.value));
+  const internationalSet = new Set(
+    ORGANIZATIONS.International.map((o) => o.value)
+  );
+  for (const org of orgCounts) {
+    if (nationalSet.has(org.organization)) {
+      const label =
+        ORGANIZATIONS.National.find((o) => o.value === org.organization)
+          ?.label || org.organization;
+      result.National.push({ name: label, count: org.count });
+    } else if (internationalSet.has(org.organization)) {
+      const label =
+        ORGANIZATIONS.International.find((o) => o.value === org.organization)
+          ?.label || org.organization;
+      result.International.push({ name: label, count: org.count });
+    } else {
+      result.Others.push({ name: org.organization, count: org.count });
+    }
+  }
+  return result;
+}
+
+// Helper to group orgCounts for each category, with an Others bar
+function getOrgChartData(
+  orgCounts: { organization: string; count: number }[],
+  category: "National" | "International"
+) {
+  const orgList = ORGANIZATIONS[category].map((o) => o.value);
+  const orgLabelMap = Object.fromEntries(
+    ORGANIZATIONS[category].map((o) => [o.value, o.label])
+  );
+  const data: { department: string; count: number }[] = [];
+  let othersCount = 0;
+  for (const org of orgCounts) {
+    if (orgList.includes(org.organization)) {
+      data.push({
+        department: orgLabelMap[org.organization] || org.organization,
+        count: org.count,
+      });
+    } else {
+      othersCount += org.count;
+    }
+  }
+  if (othersCount > 0) {
+    data.push({ department: "Others", count: othersCount });
+  }
+  // Ensure all official orgs are present (even if count is 0)
+  for (const org of ORGANIZATIONS[category]) {
+    if (!data.find((d) => d.department === org.label)) {
+      data.push({ department: org.label, count: 0 });
+    }
+  }
+  return data;
 }

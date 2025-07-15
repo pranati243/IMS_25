@@ -34,8 +34,7 @@ const publicApiPaths = [
 ];
 
 // Use env variable with fallback for JWT secret
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -56,7 +55,9 @@ export async function middleware(request: NextRequest) {
     const authStatus = request.cookies.get("auth_status")?.value;
     if (
       sessionToken &&
-      (authStatus === "logged_in" || authStatus === "debug_login")
+      (authStatus === "logged_in" ||
+        authStatus === "debug_login" ||
+        authStatus === "direct_login")
     ) {
       try {
         // Verify the token silently using jose instead of jsonwebtoken
@@ -103,10 +104,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
   }
-
   // 4. For all other paths, check for session token
   const sessionToken = request.cookies.get("session_token")?.value;
   const authStatus = request.cookies.get("auth_status")?.value;
+
+  // Special handling for direct login
+  const isDirectLogin = authStatus === "direct_login";
 
   // If we have auth_status but no session token, clear the auth_status
   // This fixes cases where cookies are out of sync
@@ -244,7 +247,7 @@ export const config = {
     "/admin/:path*",
     "/faculty/:path*",
     "/profile/:path*",
-    "/students/:path*",
+    "/student/:path*",
     "/settings/:path*",
     "/departments/:path*",
     "/reports/:path*",

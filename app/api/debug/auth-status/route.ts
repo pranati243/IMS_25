@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verify } from "jsonwebtoken";
 
 // Use environment variable for JWT secret, with fallback for consistency
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secure-jwt-secret-for-ims-application-123";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function GET(request: NextRequest) {
   // Force content type to be application/json

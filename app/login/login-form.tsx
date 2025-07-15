@@ -398,10 +398,11 @@ export default function LoginPage() {
         const data = await response.json();
         setLoginDebug(
           `Direct login successful for: ${data.user.email} (${data.user.role})`
-        );
-
-        // Store the user info in sessionStorage
+        ); // Store the user info in sessionStorage
         sessionStorage.setItem("authUser", JSON.stringify(data.user));
+
+        // Set a flag to prevent redirect loops
+        sessionStorage.setItem("preventAuthLoop", "true");
 
         // Redirect to dashboard with delay to ensure cookies are set
         doRedirect("/dashboard");
@@ -592,7 +593,7 @@ ${
               <p className="text-xs text-gray-500">
                 For faculty/admin: Enter your Faculty ID
                 <br />
-                For students: Enter your Roll Number
+                For student: Enter your Roll Number
               </p>
             </div>
 

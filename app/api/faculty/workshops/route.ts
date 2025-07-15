@@ -184,140 +184,133 @@ export async function POST(request: NextRequest) {
 
     if (!authData.success || !authData.user) {
       return NextResponse.json(
-        { success: false, message: "User not authenticated" },
+        { success: false, message: "User not found" },
         { status: 401 }
       );
     }
 
-    // Only faculty or admin can add workshops
-    if (
-      authData.user.role !== "faculty" &&
-      authData.user.role !== "admin" &&
-      authData.user.role !== "hod"
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Permission denied" },
-        { status: 403 }
+    // Get faculty ID
+    const userFacultyResponse = await fetch(
+      `${request.nextUrl.origin}/api/faculty/me`,
+      {
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      }
+    );
+
+    let facultyId: number | null = null;
+
+    if (userFacultyResponse.ok) {
+      const userFacultyData = await userFacultyResponse.json();
+      console.log(
+        "Faculty response structure:",
+        JSON.stringify(userFacultyData, null, 2)
       );
-    }
-
-    // Get faculty ID for the faculty user
-    let facultyId = request.nextUrl.searchParams.get("facultyId");
-
-    if (!facultyId && authData.user.role === "faculty") {
-      // Use the logged-in user's faculty ID
-      const facultyResult = (await query(
-        "SELECT F_id FROM faculty WHERE F_id = ?",
-        [authData.user.username]
-      )) as RowDataPacket[];
-
-      if (Array.isArray(facultyResult) && facultyResult.length > 0) {
-        facultyId = facultyResult[0].F_id;
+      if (userFacultyData.success && userFacultyData.data) {
+        facultyId = userFacultyData.data.F_id;
       }
     }
 
     if (!facultyId) {
       return NextResponse.json(
-        { success: false, message: "Faculty ID is required" },
-        { status: 400 }
+        { success: false, message: "Faculty information not found" },
+        { status: 404 }
       );
     }
 
-    // Parse the request body as JSON
-    const body = await request.json();
-    const {
-      title,
-      description,
-      startDate,
-      endDate,
-      venue,
-      type = "Workshop",
-      role = "Participant",
-    } = body;
+    // Get workshop data from request
+    const data = await request.json();
 
-    // Validate required fields
-    if (!title || !startDate || !venue) {
+    // Required fields
+    if (!data.title || !data.venue || !data.type || !data.start_date) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Title, start date, and venue are required",
-        },
+        { success: false, message: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Ensure the faculty_workshops table exists
+    // Insert into faculty_workshops table
+    const result = await query(
+      `
+      INSERT INTO faculty_workshops (
+        faculty_id, 
+        title, 
+        description, 
+        venue, 
+        type, 
+        role,
+        start_date, 
+        end_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        facultyId,
+        data.title,
+        data.description || null,
+        data.venue,
+        data.type,
+        data.role || "Attendee",
+        new Date(data.start_date),
+        data.end_date ? new Date(data.end_date) : null,
+      ]
+    );
+
+    // Update workshops count in faculty information
     try {
-      const tableCheck = await query("SHOW TABLES LIKE 'faculty_workshops'");
-
-      if ((tableCheck as any[]).length === 0) {
-        // Create the table if it doesn't exist
-        await query(`
-          CREATE TABLE faculty_workshops (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            faculty_id VARCHAR(50) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            description TEXT,
-            start_date DATE NOT NULL,
-            end_date DATE,
-            venue VARCHAR(255) NOT NULL,
-            type VARCHAR(50) NOT NULL,
-            role VARCHAR(50) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            FOREIGN KEY (faculty_id) REFERENCES faculty(F_id) ON DELETE CASCADE
-          )
-        `);
-      }
-
-      // Insert the workshop
-      const result = (await query(
-        `INSERT INTO faculty_workshops 
-          (faculty_id, title, description, start_date, end_date, venue, type, role) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          facultyId,
-          title,
-          description || null,
-          startDate,
-          endDate || null,
-          venue,
-          type,
-          role,
-        ]
-      )) as RowDataPacket;
-
-      // Return success response
-      return NextResponse.json({
-        success: true,
-        message: "Workshop added successfully",
-        data: {
-          id: result.insertId,
-          faculty_id: facultyId,
-          title,
-          description,
-          start_date: startDate,
-          end_date: endDate,
-          venue,
-          type,
-          role,
-        },
-      });
-    } catch (error) {
-      console.error("Error adding workshop:", error);
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Failed to add workshop",
-          error: String(error),
-        },
-        { status: 500 }
+      // First, try to increment the workshops_attended count directly in the faculty table
+      await query(
+        `
+        UPDATE faculty 
+        SET workshops_attended = COALESCE(workshops_attended, 0) + 1
+        WHERE F_id = ?
+        `,
+        [facultyId]
       );
+    } catch (updateError) {
+      console.error("Error updating workshops count:", updateError);
+      // If above fails, try implementing a workaround by fetching current count
+      try {
+        // First get the current count of workshops from faculty_workshops table
+        const workshopCountResult = (await query(
+          `
+          SELECT COUNT(*) as count 
+          FROM faculty_workshops
+          WHERE faculty_id = ?
+          `,
+          [facultyId]
+        )) as RowDataPacket[];
+
+        const workshopCount = workshopCountResult[0]?.count || 1;
+
+        // Then update the workshops_attended field with the actual count
+        await query(
+          `
+          UPDATE faculty 
+          SET workshops_attended = ?
+          WHERE F_id = ?
+          `,
+          [workshopCount, facultyId]
+        );
+      } catch (secondUpdateError) {
+        console.error("Error in workshop count workaround:", secondUpdateError);
+        // Continue execution even if this fails - at least the workshop was added
+      }
     }
+
+    return NextResponse.json({
+      success: true,
+      message: "Workshop added successfully",
+      data: { id: (result as any).insertId },
+    });
   } catch (error) {
-    console.error("Error in workshops API:", error);
+    console.error("Error in workshop creation:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error" },
+      {
+        success: false,
+        message:
+          error instanceof Error ? error.message : "Failed to add workshop",
+      },
       { status: 500 }
     );
   }

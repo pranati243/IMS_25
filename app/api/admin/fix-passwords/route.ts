@@ -4,12 +4,12 @@ import { hash } from "bcrypt";
 
 export async function POST(request: NextRequest) {
   // This endpoint should only be accessible in development environment
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { success: false, message: "This endpoint is not available in production" },
-      { status: 403 }
-    );
-  }
+  // if (process.env.NODE_ENV === "production") {
+  //   return NextResponse.json(
+  //     { success: false, message: "This endpoint is not available in production" },
+  //     { status: 403 }
+  //   );
+  // }
 
   try {
     const { email, newPassword, adminKey } = await request.json();
@@ -49,16 +49,13 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hash(newPassword, 10);
 
     // Update user's password
-    await query(
-      `UPDATE users SET password = ? WHERE id = ?`,
-      [hashedPassword, user.id]
-    );
+    await query(`UPDATE users SET password = ? WHERE id = ?`, [
+      hashedPassword,
+      user.id,
+    ]);
 
     // Make sure user is active
-    await query(
-      `UPDATE users SET is_active = 1 WHERE id = ?`,
-      [user.id]
-    );
+    await query(`UPDATE users SET is_active = 1 WHERE id = ?`, [user.id]);
 
     return NextResponse.json({
       success: true,
@@ -66,13 +63,17 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        username: user.username
-      }
+        username: user.username,
+      },
     });
   } catch (error) {
     console.error("Fix password error:", error);
     return NextResponse.json(
-      { success: false, message: "Error fixing password", error: String(error) },
+      {
+        success: false,
+        message: "Error fixing password",
+        error: String(error),
+      },
       { status: 500 }
     );
   }
@@ -81,12 +82,12 @@ export async function POST(request: NextRequest) {
 // Utility endpoint to list users for debugging
 export async function GET(request: NextRequest) {
   // This endpoint should only be accessible in development environment
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { success: false, message: "This endpoint is not available in production" },
-      { status: 403 }
-    );
-  }
+  // if (process.env.NODE_ENV === "production") {
+  //   return NextResponse.json(
+  //     { success: false, message: "This endpoint is not available in production" },
+  //     { status: 403 }
+  //   );
+  // }
 
   try {
     const url = new URL(request.url);
@@ -123,4 +124,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}

@@ -446,7 +446,7 @@ function DepartmentCard({ department, showEditButton = false }: DepartmentCardPr
           </div>
           <div className="text-purple-600">
             <span className="font-semibold">{department.Total_Students || 0}</span>{" "}
-            students
+            student
           </div>
         </div>
 
