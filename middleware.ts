@@ -31,6 +31,9 @@ const publicApiPaths = [
   "/api/debug/diagnostic",
   "/api/debug/direct-login",
   "/api/debug/fix-database",
+  "/api/faculty/check-exists",
+  "/api/departments",
+  "/api/faculty/autocomplete",
 ];
 
 // Use env variable with fallback for JWT secret

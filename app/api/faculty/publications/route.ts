@@ -292,6 +292,7 @@ export async function POST(request: NextRequest) {
       url,
       citation_count,
       faculty_id: requestFacultyId,
+      co_authors, // Array of co-author faculty IDs
     } = await request.json();
 
     // For faculty role, ensure they can only add their own publications
@@ -305,10 +306,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build authors string - get current user's name and add co-authors
+    let finalAuthors = authors;
+    if (co_authors && co_authors.length > 0) {
+      // Get current user's name
+      const currentUserResult = (await query(
+        "SELECT F_name FROM faculty WHERE F_id = ?",
+        [publicationFacultyId]
+      )) as RowDataPacket[];
+
+      // Get co-authors' names
+      const coAuthorNames = [];
+      for (const coAuthorId of co_authors) {
+        const coAuthorResult = (await query(
+          "SELECT F_name FROM faculty WHERE F_id = ?",
+          [coAuthorId]
+        )) as RowDataPacket[];
+
+        if (coAuthorResult.length > 0) {
+          coAuthorNames.push(coAuthorResult[0].F_name);
+        }
+      }
+
+      // Build final authors string
+      const currentUserName =
+        currentUserResult.length > 0 ? currentUserResult[0].F_name : "Unknown";
+      finalAuthors = [currentUserName, ...coAuthorNames].join(", ");
+    }
+
     // Validate required fields
     if (
       !title ||
-      !authors ||
       !publication_date ||
       !publication_type ||
       !publication_venue
@@ -316,8 +344,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Title, authors, publication date, type, and venue are required",
+          message: "Title, publication date, type, and venue are required",
         },
         { status: 400 }
       );
@@ -351,7 +378,7 @@ export async function POST(request: NextRequest) {
         publicationFacultyId,
         title,
         abstract || null,
-        authors,
+        finalAuthors,
         publication_date,
         publication_type,
         publication_venue,
@@ -361,15 +388,47 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    const publicationId = (result as any).insertId;
+
+    // Insert co-author relationships
+    if (co_authors && co_authors.length > 0) {
+      for (let i = 0; i < co_authors.length; i++) {
+        await query(
+          `INSERT INTO publication_co_authors (publication_id, faculty_id, author_order) 
+           VALUES (?, ?, ?)`,
+          [publicationId, co_authors[i], i + 2] // Start from 2 since primary author is 1
+        );
+
+        // Also create a duplicate publication record for each co-author
+        await query(
+          `INSERT INTO faculty_publications 
+            (faculty_id, title, abstract, authors, publication_date, publication_type, publication_venue, doi, url, citation_count) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            co_authors[i],
+            title,
+            abstract || null,
+            finalAuthors,
+            publication_date,
+            publication_type,
+            publication_venue,
+            doi || null,
+            url || null,
+            citation_count || null,
+          ]
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "Publication added successfully",
       data: {
-        id: (result as any).insertId,
+        id: publicationId,
         faculty_id: publicationFacultyId,
         title,
         abstract,
-        authors,
+        authors: finalAuthors,
         publication_date,
         publication_type,
         publication_venue,

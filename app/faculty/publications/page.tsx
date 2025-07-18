@@ -35,6 +35,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { CoAuthorSelector } from "@/app/components/faculty/CoAuthorSelector";
 
 interface Publication {
   id: number;
@@ -57,7 +58,6 @@ interface Publication {
 
 interface PublicationFormData {
   title: string;
-  abstract?: string;
   authors: string;
   publication_date: string;
   publication_type:
@@ -72,11 +72,18 @@ interface PublicationFormData {
   citation_count?: string;
 }
 
+interface Faculty {
+  id: string;
+  name: string;
+  department: string;
+}
+
 export default function FacultyPublicationsPage() {
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [doiPreScreenOpen, setDoiPreScreenOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -85,6 +92,8 @@ export default function FacultyPublicationsPage() {
   const [doiLookupLoading, setDoiLookupLoading] = useState(false);
   const [selectedPublication, setSelectedPublication] =
     useState<Publication | null>(null);
+  const [preScreenDoi, setPreScreenDoi] = useState("");
+  const [selectedCoAuthors, setSelectedCoAuthors] = useState<Faculty[]>([]);
   const [formData, setFormData] = useState<PublicationFormData>({
     title: "",
     authors: "",
@@ -149,7 +158,6 @@ export default function FacultyPublicationsPage() {
       setFormData((prev) => ({
         ...prev,
         title: metadata.title || prev.title,
-        abstract: metadata.abstract || prev.abstract,
         authors: metadata.authors || prev.authors,
         publication_date: metadata.publicationDate || prev.publication_date,
         publication_type: metadata.publicationType || prev.publication_type,
@@ -171,6 +179,44 @@ export default function FacultyPublicationsPage() {
     } finally {
       setDoiLookupLoading(false);
     }
+  };
+
+  // Handle DOI pre-screen submission
+  const handleDoiPreScreenSubmit = async () => {
+    if (preScreenDoi.trim()) {
+      // User entered a DOI, fetch metadata and pre-fill form
+      await handleDoiLookup(preScreenDoi.trim());
+      setFormData((prev) => ({
+        ...prev,
+        doi: preScreenDoi.trim(),
+      }));
+    } else {
+      // User wants to proceed manually, reset form
+      setFormData({
+        title: "",
+        authors: "",
+        publication_date: new Date().toISOString().split("T")[0],
+        publication_type: "journal",
+        publication_venue: "",
+      });
+      setSelectedCoAuthors([]);
+    }
+    setDoiPreScreenOpen(false);
+    setAddDialogOpen(true);
+  };
+
+  // Handle manual form entry (skip DOI)
+  const handleManualEntry = () => {
+    setFormData({
+      title: "",
+      authors: "",
+      publication_date: new Date().toISOString().split("T")[0],
+      publication_type: "journal",
+      publication_venue: "",
+    });
+    setSelectedCoAuthors([]);
+    setDoiPreScreenOpen(false);
+    setAddDialogOpen(true);
   };
 
   const handleInputChange = (
@@ -195,7 +241,6 @@ export default function FacultyPublicationsPage() {
 
     if (
       !formData.title ||
-      !formData.authors ||
       !formData.publication_date ||
       !formData.publication_type ||
       !formData.publication_venue
@@ -207,8 +252,11 @@ export default function FacultyPublicationsPage() {
     try {
       setIsSubmitting(true);
 
+      // Build authors string - current user + co-authors
+      // The backend will handle getting current user and building the full authors string
       const payload = {
         ...formData,
+        co_authors: selectedCoAuthors.map((ca) => ca.id), // Send co-author IDs
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
@@ -237,6 +285,7 @@ export default function FacultyPublicationsPage() {
         publication_type: "journal",
         publication_venue: "",
       });
+      setSelectedCoAuthors([]);
 
       // Refresh publications list
       await fetchPublications();
@@ -342,11 +391,10 @@ export default function FacultyPublicationsPage() {
     }
   };
 
-  const handleViewDetails = (publication: Publication) => {
+  const handleViewDetails = async (publication: Publication) => {
     setSelectedPublication(publication);
     setFormData({
       title: publication.title,
-      abstract: publication.abstract || undefined,
       authors: publication.authors,
       publication_date: publication.publication_date,
       publication_type: publication.publication_type,
@@ -357,6 +405,22 @@ export default function FacultyPublicationsPage() {
         ? publication.citation_count.toString()
         : undefined,
     });
+
+    // Load co-authors for this publication
+    try {
+      const response = await fetch(
+        `/api/faculty/publications/${publication.id}/co-authors`
+      );
+      const data = await response.json();
+
+      if (data.success) {
+        setSelectedCoAuthors(data.data || []);
+      }
+    } catch (error) {
+      console.error("Error loading co-authors:", error);
+      setSelectedCoAuthors([]);
+    }
+
     setViewDialogOpen(true);
   };
 
@@ -438,14 +502,8 @@ export default function FacultyPublicationsPage() {
           <Button
             className="flex items-center gap-2"
             onClick={() => {
-              setFormData({
-                title: "",
-                authors: "",
-                publication_date: new Date().toISOString().split("T")[0],
-                publication_type: "journal",
-                publication_venue: "",
-              });
-              setAddDialogOpen(true);
+              setPreScreenDoi("");
+              setDoiPreScreenOpen(true);
             }}
           >
             <Plus className="w-4 h-4" />
@@ -546,6 +604,63 @@ export default function FacultyPublicationsPage() {
         </Card>
       </div>
 
+      {/* DOI Pre-screen Dialog */}
+      <DialogForm
+        title="Add Publication"
+        description="You can auto-fill publication details using DOI or proceed to manual entry"
+        open={doiPreScreenOpen}
+        onOpenChange={setDoiPreScreenOpen}
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleDoiPreScreenSubmit();
+        }}
+        isSubmitting={doiLookupLoading}
+        submitLabel={
+          preScreenDoi.trim() ? "Fetch Publication Data" : "Manual Entry"
+        }
+        showCancel={true}
+        cancelLabel="Cancel"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="prescreen_doi">DOI (Optional)</Label>
+            <Input
+              id="prescreen_doi"
+              name="prescreen_doi"
+              placeholder="Enter DOI (e.g., 10.1000/xyz123) or leave blank for manual entry"
+              value={preScreenDoi}
+              onChange={(e) => setPreScreenDoi(e.target.value)}
+            />
+            <p className="text-sm text-gray-500">
+              💡 <strong>Tip:</strong> If you have a DOI, enter it above and
+              click "Fetch Publication Data" to auto-fill the form. Otherwise,
+              click "Manual Entry" to fill out the form manually.
+            </p>
+          </div>
+
+          {preScreenDoi.trim() && (
+            <div className="p-3 bg-blue-50 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>DOI Auto-fill:</strong> The system will fetch
+                publication details from the DOI and pre-populate the form for
+                your review and any necessary modifications.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleManualEntry}
+              className="flex-1"
+            >
+              Skip DOI - Manual Entry
+            </Button>
+          </div>
+        </div>
+      </DialogForm>
+
       {/* Add Publication Dialog */}
       <DialogForm
         title="Add Publication"
@@ -571,27 +686,11 @@ export default function FacultyPublicationsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="authors">
-              Authors <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="authors"
-              name="authors"
-              placeholder="Enter authors (e.g., Smith, J., Jones, A.)"
-              value={formData.authors}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="abstract">Abstract</Label>
-            <Textarea
-              id="abstract"
-              name="abstract"
-              placeholder="Enter the abstract of your publication"
-              value={formData.abstract || ""}
-              onChange={handleInputChange}
-              rows={3}
+            <CoAuthorSelector
+              selectedCoAuthors={selectedCoAuthors}
+              onCoAuthorsChange={setSelectedCoAuthors}
+              label="Co-Authors"
+              placeholder="Search for faculty co-authors from your college..."
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -847,27 +946,11 @@ export default function FacultyPublicationsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="edit_authors">
-              Authors <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit_authors"
-              name="authors"
-              placeholder="Enter authors (e.g., Smith, J., Jones, A.)"
-              value={formData.authors}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit_abstract">Abstract</Label>
-            <Textarea
-              id="edit_abstract"
-              name="abstract"
-              placeholder="Enter the abstract of your publication"
-              value={formData.abstract || ""}
-              onChange={handleInputChange}
-              rows={3}
+            <CoAuthorSelector
+              selectedCoAuthors={selectedCoAuthors}
+              onCoAuthorsChange={setSelectedCoAuthors}
+              label="Co-Authors"
+              placeholder="Search for faculty co-authors from your college..."
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
