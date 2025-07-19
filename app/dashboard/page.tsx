@@ -486,7 +486,7 @@ export default function DashboardPage() {
             >
               <option value="faculty">Faculty Report</option>
               <option value="full">Full Report</option>
-              <option value="student">student Report</option>
+              <option value="student">Student Report</option>
               <option value="research">Research Output Report</option>
             </select>
             <button

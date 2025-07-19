@@ -22,6 +22,7 @@ import {
   ExclamationTriangleIcon,
   DocumentArrowDownIcon,
 } from "@heroicons/react/24/outline";
+import { SignatureUpload } from "@/app/components/faculty/SignatureUpload";
 
 // Helper function to format dates
 const formatDate = (date: Date | string | undefined): string => {
@@ -319,10 +320,13 @@ export default function ProfilePage() {
                 onValueChange={setCurrentTab}
                 className="space-y-4"
               >
-                <TabsList className="grid grid-cols-2">
+                <TabsList className="grid grid-cols-3">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
                   {(profile?.role === "faculty" || profile?.role === "hod") && (
                     <TabsTrigger value="academic">Academic Info</TabsTrigger>
+                  )}
+                  {(profile?.role === "faculty" || profile?.role === "hod") && (
+                    <TabsTrigger value="signature">Signature</TabsTrigger>
                   )}
                 </TabsList>
 
@@ -526,6 +530,20 @@ export default function ProfilePage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  </TabsContent>
+                )}
+
+                {/* Signature Tab - Only for faculty and HOD */}
+                {(profile?.role === "faculty" || profile?.role === "hod") && (
+                  <TabsContent value="signature">
+                    <div className="max-w-md mx-auto">
+                      <SignatureUpload
+                        onSignatureUpdate={(signatureUrl: string) => {
+                          console.log("Signature updated:", signatureUrl);
+                          // You can add additional logic here if needed
+                        }}
+                      />
                     </div>
                   </TabsContent>
                 )}

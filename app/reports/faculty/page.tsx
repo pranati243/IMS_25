@@ -37,7 +37,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { EnhancedReportPreview } from "@/app/components/ui/enhanced-report-preview";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface FacultyData {
   id: string;
@@ -87,10 +86,34 @@ export default function FacultyReportPage() {
   });
   const authErrorRef = useRef(false);
 
+  // Get current user's signature
+  const [facultySignature, setFacultySignature] = useState<string>("");
+
   // Filter options
   const [departments, setDepartments] = useState<string[]>([]);
   const [designations, setDesignations] = useState<string[]>([]);
   const [degrees, setDegrees] = useState<string[]>([]);
+
+  // Fetch faculty signature when user is available
+  useEffect(() => {
+    const fetchFacultySignature = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch("/api/faculty/signature");
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.signatureUrl) {
+            setFacultySignature(result.signatureUrl);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching signature:", error);
+      }
+    };
+
+    fetchFacultySignature();
+  }, [user]);
   // Check authentication status
   useEffect(() => {
     if (!authLoading && !user) {
@@ -300,34 +323,110 @@ export default function FacultyReportPage() {
     setSortConfig({ key: null, direction: "asc" });
   };
 
-  // Handle PDF generation and download
+  // Department to HOD mapping
+  const getDepartmentHOD = (department: string): string => {
+    const hodMapping: { [key: string]: string } = {
+      "Computer Engineering": "Prof. Dr. Rajesh Kumar",
+      "Mechanical Engineering": "Prof. Dr. Suresh Patil",
+      "Electronics and Telecommunication Engineering": "Prof. Dr. Priya Sharma",
+      "Electrical Engineering": "Prof. Dr. Amit Singh",
+      "Information Technology": "Prof. Dr. Neha Gupta",
+      "Civil Engineering": "Prof. Dr. Rahul Desai",
+      "Chemical Engineering": "Prof. Dr. Sunita Yadav",
+    };
+    return hodMapping[department] || "Prof. XXX XXX";
+  };
+
+  // Handle PDF generation and download with institutional letterhead
   const handleDownloadPDF = async () => {
     try {
       setDownloading(true);
 
       const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 14;
 
-      // Add title
-      doc.setFontSize(16);
+      // Add letterhead logo - wait for it to load
+      try {
+        // Create a promise to wait for logo to load
+        const logoPromise = new Promise<void>((resolve, reject) => {
+          const logoImg = new Image();
+          logoImg.onload = () => {
+            try {
+              doc.addImage(logoImg, "JPEG", 15, 15, 25, 25);
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          };
+          logoImg.onerror = () => reject(new Error("Logo failed to load"));
+          logoImg.src = "/report-logo.jpg";
+
+          // Set timeout to prevent hanging
+          setTimeout(() => reject(new Error("Logo loading timeout")), 5000);
+        });
+
+        // Try to load logo, fallback to placeholder if it fails
+        try {
+          await logoPromise;
+        } catch (logoError) {
+          console.warn("Logo loading failed:", logoError);
+          // Fallback: Logo placeholder box
+          doc.rect(15, 15, 25, 25);
+          doc.setFontSize(8);
+          doc.text("LOGO", 22, 30);
+        }
+      } catch (logoError) {
+        // Fallback: Logo placeholder box
+        doc.rect(15, 15, 25, 25);
+        doc.setFontSize(8);
+        doc.text("LOGO", 22, 30);
+      }
+
+      // College header
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Faculty Report", 14, 22);
+      doc.text("Agnel Charities", pageWidth / 2, 20, { align: "center" });
 
-      // Add date
+      doc.setFontSize(16);
+      doc.text(
+        "Fr. C. Rodrigues Institute of Technology, Vashi",
+        pageWidth / 2,
+        28,
+        { align: "center" }
+      );
+
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `Generated on: ${new Date().toLocaleDateString("en-IN")}`,
-        14,
-        30
+        "(An Autonomous Institute & Permanently Affiliated to University of Mumbai)",
+        pageWidth / 2,
+        35,
+        { align: "center" }
       );
 
-      // Add department if filtered
+      // Report title
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Faculty Details and Activities Report", pageWidth / 2, 50, {
+        align: "center",
+      });
+
+      // Add date and filters info
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      let yPos = 65;
+      doc.text(
+        `Generated on: ${new Date().toLocaleDateString("en-IN")}`,
+        margin,
+        yPos
+      );
+
       if (filters.department) {
-        doc.text(`Department: ${filters.department}`, 14, 37);
+        yPos += 7;
+        doc.text(`Department: ${filters.department}`, margin, yPos);
       }
 
-      // Add filters if applied
-      let yPos = 37;
       if (filters.designation || filters.highestDegree) {
         yPos += 7;
         let filterText = "Filters: ";
@@ -335,55 +434,131 @@ export default function FacultyReportPage() {
           filterText += `Designation: ${filters.designation}; `;
         if (filters.highestDegree)
           filterText += `Highest Degree: ${filters.highestDegree}; `;
-        doc.text(filterText, 14, yPos);
+        doc.text(filterText, margin, yPos);
       }
 
-      // Create table data
-      const tableData = filteredData.map((faculty) => [
+      // Create enhanced table data with activities format
+      const tableData = filteredData.map((faculty, index) => [
+        (index + 1).toString(), // Sr. No
         faculty.name,
         faculty.designation || "",
+        faculty.department,
         faculty.dateOfJoining
           ? new Date(faculty.dateOfJoining).toLocaleDateString("en-IN")
           : "",
-        faculty.department,
         faculty.highestDegree || "",
-        faculty.experience?.toString() || "",
+        faculty.experience?.toString() + " years" || "",
       ]);
 
-      // Add table
+      // Add main data table
       autoTable(doc, {
         head: [
           [
-            "Name",
+            "Sr. No",
+            "Faculty Name",
             "Designation",
-            "Date of Joining",
             "Department",
-            "Highest Degree",
-            "Experience (Years)",
+            "Date of Joining",
+            "Qualification",
+            "Experience",
           ],
         ],
         body: tableData,
-        startY: yPos + 10,
+        startY: yPos + 15,
         theme: "grid",
-        headStyles: { fillColor: [75, 70, 229], textColor: 255 },
-        styles: { overflow: "linebreak", cellWidth: "auto" },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "center",
+        },
+        styles: {
+          overflow: "linebreak",
+          cellWidth: "auto",
+          fontSize: 9,
+        },
+        columnStyles: {
+          0: { cellWidth: 15 }, // Sr. No
+          1: { cellWidth: 40 }, // Name
+          2: { cellWidth: 30 }, // Designation
+          3: { cellWidth: 30 }, // Department
+          4: { cellWidth: 25 }, // Date
+          5: { cellWidth: 25 }, // Qualification
+          6: { cellWidth: 20 }, // Experience
+        },
       });
 
-      // Add footer
+      // Get final Y position after table
+      const finalY = (doc as any).lastAutoTable.finalY || yPos + 100;
+
+      // Add signature section
+      const signatureY = Math.max(
+        finalY + 30,
+        doc.internal.pageSize.height - 80
+      );
+
+      // Faculty signature (left side)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Faculty Signature:", margin, signatureY);
+
+      // Add faculty signature image if available
+      if (facultySignature) {
+        try {
+          // Convert signature URL to base64 and add to PDF
+          const fullSignatureUrl = facultySignature.startsWith("http")
+            ? facultySignature
+            : `${window.location.origin}${facultySignature}`;
+          doc.addImage(fullSignatureUrl, "PNG", margin, signatureY + 5, 40, 15);
+        } catch (sigError) {
+          console.warn("Could not add signature image:", sigError);
+          doc.line(margin, signatureY + 15, margin + 60, signatureY + 15); // Fallback signature line
+        }
+      } else {
+        doc.line(margin, signatureY + 15, margin + 60, signatureY + 15); // Signature line
+      }
+
+      // Get faculty name (assuming current user is generating the report)
+      const facultyName = user?.name || "Prof. XXXX XXXX";
+      doc.text(facultyName, margin, signatureY + 25);
+      doc.text("Faculty", margin, signatureY + 32);
+
+      // HOD signature (right side)
+      const hodX = pageWidth - margin - 60;
+      doc.text("HOD Signature:", hodX, signatureY);
+      doc.line(hodX, signatureY + 15, hodX + 60, signatureY + 15); // Signature line (HOD signature will be blank as requested)
+
+      // Get HOD name based on department
+      const department =
+        filters.department ||
+        (filteredData.length > 0 ? filteredData[0].department : "");
+      const hodName = getDepartmentHOD(department);
+      doc.text(hodName, hodX, signatureY + 25);
+      doc.text("Head of Department", hodX, signatureY + 32);
+
+      // Add footer with page numbers
       const pageCount = doc.internal.pages.length;
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(
           `Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.width / 2,
+          pageWidth / 2,
           doc.internal.pageSize.height - 10,
           { align: "center" }
         );
       }
 
-      // Save PDF
-      doc.save(`Faculty_Report_${new Date().toISOString().split("T")[0]}.pdf`);
+      // Save PDF with proper filename
+      const departmentCode = department
+        .replace(/[^A-Za-z]/g, "")
+        .substring(0, 4)
+        .toUpperCase();
+      const dateStr = new Date().toISOString().split("T")[0];
+      doc.save(`Faculty_Activities_Report_${departmentCode}_${dateStr}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
     } finally {
@@ -391,34 +566,96 @@ export default function FacultyReportPage() {
     }
   };
 
-  // Handle printing
+  // Handle printing with institutional letterhead
   const handlePrint = async () => {
     try {
       setPrinting(true);
 
       const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 14;
 
-      // Add title
-      doc.setFontSize(16);
+      // Add letterhead logo - wait for it to load
+      try {
+        // Create a promise to wait for logo to load
+        const logoPromise = new Promise<void>((resolve, reject) => {
+          const logoImg = new Image();
+          logoImg.onload = () => {
+            try {
+              doc.addImage(logoImg, "JPEG", 15, 15, 25, 25);
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          };
+          logoImg.onerror = () => reject(new Error("Logo failed to load"));
+          logoImg.src = "/report-logo.jpg";
+
+          // Set timeout to prevent hanging
+          setTimeout(() => reject(new Error("Logo loading timeout")), 5000);
+        });
+
+        // Try to load logo, fallback to placeholder if it fails
+        try {
+          await logoPromise;
+        } catch (logoError) {
+          console.warn("Logo loading failed:", logoError);
+          // Fallback: Logo placeholder box
+          doc.rect(15, 15, 25, 25);
+          doc.setFontSize(8);
+          doc.text("LOGO", 22, 30);
+        }
+      } catch (logoError) {
+        // Fallback: Logo placeholder box
+        doc.rect(15, 15, 25, 25);
+        doc.setFontSize(8);
+        doc.text("LOGO", 22, 30);
+      }
+
+      // College header
+      doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Faculty Report", 14, 22);
+      doc.text("Agnel Charities", pageWidth / 2, 20, { align: "center" });
 
-      // Add date
+      doc.setFontSize(16);
+      doc.text(
+        "Fr. C. Rodrigues Institute of Technology, Vashi",
+        pageWidth / 2,
+        28,
+        { align: "center" }
+      );
+
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `Generated on: ${new Date().toLocaleDateString("en-IN")}`,
-        14,
-        30
+        "(An Autonomous Institute & Permanently Affiliated to University of Mumbai)",
+        pageWidth / 2,
+        35,
+        { align: "center" }
       );
 
-      // Add department if filtered
+      // Report title
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Faculty Details and Activities Report", pageWidth / 2, 50, {
+        align: "center",
+      });
+
+      // Add date and filters info
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      let yPos = 65;
+      doc.text(
+        `Generated on: ${new Date().toLocaleDateString("en-IN")}`,
+        margin,
+        yPos
+      );
+
       if (filters.department) {
-        doc.text(`Department: ${filters.department}`, 14, 37);
+        yPos += 7;
+        doc.text(`Department: ${filters.department}`, margin, yPos);
       }
 
-      // Add filters if applied
-      let yPos = 37;
       if (filters.designation || filters.highestDegree) {
         yPos += 7;
         let filterText = "Filters: ";
@@ -426,48 +663,119 @@ export default function FacultyReportPage() {
           filterText += `Designation: ${filters.designation}; `;
         if (filters.highestDegree)
           filterText += `Highest Degree: ${filters.highestDegree}; `;
-        doc.text(filterText, 14, yPos);
+        doc.text(filterText, margin, yPos);
       }
 
-      // Create table data
-      const tableData = filteredData.map((faculty) => [
+      // Create enhanced table data with activities format
+      const tableData = filteredData.map((faculty, index) => [
+        (index + 1).toString(), // Sr. No
         faculty.name,
         faculty.designation || "",
+        faculty.department,
         faculty.dateOfJoining
           ? new Date(faculty.dateOfJoining).toLocaleDateString("en-IN")
           : "",
-        faculty.department,
         faculty.highestDegree || "",
-        faculty.experience?.toString() || "",
+        faculty.experience?.toString() + " years" || "",
       ]);
 
-      // Add table
+      // Add main data table
       autoTable(doc, {
         head: [
           [
-            "Name",
+            "Sr. No",
+            "Faculty Name",
             "Designation",
-            "Date of Joining",
             "Department",
-            "Highest Degree",
-            "Experience (Years)",
+            "Date of Joining",
+            "Qualification",
+            "Experience",
           ],
         ],
         body: tableData,
-        startY: yPos + 10,
+        startY: yPos + 15,
         theme: "grid",
-        headStyles: { fillColor: [75, 70, 229], textColor: 255 },
-        styles: { overflow: "linebreak", cellWidth: "auto" },
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: 0,
+          fontStyle: "bold",
+          halign: "center",
+        },
+        bodyStyles: {
+          halign: "center",
+        },
+        styles: {
+          overflow: "linebreak",
+          cellWidth: "auto",
+          fontSize: 9,
+        },
+        columnStyles: {
+          0: { cellWidth: 15 }, // Sr. No
+          1: { cellWidth: 40 }, // Name
+          2: { cellWidth: 30 }, // Designation
+          3: { cellWidth: 30 }, // Department
+          4: { cellWidth: 25 }, // Date
+          5: { cellWidth: 25 }, // Qualification
+          6: { cellWidth: 20 }, // Experience
+        },
       });
 
-      // Add footer
+      // Get final Y position after table
+      const finalY = (doc as any).lastAutoTable.finalY || yPos + 100;
+
+      // Add signature section
+      const signatureY = Math.max(
+        finalY + 30,
+        doc.internal.pageSize.height - 80
+      );
+
+      // Faculty signature (left side)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("Faculty Signature:", margin, signatureY);
+
+      // Add faculty signature image if available
+      if (facultySignature) {
+        try {
+          // Convert signature URL to base64 and add to PDF
+          const fullSignatureUrl = facultySignature.startsWith("http")
+            ? facultySignature
+            : `${window.location.origin}${facultySignature}`;
+          doc.addImage(fullSignatureUrl, "PNG", margin, signatureY + 5, 40, 15);
+        } catch (sigError) {
+          console.warn("Could not add signature image:", sigError);
+          doc.line(margin, signatureY + 15, margin + 60, signatureY + 15); // Fallback signature line
+        }
+      } else {
+        doc.line(margin, signatureY + 15, margin + 60, signatureY + 15); // Signature line
+      }
+
+      // Get faculty name (assuming current user is generating the report)
+      const facultyName = user?.name || "Prof. XXXX XXXX";
+      doc.text(facultyName, margin, signatureY + 25);
+      doc.text("Faculty", margin, signatureY + 32);
+
+      // HOD signature (right side)
+      const hodX = pageWidth - margin - 60;
+      doc.text("HOD Signature:", hodX, signatureY);
+      doc.line(hodX, signatureY + 15, hodX + 60, signatureY + 15); // Signature line (HOD signature will be blank as requested)
+
+      // Get HOD name based on department
+      const department =
+        filters.department ||
+        (filteredData.length > 0 ? filteredData[0].department : "");
+      const hodName = getDepartmentHOD(department);
+      doc.text(hodName, hodX, signatureY + 25);
+      doc.text("Head of Department", hodX, signatureY + 32);
+
+      // Add footer with page numbers
       const pageCount = doc.internal.pages.length;
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.text(
           `Page ${i} of ${pageCount}`,
-          doc.internal.pageSize.width / 2,
+          pageWidth / 2,
           doc.internal.pageSize.height - 10,
           { align: "center" }
         );
