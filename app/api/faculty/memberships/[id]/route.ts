@@ -12,9 +12,10 @@ interface MembershipRow extends RowDataPacket {
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: membershipId } = await params;
     // Get user info from auth system
     const authResponse = await fetch(`${request.nextUrl.origin}/api/auth/me`, {
       headers: {
@@ -70,8 +71,8 @@ export async function PUT(
 
       facultyId = (facultyResult[0] as any).F_id;
     }
-    
-    const membershipId = params.id;
+
+    // membershipId already declared at top of function
 
     // Parse request body
     const {
@@ -79,7 +80,7 @@ export async function PUT(
       Membership_Type,
       Start_Date,
       End_Date,
-      description = "Faculty membership"
+      description = "Faculty membership",
     } = await request.json();
 
     // Validate required fields
@@ -87,7 +88,8 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message: "Organization name, membership type, and start date are required",
+          message:
+            "Organization name, membership type, and start date are required",
         },
         { status: 400 }
       );
@@ -99,7 +101,11 @@ export async function PUT(
       [membershipId]
     );
 
-    if (!checkResult || !Array.isArray(checkResult) || checkResult.length === 0) {
+    if (
+      !checkResult ||
+      !Array.isArray(checkResult) ||
+      checkResult.length === 0
+    ) {
       return NextResponse.json(
         { success: false, message: "Membership not found" },
         { status: 404 }
@@ -151,9 +157,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: deleteId } = await params;
     // Get user info from auth system
     const authResponse = await fetch(`${request.nextUrl.origin}/api/auth/me`, {
       headers: {
@@ -185,8 +192,8 @@ export async function DELETE(
       );
     }
 
-    const membershipId = params.id;
-    
+    // membershipId already declared as deleteId at top of function
+
     // Get faculty ID from username if user is faculty
     const username = authData.user.username;
     let facultyId = null;
@@ -215,10 +222,14 @@ export async function DELETE(
     // Check if the membership exists and belongs to the user
     const checkResult = await query(
       "SELECT faculty_id FROM faculty_memberships WHERE membership_id = ?",
-      [membershipId]
+      [deleteId]
     );
 
-    if (!checkResult || !Array.isArray(checkResult) || checkResult.length === 0) {
+    if (
+      !checkResult ||
+      !Array.isArray(checkResult) ||
+      checkResult.length === 0
+    ) {
       return NextResponse.json(
         { success: false, message: "Membership not found" },
         { status: 404 }
@@ -238,7 +249,7 @@ export async function DELETE(
 
     // Delete the membership
     await query("DELETE FROM faculty_memberships WHERE membership_id = ?", [
-      membershipId,
+      deleteId,
     ]);
 
     return NextResponse.json({
@@ -252,4 +263,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

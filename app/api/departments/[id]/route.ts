@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 
-type RouteParams = { params: { id: string } };
+type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const id = params.id;
+    const { id } = await params;
     console.log(`Fetching department data for ID: ${id}`);
 
     // First check if the department exists
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const id = params.id;
+    const { id } = await params;
     console.log(`Updating department data for ID: ${id}`);
     const body = await request.json();
     const {
@@ -345,7 +345,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const id = params.id;
+    const { id } = await params;
     console.log(`Attempting to delete department with ID: ${id}`);
 
     // Check if department exists

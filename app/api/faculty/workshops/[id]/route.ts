@@ -4,21 +4,14 @@ import { RowDataPacket } from "mysql2";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const workshopId = params.id;
+  const { id: workshopId } = await params;
 
   try {
     const body = await request.json();
-    const {
-      title,
-      description,
-      start_date,
-      end_date,
-      venue,
-      type,
-      role,
-    } = body;
+    const { title, description, start_date, end_date, venue, type, role } =
+      body;
 
     // Update query
     await query(
@@ -45,9 +38,9 @@ export async function PUT(
 }
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const workshopId = params.id;
+  const { id: workshopId } = await params;
 
   try {
     await query("DELETE FROM faculty_workshops WHERE id = ?", [workshopId]);

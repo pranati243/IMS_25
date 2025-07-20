@@ -73,9 +73,7 @@ export async function GET(request: NextRequest) {
     // Check if table exists and fetch memberships
     try {
       // Verify table exists
-      const tableCheck = await query(
-        "SHOW TABLES LIKE 'faculty_memberships'"
-      );
+      const tableCheck = await query("SHOW TABLES LIKE 'faculty_memberships'");
 
       if ((tableCheck as any[]).length === 0) {
         // Return an empty array if the table doesn't exist yet
@@ -92,6 +90,7 @@ export async function GET(request: NextRequest) {
           membership_id as SrNo,
           faculty_id as F_ID,
           organization,
+          organization_category,
           membership_type as Membership_Type,
           membership_identifier as Membership_ID,
           certificate_url,
@@ -192,13 +191,14 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const {
       organization,
+      organization_category = "National", // Default to National if not provided
       Membership_Type,
       Membership_ID, // new, required
       Start_Date,
       End_Date,
       F_ID,
       certificate_url, // new, required
-      description = "Faculty membership"
+      description = "Faculty membership",
     } = await request.json();
 
     // For faculty role, ensure they can only add their own memberships
@@ -212,7 +212,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!organization || !Membership_Type || !Membership_ID || !certificate_url || !Start_Date) {
+    if (
+      !organization ||
+      !Membership_Type ||
+      !Membership_ID ||
+      !certificate_url ||
+      !Start_Date
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -224,9 +230,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the table exists, create it if it doesn't
-    const tableCheck = await query(
-      "SHOW TABLES LIKE 'faculty_memberships'"
-    );
+    const tableCheck = await query("SHOW TABLES LIKE 'faculty_memberships'");
 
     if ((tableCheck as any[]).length === 0) {
       // Create the table if it doesn't exist
@@ -235,6 +239,7 @@ export async function POST(request: NextRequest) {
           membership_id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
           faculty_id bigint(20) NOT NULL,
           organization varchar(255) NOT NULL,
+          organization_category ENUM('National', 'International', 'Others') DEFAULT 'National',
           membership_type varchar(100) NOT NULL,
           membership_identifier varchar(100) NOT NULL,
           certificate_url varchar(255) NOT NULL,
@@ -251,17 +256,18 @@ export async function POST(request: NextRequest) {
     // Insert the membership
     const result = await query(
       `INSERT INTO faculty_memberships 
-        (faculty_id, organization, membership_type, membership_identifier, certificate_url, start_date, end_date, description) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (faculty_id, organization, organization_category, membership_type, membership_identifier, certificate_url, start_date, end_date, description) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         membershipFacultyId,
         organization,
+        organization_category,
         Membership_Type,
         Membership_ID,
         certificate_url,
         Start_Date,
         End_Date || null,
-        description
+        description,
       ]
     );
 
@@ -272,12 +278,13 @@ export async function POST(request: NextRequest) {
         membership_id: (result as any).insertId,
         faculty_id: membershipFacultyId,
         organization,
+        organization_category,
         membership_type: Membership_Type,
         membership_identifier: Membership_ID,
         certificate_url,
         start_date: Start_Date,
         end_date: End_Date,
-        description
+        description,
       },
     });
   } catch (error) {

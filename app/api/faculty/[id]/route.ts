@@ -3,17 +3,16 @@ import { query } from "@/app/lib/db";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     console.log(`Fetching faculty data for ID: ${id}`);
 
     // First check if the faculty exists
-    const facultyExists = await query(
-      `SELECT * FROM faculty WHERE F_id = ?`,
-      [id]
-    );
+    const facultyExists = await query(`SELECT * FROM faculty WHERE F_id = ?`, [
+      id,
+    ]);
 
     if (!facultyExists || !(facultyExists as any[]).length) {
       console.log(`Faculty with ID ${id} not found`);
@@ -30,10 +29,14 @@ export async function GET(
 
     // Then check if faculty_details table exists
     try {
-      const detailsTableExists = await query("SHOW TABLES LIKE 'faculty_details'");
-      
+      const detailsTableExists = await query(
+        "SHOW TABLES LIKE 'faculty_details'"
+      );
+
       if ((detailsTableExists as any[]).length === 0) {
-        console.log("faculty_details table does not exist, returning basic faculty data");
+        console.log(
+          "faculty_details table does not exist, returning basic faculty data"
+        );
         // Return just the basic faculty data if details table doesn't exist
         return NextResponse.json({
           ...basicFaculty,
@@ -73,20 +76,22 @@ export async function GET(
     // If we have data with details, return it
     if (faculty && (faculty as any[]).length > 0) {
       const facultyData = (faculty as any[])[0];
-      
+
       // Convert date strings to proper format for the form
       if (facultyData.Date_of_Joining) {
-        facultyData.Date_of_Joining = facultyData.Date_of_Joining instanceof Date 
-          ? facultyData.Date_of_Joining 
-          : new Date(facultyData.Date_of_Joining);
+        facultyData.Date_of_Joining =
+          facultyData.Date_of_Joining instanceof Date
+            ? facultyData.Date_of_Joining
+            : new Date(facultyData.Date_of_Joining);
       }
-      
+
       if (facultyData.Date_of_Birth) {
-        facultyData.Date_of_Birth = facultyData.Date_of_Birth instanceof Date 
-          ? facultyData.Date_of_Birth 
-          : new Date(facultyData.Date_of_Birth);
+        facultyData.Date_of_Birth =
+          facultyData.Date_of_Birth instanceof Date
+            ? facultyData.Date_of_Birth
+            : new Date(facultyData.Date_of_Birth);
       }
-      
+
       return NextResponse.json(facultyData);
     }
 
@@ -124,10 +129,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     console.log(`Updating faculty data for ID: ${id}`);
     const body = await request.json();
     const {
@@ -163,13 +168,19 @@ export async function PUT(
       console.log(`Successfully updated basic faculty info for ID ${id}`);
     } catch (error) {
       console.error("Error updating faculty table:", error);
-      throw new Error(`Failed to update faculty: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to update faculty: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
     // Check if faculty_details table exists
     try {
-      const detailsTableExists = await query("SHOW TABLES LIKE 'faculty_details'");
-      
+      const detailsTableExists = await query(
+        "SHOW TABLES LIKE 'faculty_details'"
+      );
+
       if ((detailsTableExists as any[]).length === 0) {
         console.log("faculty_details table doesn't exist, creating it");
         // Create the table
@@ -290,7 +301,11 @@ export async function PUT(
       }
     } catch (error) {
       console.error("Error updating faculty details:", error);
-      throw new Error(`Failed to update faculty details: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to update faculty details: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
 
     return NextResponse.json({

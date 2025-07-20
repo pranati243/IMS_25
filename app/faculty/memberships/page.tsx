@@ -25,6 +25,7 @@ interface Membership {
   SrNo: number; // This is actually membership_id
   F_ID: string; // This is actually faculty_id
   organization: string;
+  organization_category?: string; // Add this field
   Membership_Type: string; // This is actually membership_type
   Membership_ID: string; // new
   certificate_url: string; // new
@@ -68,7 +69,7 @@ export default function FacultyMembershipsPage() {
     certificateFile: null,
     Start_Date: new Date().toISOString().split("T")[0],
     End_Date: "",
-    description: ""
+    description: "",
   });
 
   useEffect(() => {
@@ -105,7 +106,9 @@ export default function FacultyMembershipsPage() {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
   ) => {
     const { name, value, type, files } = e.target as any;
     if (type === "file") {
@@ -124,7 +127,9 @@ export default function FacultyMembershipsPage() {
       !formData.certificateFile ||
       !formData.Start_Date
     ) {
-      toast.error("Please fill in all required fields, including Membership ID and Certificate");
+      toast.error(
+        "Please fill in all required fields, including Membership ID and Certificate"
+      );
       return;
     }
     setIsSubmitting(true);
@@ -143,18 +148,21 @@ export default function FacultyMembershipsPage() {
       }
       // 2. Submit membership data
       const payload = {
-        organization: formData.organization === "Others" || formData.organizationCategory === "Others"
-          ? formData.organizationOther
-          : formData.organization,
-        organizationCategory: formData.organizationCategory,
-        Membership_Type: formData.Membership_Type === "Others"
-          ? formData.Membership_Type_Other
-          : formData.Membership_Type,
+        organization:
+          formData.organization === "Others" ||
+          formData.organizationCategory === "Others"
+            ? formData.organizationOther
+            : formData.organization,
+        organization_category: formData.organizationCategory, // Match API field name
+        Membership_Type:
+          formData.Membership_Type === "Others"
+            ? formData.Membership_Type_Other
+            : formData.Membership_Type,
         Membership_ID: formData.Membership_ID,
         certificate_url: uploadData.url,
         Start_Date: formData.Start_Date,
         End_Date: formData.End_Date || null,
-        description: formData.description || "Faculty membership"
+        description: formData.description || "Faculty membership",
       };
       const response = await fetch("/api/faculty/memberships", {
         method: "POST",
@@ -177,12 +185,14 @@ export default function FacultyMembershipsPage() {
         certificateFile: null,
         Start_Date: new Date().toISOString().split("T")[0],
         End_Date: "",
-        description: ""
+        description: "",
       });
       await fetchMemberships();
     } catch (err) {
       console.error("Error adding membership:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to add membership");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to add membership"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -210,7 +220,7 @@ export default function FacultyMembershipsPage() {
         Membership_Type: formData.Membership_Type,
         Start_Date: formData.Start_Date,
         End_Date: formData.End_Date || null,
-        description: formData.description || "Faculty membership"
+        description: formData.description || "Faculty membership",
       };
 
       const response = await fetch(
@@ -289,7 +299,7 @@ export default function FacultyMembershipsPage() {
       certificateFile: null,
       Start_Date: membership.Start_Date,
       End_Date: membership.End_Date || "",
-      description: membership.description || ""
+      description: membership.description || "",
     });
     setViewDialogOpen(true);
   };
@@ -318,30 +328,88 @@ export default function FacultyMembershipsPage() {
     National: [
       { value: "ISTE", label: "ISTE – Indian Society for Technical Education" },
       { value: "IEI", label: "IEI – Institution of Engineers (India)" },
-      { value: "IETE", label: "IETE – Institution of Electronics and Telecommunication Engineers" },
+      {
+        value: "IETE",
+        label:
+          "IETE – Institution of Electronics and Telecommunication Engineers",
+      },
       { value: "CSI", label: "CSI – Computer Society of India" },
-      { value: "ISME", label: "ISME – Indian Society for Mechanical Engineers" },
-      { value: "IET India", label: "IET India – Institution of Engineering and Technology (India Chapter)" },
-      { value: "IEEE India Council", label: "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)" },
+      {
+        value: "ISME",
+        label: "ISME – Indian Society for Mechanical Engineers",
+      },
+      {
+        value: "IET India",
+        label:
+          "IET India – Institution of Engineering and Technology (India Chapter)",
+      },
+      {
+        value: "IEEE India Council",
+        label:
+          "IEEE India Council – Institute of Electrical and Electronics Engineers (India Council)",
+      },
       { value: "INAE", label: "INAE – Indian National Academy of Engineering" },
-      { value: "ACM India", label: "ACM India – Association for Computing Machinery (India Chapter)" },
-      { value: "SAEINDIA", label: "SAEINDIA – Society of Automotive Engineers India" },
-      { value: "ISTD", label: "ISTD – Indian Society for Training and Development" },
-      { value: "NAAC/NBA Panel Expert", label: "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation" },
+      {
+        value: "ACM India",
+        label:
+          "ACM India – Association for Computing Machinery (India Chapter)",
+      },
+      {
+        value: "SAEINDIA",
+        label: "SAEINDIA – Society of Automotive Engineers India",
+      },
+      {
+        value: "ISTD",
+        label: "ISTD – Indian Society for Training and Development",
+      },
+      {
+        value: "NAAC/NBA Panel Expert",
+        label:
+          "NAAC/NBA Panel Expert – National Assessment and Accreditation Council / National Board of Accreditation",
+      },
     ],
     International: [
-      { value: "IEEE", label: "IEEE – Institute of Electrical and Electronics Engineers" },
+      {
+        value: "IEEE",
+        label: "IEEE – Institute of Electrical and Electronics Engineers",
+      },
       { value: "ACM", label: "ACM – Association for Computing Machinery" },
-      { value: "ASME", label: "ASME – American Society of Mechanical Engineers" },
+      {
+        value: "ASME",
+        label: "ASME – American Society of Mechanical Engineers",
+      },
       { value: "ASCE", label: "ASCE – American Society of Civil Engineers" },
-      { value: "SAE International", label: "SAE International – Society of Automotive Engineers (International)" },
-      { value: "IFAC", label: "IFAC – International Federation of Automatic Control" },
-      { value: "INFORMS", label: "INFORMS – Institute for Operations Research and the Management Sciences" },
-      { value: "AAAI", label: "AAAI – Association for the Advancement of Artificial Intelligence" },
-      { value: "IAENG", label: "IAENG – International Association of Engineers" },
+      {
+        value: "SAE International",
+        label:
+          "SAE International – Society of Automotive Engineers (International)",
+      },
+      {
+        value: "IFAC",
+        label: "IFAC – International Federation of Automatic Control",
+      },
+      {
+        value: "INFORMS",
+        label:
+          "INFORMS – Institute for Operations Research and the Management Sciences",
+      },
+      {
+        value: "AAAI",
+        label:
+          "AAAI – Association for the Advancement of Artificial Intelligence",
+      },
+      {
+        value: "IAENG",
+        label: "IAENG – International Association of Engineers",
+      },
     ],
   };
-  const MEMBERSHIP_TYPES = ["Senior Member", "Professional Member", "Fellow", "Others"];
+  const MEMBERSHIP_TYPES = [
+    "Senior Member",
+    "Professional Member",
+    "Fellow",
+    "Others",
+  ];
 
   return (
     <MainLayout>
@@ -369,7 +437,7 @@ export default function FacultyMembershipsPage() {
                 certificateFile: null,
                 Start_Date: new Date().toISOString().split("T")[0],
                 End_Date: "",
-                description: ""
+                description: "",
               });
               setAddDialogOpen(true);
             }}
@@ -407,9 +475,7 @@ export default function FacultyMembershipsPage() {
                     className="p-4 border rounded-lg hover:bg-gray-50"
                   >
                     <div className="flex justify-between">
-                      <h3 className="font-medium">
-                        {membership.organization}
-                      </h3>
+                      <h3 className="font-medium">{membership.organization}</h3>
                       <span className="text-sm bg-red-50 text-red-700 px-2 py-1 rounded">
                         {membership.Membership_Type}
                       </span>
@@ -461,7 +527,9 @@ export default function FacultyMembershipsPage() {
               className="w-full border rounded px-2 py-1"
             >
               {ORGANIZATION_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
             {formData.organizationCategory === "Others" && (
@@ -489,13 +557,18 @@ export default function FacultyMembershipsPage() {
                 className="w-full border rounded px-2 py-1"
               >
                 <option value="">Select organisation</option>
-                {ORGANIZATIONS[formData.organizationCategory]?.map((org: { value: string; label: string }) => (
-                  <option key={org.value} value={org.value}>{org.label}</option>
-                ))}
+                {ORGANIZATIONS[formData.organizationCategory]?.map(
+                  (org: { value: string; label: string }) => (
+                    <option key={org.value} value={org.value}>
+                      {org.label}
+                    </option>
+                  )
+                )}
                 <option value="Others">Others (Specify)</option>
               </select>
             ) : null}
-            {(formData.organizationCategory === "Others" || formData.organization === "Others") && (
+            {(formData.organizationCategory === "Others" ||
+              formData.organization === "Others") && (
               <Input
                 id="organizationOther"
                 name="organizationOther"
@@ -520,7 +593,9 @@ export default function FacultyMembershipsPage() {
             >
               <option value="">Select type</option>
               {MEMBERSHIP_TYPES.map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
             {formData.Membership_Type === "Others" && (
@@ -642,6 +717,12 @@ export default function FacultyMembershipsPage() {
               <p className="text-sm">{selectedMembership.organization}</p>
             </div>
             <div className="space-y-2">
+              <Label>Organization Category</Label>
+              <div className="inline-block px-2 py-1 text-sm bg-blue-50 text-blue-700 rounded">
+                {selectedMembership.organization_category || "National"}
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label>Membership Type</Label>
               <div className="inline-block px-2 py-1 text-sm bg-red-50 text-red-700 rounded">
                 {selectedMembership.Membership_Type}
@@ -649,7 +730,9 @@ export default function FacultyMembershipsPage() {
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <p className="text-sm">{selectedMembership.description || "No description available"}</p>
+              <p className="text-sm">
+                {selectedMembership.description || "No description available"}
+              </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

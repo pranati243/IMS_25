@@ -4,10 +4,10 @@ import { RowDataPacket } from "mysql2";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const publicationId = params.id;
+    const { id: publicationId } = await params;
 
     // Get co-authors for the publication
     const coAuthorsResult = (await query(
