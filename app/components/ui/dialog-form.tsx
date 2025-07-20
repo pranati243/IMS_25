@@ -20,6 +20,7 @@ interface DialogFormProps {
   cancelLabel?: string;
   showCancel?: boolean;
   showSubmit?: boolean;
+  submitDisabled?: boolean;
   children: React.ReactNode;
 }
 
@@ -30,10 +31,11 @@ export function DialogForm({
   onOpenChange,
   onSubmit,
   isSubmitting = false,
-  submitLabel = "close",
-  
+  submitLabel = "Submit",
+  cancelLabel = "Cancel",
   showCancel = false,
   showSubmit = true,
+  submitDisabled = false,
   children,
 }: DialogFormProps) {
   return (
@@ -54,12 +56,10 @@ export function DialogForm({
                 variant="outline"
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
-              >
-                
-              </Button>
+              ></Button>
             )}
             {showSubmit && (
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting || submitDisabled}>
                 {isSubmitting ? "Saving..." : submitLabel}
               </Button>
             )}

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,8 +19,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DialogForm } from "@/app/components/ui/dialog-form";
-import { Plus, Globe, Trash, Pencil } from "lucide-react";
+import { Plus, Globe, Trash, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { DocumentVerification } from "@/app/components/DocumentVerification";
 
 interface Membership {
   SrNo: number; // This is actually membership_id
@@ -59,6 +61,53 @@ export default function FacultyMembershipsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMembership, setSelectedMembership] =
     useState<Membership | null>(null);
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1); // Step 1: Form, Step 2: Verification
+  const [verificationResult, setVerificationResult] = useState<any>(null);
+
+  // Dialog and step management
+  const resetDialogState = () => {
+    setCurrentStep(1);
+    setFormData({
+      organization: "",
+      organizationCategory: "National",
+      organizationOther: "",
+      Membership_Type: "",
+      Membership_Type_Other: "",
+      Membership_ID: "",
+      certificateFile: null,
+      Start_Date: new Date().toISOString().split("T")[0],
+      End_Date: "",
+      description: "",
+    });
+    setVerificationResult(null);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setAddDialogOpen(open);
+    if (!open) {
+      resetDialogState();
+    }
+  };
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent form submission
+
+    // Validate form data before proceeding
+    if (
+      !formData.organization ||
+      !formData.Membership_Type ||
+      !formData.Membership_ID
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setCurrentStep(2);
+  };
+
+  const handlePreviousStep = () => {
+    setCurrentStep(1);
+  };
+
   const [formData, setFormData] = useState<MembershipFormData>({
     organization: "",
     organizationCategory: "National",
@@ -512,6 +561,12 @@ export default function FacultyMembershipsPage() {
         onSubmit={handleAddSubmit}
         isSubmitting={isSubmitting}
         submitLabel="Add Membership"
+        submitDisabled={
+          !formData.certificateFile ||
+          !verificationResult ||
+          !verificationResult.isValid ||
+          verificationResult.errors.length > 0
+        }
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
           <div className="space-y-2">
@@ -673,6 +728,48 @@ export default function FacultyMembershipsPage() {
               required
             />
           </div>
+          {formData.certificateFile && (
+            <DocumentVerification
+              file={formData.certificateFile}
+              verificationType="membership"
+              verificationData={{
+                organization:
+                  formData.organizationCategory !== "Others"
+                    ? formData.organization
+                    : formData.organizationOther || "",
+                membership_type:
+                  formData.Membership_Type === "Others"
+                    ? formData.Membership_Type_Other || ""
+                    : formData.Membership_Type,
+                membership_id: formData.Membership_ID,
+                start_date: formData.Start_Date,
+                end_date: formData.End_Date,
+              }}
+              onVerificationComplete={(result) => setVerificationResult(result)}
+            />
+          )}
+
+          {/* Verification Status Message */}
+          {formData.certificateFile && !verificationResult && (
+            <Alert className="border-blue-200 bg-blue-50">
+              <AlertTriangle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Please verify your certificate before submitting the form.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {verificationResult && !verificationResult.isValid && (
+            <Alert className="border-yellow-200 bg-yellow-50">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                Certificate verification failed. Please ensure the uploaded
+                certificate matches the membership details and try again. The
+                submit button will be enabled only after successful
+                verification.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </DialogForm>
 

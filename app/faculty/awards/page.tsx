@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,9 +19,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DialogForm } from "@/app/components/ui/dialog-form";
-import { Plus, Award, Trash, Pencil } from "lucide-react";
+import { Plus, Award, Trash, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/app/providers/auth-provider";
+import DocumentVerification from "@/app/components/DocumentVerification";
 
 interface FacultyAward {
   award_id: number;
@@ -52,6 +54,7 @@ export default function FacultyAwardsPage() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAward, setSelectedAward] = useState<FacultyAward | null>(null);
+  const [currentStep, setCurrentStep] = useState<1 | 2>(1); // Step 1: Form, Step 2: Verification
   const [formData, setFormData] = useState<AwardFormData>({
     award_name: "",
     organization: "",
@@ -61,7 +64,45 @@ export default function FacultyAwardsPage() {
   });
 
   const [certificateFile, setCertificateFile] = useState<File | null>(null);
+  const [verificationResult, setVerificationResult] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dialog and step management
+  const resetDialogState = () => {
+    setCurrentStep(1);
+    setFormData({
+      award_name: "",
+      organization: "",
+      award_description: "",
+      date: new Date().toISOString().split("T")[0],
+      category: "",
+    });
+    setCertificateFile(null);
+    setVerificationResult(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setAddDialogOpen(open);
+    if (!open) {
+      resetDialogState();
+    }
+  };
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent form submission
+
+    // Validate form data before proceeding
+    if (!formData.award_name || !formData.organization || !formData.date) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setCurrentStep(2);
+  };
+
+  const handlePreviousStep = () => {
+    setCurrentStep(1);
+  };
 
   useEffect(() => {
     if (!loading && user?.username) {
@@ -162,16 +203,7 @@ export default function FacultyAwardsPage() {
 
       toast.success("Award added successfully");
       setAddDialogOpen(false);
-      setFormData({
-        award_name: "",
-        organization: "",
-        award_description: "",
-        date: new Date().toISOString().split("T")[0],
-        category: "",
-      });
-
-      setCertificateFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      resetDialogState();
       await fetchAwards();
     } catch (err) {
       console.error("Error adding award:", err);
@@ -431,112 +463,182 @@ export default function FacultyAwardsPage() {
 
       {/* Add Award Dialog */}
       <DialogForm
-        title="Add Award"
-        description="Add a new award or recognition to your profile"
+        title={`Add Award - Step ${currentStep} of 2`}
+        description={
+          currentStep === 1
+            ? "Enter award details"
+            : "Upload and verify certificate"
+        }
         open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSubmit={handleAddSubmit}
+        onOpenChange={handleDialogOpenChange}
+        onSubmit={currentStep === 1 ? handleNextStep : handleAddSubmit}
         isSubmitting={isSubmitting}
-        submitLabel="Add Award"
+        submitLabel={
+          currentStep === 1 ? "Next: Upload Certificate" : "Add Award"
+        }
+        cancelLabel={currentStep === 2 ? "Previous" : "Cancel"}
+        submitDisabled={
+          currentStep === 2 &&
+          (!certificateFile ||
+            !verificationResult ||
+            !verificationResult.isValid ||
+            verificationResult.errors.length > 0)
+        }
       >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="award_name">
-              Award Title <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="award_name"
-              name="award_name"
-              placeholder="Enter the title of your award"
-              value={formData.award_name}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="organization">
-              Awarding Organization <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="organization"
-              name="organization"
-              placeholder="Enter the organization that gave the award"
-              value={formData.organization}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="award_description">
-              Description <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="award_description"
-              name="award_description"
-              placeholder="Enter a description of the award and your achievement"
-              value={formData.award_description}
-              onChange={handleInputChange}
-              required
-              rows={3}
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {currentStep === 1 ? (
+          // Step 1: Form Fields
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="date">
-                Award Date <span className="text-red-500">*</span>
+              <Label htmlFor="award_name">
+                Award Title <span className="text-red-500">*</span>
               </Label>
               <Input
-                id="date"
-                name="date"
-                type="date"
-                value={formData.date}
+                id="award_name"
+                name="award_name"
+                placeholder="Enter the title of your award"
+                value={formData.award_name}
                 onChange={handleInputChange}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="category">Award Category</Label>
+              <Label htmlFor="organization">
+                Awarding Organization <span className="text-red-500">*</span>
+              </Label>
               <Input
-                id="category"
-                name="category"
-                placeholder="E.g., Teaching, Research, Service"
-                value={formData.category || ""}
+                id="organization"
+                name="organization"
+                placeholder="Enter the organization that gave the award"
+                value={formData.organization}
                 onChange={handleInputChange}
+                required
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="certificate">
-              Certificate (PDF) <span className="text-red-500">*</span>
-            </Label>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md border border-gray-300 hover:bg-gray-300 transition text-sm font-medium"
-                onClick={() =>
-                  fileInputRef.current && fileInputRef.current.click()
-                }
-              >
-                Choose PDF
-              </button>
-              <span className="text-gray-700 text-sm">
-                {certificateFile ? certificateFile.name : "No file chosen"}
-              </span>
+            <div className="space-y-2">
+              <Label htmlFor="award_description">
+                Description <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="award_description"
+                name="award_description"
+                placeholder="Enter a description of the award and your achievement"
+                value={formData.award_description}
+                onChange={handleInputChange}
+                required
+                rows={3}
+              />
             </div>
-            <input
-              id="certificate"
-              type="file"
-              accept="application/pdf"
-              required
-              onChange={handleFileChange}
-              ref={fileInputRef}
-              className="hidden"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Only PDF files are allowed. Max size: 30MB.
-            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">
+                  Award Date <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="date"
+                  name="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Award Category</Label>
+                <Input
+                  id="category"
+                  name="category"
+                  placeholder="E.g., Teaching, Research, Service"
+                  value={formData.category || ""}
+                  onChange={handleInputChange}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          // Step 2: Document Upload & Verification
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="certificate">
+                Certificate (PDF) <span className="text-red-500">*</span>
+              </Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="px-3 py-1.5 bg-gray-200 text-gray-800 rounded-md border border-gray-300 hover:bg-gray-300 transition text-sm font-medium"
+                  onClick={() =>
+                    fileInputRef.current && fileInputRef.current.click()
+                  }
+                >
+                  Choose PDF
+                </button>
+                <span className="text-gray-700 text-sm">
+                  {certificateFile ? certificateFile.name : "No file chosen"}
+                </span>
+              </div>
+              <input
+                id="certificate"
+                type="file"
+                accept="application/pdf"
+                required
+                onChange={handleFileChange}
+                ref={fileInputRef}
+                className="hidden"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Only PDF files are allowed. Max size: 30MB.
+              </p>
+            </div>
+
+            {/* Document Verification */}
+            {certificateFile && (
+              <DocumentVerification
+                file={certificateFile}
+                verificationData={{
+                  award_title: formData.award_name,
+                  awarding_organization: formData.organization,
+                  award_date: formData.date,
+                }}
+                verificationType="award"
+                onVerificationComplete={(result) =>
+                  setVerificationResult(result)
+                }
+              />
+            )}
+
+            {/* Verification Status Message */}
+            {certificateFile && !verificationResult && (
+              <Alert className="border-blue-200 bg-blue-50">
+                <AlertTriangle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  Please verify your certificate before submitting the form.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {verificationResult && !verificationResult.isValid && (
+              <Alert className="border-yellow-200 bg-yellow-50">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  Certificate verification failed. Please ensure the uploaded
+                  certificate matches the award details and try again. The
+                  submit button will be enabled only after successful
+                  verification.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Previous Step Button */}
+            <div className="flex justify-start">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePreviousStep}
+              >
+                ← Previous: Edit Details
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogForm>
 
       {/* View Award Dialog */}
