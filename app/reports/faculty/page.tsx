@@ -94,6 +94,13 @@ export default function FacultyReportPage() {
   const [designations, setDesignations] = useState<string[]>([]);
   const [degrees, setDegrees] = useState<string[]>([]);
 
+  // Fetch HOD name when user is available
+  useEffect(() => {
+    if (user?.username) {
+      fetchHODName();
+    }
+  }, [user]);
+
   // Fetch faculty signature when user is available
   useEffect(() => {
     const fetchFacultySignature = async () => {
@@ -323,21 +330,35 @@ export default function FacultyReportPage() {
     setSortConfig({ key: null, direction: "asc" });
   };
 
-  // Department to HOD mapping
-  const getDepartmentHOD = (department: string): string => {
-    const hodMapping: { [key: string]: string } = {
-      "Computer Engineering": "Prof. Dr. Rajesh Kumar",
-      "Mechanical Engineering": "Prof. Dr. Suresh Patil",
-      "Electronics and Telecommunication Engineering": "Prof. Dr. Priya Sharma",
-      "Electrical Engineering": "Prof. Dr. Amit Singh",
-      "Information Technology": "Prof. Dr. Neha Gupta",
-      "Civil Engineering": "Prof. Dr. Rahul Desai",
-      "Chemical Engineering": "Prof. Dr. Sunita Yadav",
-    };
-    return hodMapping[department] || "Prof. XXX XXX";
-  };
+  // State to store HOD name
+  const [hodName, setHodName] = useState<string>("Prof. YYY ZZZ");
 
-  // Handle PDF generation and download with institutional letterhead
+  // Fetch HOD name using the consolidated reports API
+  const fetchHODName = async () => {
+    if (!user?.username) return;
+
+    try {
+      const response = await fetch("/api/reports", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestType: "hod-lookup",
+          facultyId: user.username,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.hodName) {
+          setHodName(data.hodName);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching HOD name:", error);
+    }
+  }; // Handle PDF generation and download with institutional letterhead
   const handleDownloadPDF = async () => {
     try {
       setDownloading(true);
@@ -531,11 +552,7 @@ export default function FacultyReportPage() {
       doc.text("HOD Signature:", hodX, signatureY);
       doc.line(hodX, signatureY + 15, hodX + 60, signatureY + 15); // Signature line (HOD signature will be blank as requested)
 
-      // Get HOD name based on department
-      const department =
-        filters.department ||
-        (filteredData.length > 0 ? filteredData[0].department : "");
-      const hodName = getDepartmentHOD(department);
+      // Use HOD name from state (fetched from database via API)
       doc.text(hodName, hodX, signatureY + 25);
       doc.text("Head of Department", hodX, signatureY + 32);
 
@@ -553,6 +570,9 @@ export default function FacultyReportPage() {
       }
 
       // Save PDF with proper filename
+      const department =
+        filters.department ||
+        (filteredData.length > 0 ? filteredData[0].department : "Unknown");
       const departmentCode = department
         .replace(/[^A-Za-z]/g, "")
         .substring(0, 4)
@@ -760,11 +780,10 @@ export default function FacultyReportPage() {
       doc.text("HOD Signature:", hodX, signatureY);
       doc.line(hodX, signatureY + 15, hodX + 60, signatureY + 15); // Signature line (HOD signature will be blank as requested)
 
-      // Get HOD name based on department
+      // Use HOD name from state (fetched from database via API)
       const department =
         filters.department ||
         (filteredData.length > 0 ? filteredData[0].department : "");
-      const hodName = getDepartmentHOD(department);
       doc.text(hodName, hodX, signatureY + 25);
       doc.text("Head of Department", hodX, signatureY + 32);
 

@@ -21,14 +21,39 @@ declare module "jspdf" {
 
 // Helper function to get faculty details for signature
 const getFacultyForSignature = async (
-  departmentName?: string
+  departmentName?: string,
+  facultyId?: string
 ): Promise<{
   facultyName: string;
   signatureUrl?: string;
 }> => {
   try {
-    // If department is specified, try to get the first faculty member from that department
-    // Otherwise, get any faculty member (could be enhanced to get current user's info)
+    // First priority: use provided facultyId if available
+    if (facultyId) {
+      const facultyQuery = `
+        SELECT 
+          f.F_name as name,
+          fd.signature_url
+        FROM 
+          faculty f
+        LEFT JOIN 
+          faculty_details fd ON f.F_id = fd.F_ID
+        WHERE f.F_id = ?
+      `;
+
+      const facultyData = (await query(facultyQuery, [
+        facultyId,
+      ])) as RowDataPacket[];
+
+      if (facultyData && facultyData.length > 0) {
+        return {
+          facultyName: facultyData[0].name || "Prof. XXXX XXXX",
+          signatureUrl: facultyData[0].signature_url,
+        };
+      }
+    }
+
+    // Second priority: get faculty from the specific department
     let facultyQuery = `
       SELECT 
         f.F_name as name,
@@ -70,8 +95,104 @@ const getFacultyForSignature = async (
   }
 };
 
-// Department to HOD mapping
-const getDepartmentHOD = (department: string): string => {
+// Function to get HOD details from database using facultyId
+const getDepartmentHODFromFacultyId = async (
+  facultyId?: string
+): Promise<string> => {
+  try {
+    if (!facultyId) {
+      console.warn("No facultyId provided for HOD lookup");
+      return "Prof. YYY ZZZ";
+    }
+
+    console.log(`Looking up HOD for facultyId: ${facultyId}`);
+
+    // Optimized single query following the flow:
+    // 1. Get faculty dept from facultyId
+    // 2. Get department_id from department table
+    // 3. Get HOD_ID from department_details table
+    // 4. Get HOD name from faculty table
+    const hodQuery = `
+      SELECT 
+        hod_faculty.F_name as HOD_Name,
+        logged_faculty.F_dept as Faculty_Dept,
+        d.Department_Name as Dept_Name,
+        dd.HOD_ID as HOD_ID
+      FROM faculty logged_faculty
+      INNER JOIN department d ON d.Department_Name = logged_faculty.F_dept
+      INNER JOIN department_details dd ON dd.Department_ID = d.Department_ID
+      INNER JOIN faculty hod_faculty ON hod_faculty.F_id = dd.HOD_ID
+      WHERE logged_faculty.F_id = ?
+      LIMIT 1
+    `;
+
+    const hodResult = (await query(hodQuery, [facultyId])) as RowDataPacket[];
+
+    if (hodResult && hodResult.length > 0) {
+      console.log(`HOD found for faculty ${facultyId}:`, hodResult[0].HOD_Name);
+      return hodResult[0].HOD_Name || "Prof. YYY ZZZ";
+    }
+
+    console.log(
+      `No HOD found using optimized query for facultyId: ${facultyId}`
+    );
+
+    // If no HOD found, try to get from department name (fallback)
+    const deptQuery = `SELECT F_dept FROM faculty WHERE F_id = ? LIMIT 1`;
+    const deptResult = (await query(deptQuery, [facultyId])) as RowDataPacket[];
+
+    if (deptResult && deptResult.length > 0) {
+      console.log(
+        `Fallback: Using department name ${deptResult[0].F_dept} for HOD lookup`
+      );
+      return getDepartmentHODFromDB(deptResult[0].F_dept);
+    }
+
+    console.log(`No department found for facultyId: ${facultyId}`);
+    return "Prof. YYY ZZZ";
+  } catch (error) {
+    console.error("Error fetching HOD from facultyId:", error);
+    return "Prof. YYY ZZZ";
+  }
+};
+
+// Function to get HOD details from database using department name (legacy support)
+const getDepartmentHODFromDB = async (
+  departmentName: string
+): Promise<string> => {
+  try {
+    // Query to get HOD name using the department_details.HOD_ID
+    const hodQuery = `
+      SELECT f.F_name 
+      FROM faculty f 
+      INNER JOIN department_details dd ON f.F_id = dd.HOD_ID
+      INNER JOIN department d ON dd.Department_ID = d.Department_ID
+      WHERE d.Department_Name = ?
+      LIMIT 1
+    `;
+
+    const hodResult = (await query(hodQuery, [
+      departmentName,
+    ])) as RowDataPacket[];
+
+    if (hodResult && hodResult.length > 0) {
+      console.log(
+        `HOD found for department ${departmentName}:`,
+        hodResult[0].F_name
+      );
+      return hodResult[0].F_name || "Prof. YYY ZZZ";
+    }
+
+    // Fallback to hardcoded mapping if no HOD found in database
+    return getDepartmentHODFallback(departmentName);
+  } catch (error) {
+    console.error("Error fetching HOD from database:", error);
+    return getDepartmentHODFallback(departmentName);
+  }
+};
+
+// Fallback Department to HOD mapping (kept as backup)
+const getDepartmentHODFallback = (department: string): string => {
   const hodMapping: { [key: string]: string } = {
     "Computer Engineering": "Dr. Rahul Khanna",
     "Electronics and Telecommunications": "Dr. Sanjay Kumar",
@@ -174,13 +295,14 @@ const addInstitutionalLetterhead = async (
 };
 
 // Helper function to add signature section to PDF
-const addSignatureSection = (
+const addSignatureSection = async (
   doc: jsPDF,
   startY: number,
   facultyName: string = "Prof. XXXX XXXX",
   departmentName: string = "",
-  facultySignatureUrl?: string
-): void => {
+  facultySignatureUrl?: string,
+  facultyId?: string
+): Promise<void> => {
   const pageWidth = doc.internal.pageSize.width;
   const margin = 14;
 
@@ -212,8 +334,14 @@ const addSignatureSection = (
   doc.text("HOD Signature:", hodX, signatureY);
   doc.line(hodX, signatureY + 15, hodX + 60, signatureY + 15); // Signature line (HOD signature will be blank as requested)
 
-  // Get HOD name based on department
-  const hodName = getDepartmentHOD(departmentName);
+  // Get HOD name from database - prioritize facultyId lookup
+  let hodName = "Prof. YYY ZZZ";
+  if (facultyId) {
+    hodName = await getDepartmentHODFromFacultyId(facultyId);
+  } else if (departmentName) {
+    hodName = await getDepartmentHODFromDB(departmentName);
+  }
+
   doc.text(hodName, hodX, signatureY + 25);
   doc.text("Head of Department", hodX, signatureY + 32);
 };
@@ -251,9 +379,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { reportType, departmentId, format = "pdf" } = body;
+    const {
+      reportType,
+      departmentId,
+      format = "pdf",
+      facultyId,
+      requestType,
+    } = body;
 
-    // If JSON format is requested, return the raw data
+    // Handle HOD lookup request (consolidated approach)
+    if (requestType === "hod-lookup") {
+      if (!facultyId) {
+        return NextResponse.json(
+          { success: false, message: "Faculty ID is required for HOD lookup" },
+          { status: 400 }
+        );
+      }
+
+      try {
+        const hodName = await getDepartmentHODFromFacultyId(facultyId);
+        return NextResponse.json({
+          success: true,
+          hodName: hodName,
+        });
+      } catch (error) {
+        console.error("Error in HOD lookup:", error);
+        return NextResponse.json(
+          { success: false, message: "Failed to fetch HOD information" },
+          { status: 500 }
+        );
+      }
+    }
+
+    // Handle regular report generation
     if (format === "json") {
       let tableData;
       let columns;
@@ -301,17 +459,26 @@ export async function POST(request: NextRequest) {
 
     switch (reportType) {
       case "faculty":
-        [pdfDoc, filename] = await generateFacultyReport(departmentId);
+        [pdfDoc, filename] = await generateFacultyReport(
+          departmentId,
+          facultyId
+        );
         break;
       case "student":
-        [pdfDoc, filename] = await generateStudentsReport(departmentId);
+        [pdfDoc, filename] = await generateStudentsReport(
+          departmentId,
+          facultyId
+        );
         break;
       case "research":
-        [pdfDoc, filename] = await generateResearchReport(departmentId);
+        [pdfDoc, filename] = await generateResearchReport(
+          departmentId,
+          facultyId
+        );
         break;
       case "full":
       default:
-        [pdfDoc, filename] = await generateFullReport(departmentId);
+        [pdfDoc, filename] = await generateFullReport(departmentId, facultyId);
         break;
     }
 
@@ -383,7 +550,8 @@ interface ResearchStats {
 
 // Helper function to generate faculty report
 async function generateFacultyReport(
-  departmentId?: string
+  departmentId?: string,
+  facultyId?: string
 ): Promise<[jsPDF, string]> {
   const doc = new jsPDF();
   const filename = `faculty_report_${departmentId || "all"}_${
@@ -536,6 +704,40 @@ async function generateFacultyReport(
     });
   }
 
+  // Add signature section to faculty report
+  const signatureSectionY = (doc as any).lastAutoTable?.finalY || 250;
+
+  // Get department name for signature section
+  let departmentName = "All Departments";
+  if (departmentId && departmentId !== "all") {
+    try {
+      const deptQuery = `SELECT Department_Name FROM department WHERE Department_ID = ?`;
+      const deptResult = (await query(deptQuery, [
+        parseInt(departmentId, 10),
+      ])) as RowDataPacket[];
+      if (deptResult && deptResult.length > 0) {
+        departmentName = deptResult[0].Department_Name;
+      }
+    } catch (error) {
+      console.error("Error fetching department name for signature:", error);
+    }
+  }
+
+  // Get actual faculty data for signature
+  const signatureFacultyData = await getFacultyForSignature(
+    departmentName,
+    facultyId
+  );
+
+  await addSignatureSection(
+    doc,
+    signatureSectionY,
+    signatureFacultyData.facultyName,
+    departmentName,
+    signatureFacultyData.signatureUrl,
+    facultyId
+  );
+
   // Add footer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -560,7 +762,8 @@ async function generateFacultyReport(
 
 // Helper function to generate student report
 async function generateStudentsReport(
-  departmentId?: string
+  departmentId?: string,
+  facultyId?: string
 ): Promise<[jsPDF, string]> {
   const doc = new jsPDF();
   const filename = `student_report_${departmentId || "all"}_${
@@ -799,14 +1002,18 @@ async function generateStudentsReport(
         (doc as any).lastAutoTable.finalY || finalY + 50;
 
       // Get actual faculty data for signature
-      const facultyData = await getFacultyForSignature(departmentName);
+      const facultyData = await getFacultyForSignature(
+        departmentName,
+        facultyId
+      );
 
-      addSignatureSection(
+      await addSignatureSection(
         doc,
         signatureSectionY,
         facultyData.facultyName,
         departmentName,
-        facultyData.signatureUrl
+        facultyData.signatureUrl,
+        facultyId
       );
     }
   } catch (error) {
@@ -839,7 +1046,8 @@ async function generateStudentsReport(
 } // Helper function to generate research report
 // Helper function to generate research report
 async function generateResearchReport(
-  departmentId?: string
+  departmentId?: string,
+  facultyId?: string
 ): Promise<[jsPDF, string]> {
   const doc = new jsPDF();
   const filename = `research_report_${departmentId || "all"}_${
@@ -927,7 +1135,7 @@ async function generateResearchReport(
       item.Amount_Sanctioned || "N/A",
     ]) as RowInput[];
 
-    // Add main data table with enhanced styling
+    // Add main data table with enhanced styling and proper margins
     autoTable(doc, {
       head: [
         [
@@ -949,25 +1157,32 @@ async function generateResearchReport(
         textColor: 0,
         fontStyle: "bold",
         halign: "center",
+        fontSize: 8,
       },
       bodyStyles: {
         halign: "center",
+        fontSize: 7,
       },
       styles: {
         overflow: "linebreak",
         cellWidth: "auto",
-        fontSize: 8,
+        fontSize: 7,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.1,
       },
       columnStyles: {
-        0: { cellWidth: 12 }, // Sr. No
-        1: { cellWidth: 45 }, // Title column wider
-        2: { cellWidth: 35 }, // Investigators column
-        3: { cellWidth: 25 }, // Department
-        4: { cellWidth: 20 }, // Type
-        5: { cellWidth: 15 }, // Year
-        6: { cellWidth: 30 }, // Funding agency
-        7: { cellWidth: 25 }, // Amount
+        0: { cellWidth: 10, halign: "center" }, // Sr. No
+        1: { cellWidth: 40, halign: "left" }, // Title column - allow text wrapping
+        2: { cellWidth: 30, halign: "left" }, // Investigators column
+        3: { cellWidth: 25, halign: "center" }, // Department
+        4: { cellWidth: 18, halign: "center" }, // Type
+        5: { cellWidth: 12, halign: "center" }, // Year
+        6: { cellWidth: 28, halign: "left" }, // Funding agency
+        7: { cellWidth: 20, halign: "right" }, // Amount
       },
+      margin: { left: 14, right: 14 },
+      pageBreak: "auto",
+      showHead: "everyPage",
     });
 
     // Add department-wise research statistics
@@ -1037,10 +1252,27 @@ async function generateResearchReport(
           textColor: 0,
           fontStyle: "bold",
           halign: "center",
+          fontSize: 9,
         },
         bodyStyles: {
           halign: "center",
+          fontSize: 8,
         },
+        styles: {
+          overflow: "linebreak",
+          fontSize: 8,
+        },
+        columnStyles: {
+          0: { cellWidth: 50, halign: "left" }, // Department name
+          1: { cellWidth: 25, halign: "center" }, // Total Projects
+          2: { cellWidth: 30, halign: "center" }, // Research Projects
+          3: { cellWidth: 25, halign: "center" }, // Consultancies
+          4: { cellWidth: 25, halign: "center" }, // Govt Funded
+          5: { cellWidth: 30, halign: "center" }, // Non-Govt Funded
+        },
+        margin: { left: 14, right: 14 },
+        pageBreak: "auto",
+        showHead: "everyPage",
       });
     }
 
@@ -1109,14 +1341,15 @@ async function generateResearchReport(
       (doc as any).lastAutoTable.finalY || statsStartY + 50;
 
     // Get actual faculty data for signature
-    const facultyData = await getFacultyForSignature(departmentName);
+    const facultyData = await getFacultyForSignature(departmentName, facultyId);
 
-    addSignatureSection(
+    await addSignatureSection(
       doc,
       signatureSectionY,
       facultyData.facultyName,
       departmentName,
-      facultyData.signatureUrl
+      facultyData.signatureUrl,
+      facultyId
     );
   } catch (error) {
     console.error("Error generating research report:", error);
@@ -1150,7 +1383,8 @@ async function generateResearchReport(
 // Helper function to generate full report
 // Helper function to generate full report
 async function generateFullReport(
-  departmentId?: string
+  departmentId?: string,
+  facultyId?: string
 ): Promise<[jsPDF, string]> {
   const doc = new jsPDF();
   const filename = `full_report_${departmentId || "all"}_${
@@ -1447,14 +1681,15 @@ async function generateFullReport(
 
   // Add signature section to summary page
   // Get actual faculty data for signature
-  const facultyData = await getFacultyForSignature(departmentName);
+  const facultyData = await getFacultyForSignature(departmentName, facultyId);
 
-  addSignatureSection(
+  await addSignatureSection(
     doc,
     contentStartY + 120,
     facultyData.facultyName,
     departmentName,
-    facultyData.signatureUrl
+    facultyData.signatureUrl,
+    facultyId
   );
 
   // Add footer with page numbers

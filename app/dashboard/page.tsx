@@ -229,6 +229,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           reportType,
           departmentId: activeTab === "nba" ? "all" : undefined,
+          facultyId: user?.username, // Add current faculty ID
         }),
       });
 
