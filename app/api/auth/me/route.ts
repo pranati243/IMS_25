@@ -102,6 +102,7 @@ export async function GET(request: NextRequest) {
               success: true,
               user: {
                 ...user,
+                departmentId: user.department_id || null,
                 permissions: permissionNames,
               },
             },
@@ -301,6 +302,7 @@ export async function GET(request: NextRequest) {
                 success: true,
                 user: {
                   ...user,
+                  departmentId: user.department_id || null,
                   permissions: permissionNames,
                 },
               },

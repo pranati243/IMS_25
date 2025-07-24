@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/app/providers/auth-provider";
 import MainLayout from "@/app/components/layout/MainLayout";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,9 +46,9 @@ interface Department {
 
 export default function DepartmentsPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [establishmentYearFilter, setEstablishmentYearFilter] = useState<string>("");
@@ -55,25 +56,10 @@ export default function DepartmentsPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check user's role from auth API
-    const fetchUserRole = async () => {
-      try {
-        const response = await fetch("/api/auth/me");
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.user) {
-            setUserRole(data.user.role);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-      }
-    };
-
-    fetchUserRole();
-    fetchDepartments();
-  }, []);
+    if (!loading && user) {
+      fetchDepartments();
+    }
+  }, [user, loading]);
 
   // Apply filters locally
   useEffect(() => {
@@ -131,13 +117,19 @@ export default function DepartmentsPage() {
 
   const fetchDepartments = async () => {
     try {
-      setLoading(true);
-      const response = await fetch("/api/departments");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 seconds
+
+      const response = await fetch("/api/departments", {
+        credentials: "include",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) throw new Error("Failed to fetch departments");
       const data = await response.json();
 
-      if (!data.success) {
-        throw new Error(data.message);
-      }
+      if (!data.success) throw new Error(data.message);
 
       setDepartments(data.data);
       setFilteredDepartments(data.data);
@@ -147,7 +139,7 @@ export default function DepartmentsPage() {
         err instanceof Error ? err.message : "Failed to fetch department data"
       );
     } finally {
-      setLoading(false);
+      // loading is managed by useAuth; do nothing here
     }
   };
 
@@ -166,7 +158,22 @@ export default function DepartmentsPage() {
     (establishmentYearFilter !== "" && establishmentYearFilter !== "all");
 
   // Check if user has permission to add/edit departments
-  const canManageDepartments = userRole === "admin";
+  const canManageDepartments = userRole === "admin" || (user && user.role === "admin");
+
+  // Filter departments for department users
+  const visibleDepartments = user && user.role === "department"
+    ? departments.filter((d) => d.Department_ID === user.departmentId)
+    : filteredDepartments;
+
+  if (loading || !user) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center min-h-[300px]">
+          <span className="text-gray-500 text-lg">Loading...</span>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -328,7 +335,7 @@ export default function DepartmentsPage() {
               <p className="font-medium">Error loading department data</p>
               <p className="text-sm mt-1">{error}</p>
             </div>
-          ) : filteredDepartments.length === 0 ? (
+          ) : visibleDepartments.length === 0 ? (
             <div className="text-center py-12 border rounded-md">
               <p className="text-gray-500 font-medium">
                 No departments found
@@ -351,16 +358,23 @@ export default function DepartmentsPage() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <p className="text-sm text-gray-500">
-                  Showing {filteredDepartments.length} of {departments.length} departments
+                  Showing {visibleDepartments.length} of {departments.length} departments
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {filteredDepartments.map((department) => (
+                {visibleDepartments.map((department) => (
                   <DepartmentCard
                     key={department.Department_ID}
                     department={department}
-                    showEditButton={canManageDepartments}
+                    showEditButton={
+                      !!(
+                        user && (
+                          (user.role as any) === "admin" ||
+                          ((user.role as any) === "department" && department.Department_ID === user.departmentId)
+                        )
+                      )
+                    }
                   />
                 ))}
               </div>
