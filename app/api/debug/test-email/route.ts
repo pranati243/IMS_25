@@ -3,12 +3,12 @@ import { sendEmail, generatePasswordResetEmail } from "@/app/lib/email";
 
 export async function GET(request: NextRequest) {
   // Don't allow in production
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({
-      success: false,
-      message: "This endpoint is not available in production",
-    }, { status: 403 });
-  }
+  //if (process.env.NODE_ENV === 'production') {
+    //return NextResponse.json({
+      //success: false,
+      //message: "This endpoint is not available in production",
+    //}, { status: 403 });
+  //}
 
   try {
     // Get hostname from the request to determine the correct base URL

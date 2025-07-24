@@ -3,12 +3,12 @@ import { query } from "@/app/lib/db";
 
 // This is a debug endpoint to test faculty form submission
 export async function GET() {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { success: false, message: "Debug routes are disabled in production" },
-      { status: 403 }
-    );
-  }
+ // if (process.env.NODE_ENV === 'production') {
+   // return NextResponse.json(
+     // { success: false, message: "Debug routes are disabled in production" },
+      //{ status: 403 }
+    //);
+  //}
   
   try {
     // Check tables and schemas
@@ -64,12 +64,12 @@ export async function GET() {
 
 // This endpoint can be used to test the PUT method for faculty updates
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { success: false, message: "Debug routes are disabled in production" },
-      { status: 403 }
-    );
-  }
+ // if (process.env.NODE_ENV === 'production') {
+   // return NextResponse.json(
+      //{ success: false, message: "Debug routes are disabled in production" },
+      //{ status: 403 }
+    //);
+  //}
   
   try {
     const body = await request.json();

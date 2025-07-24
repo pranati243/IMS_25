@@ -22,9 +22,9 @@ export const authOptions: NextAuthOptions = {
           `
           SELECT 
             u.id, u.username, u.password, u.email, u.role, 
-            u.is_active, d.id as department_id, d.Department_Name as department_name
+            u.is_active, d.Department_ID as department_id, d.Department_Name as department_name
           FROM users u
-          LEFT JOIN departments d ON u.department_id = d.id
+          LEFT JOIN departments d ON u.department_id = d.Department_ID
           WHERE u.username = ? AND u.is_active = true
           LIMIT 1
         `,

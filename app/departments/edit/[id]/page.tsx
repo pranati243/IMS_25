@@ -10,6 +10,8 @@ import { ArrowLeft } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DepartmentForm } from "@/components/department/DepartmentForm";
+import { useAuth } from "@/app/providers/auth-provider";
+import { use } from "react";
 
 interface DepartmentData {
   Department_ID: number;
@@ -33,57 +35,35 @@ interface DepartmentData {
   } | null;
 }
 
-export default function EditDepartmentPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function EditDepartmentPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  // Access the ID directly from params for now to avoid TypeScript issues
-  // Next.js still supports this access pattern while they transition to React.use()
-  const { id } = params;
+  const { user } = useAuth();
+  const { id } = use(params);
   const [departmentData, setDepartmentData] = useState<DepartmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  const canEdit =
+    user &&
+    (user.role === "admin" ||
+      (user.role === "department" && user.departmentId === Number(id)));
+
+  // Debug log for access control (after canEdit is defined)
+  console.log("[EditDepartmentPage] user:", user, "user.departmentId:", user?.departmentId, "id:", id, "typeof id:", typeof id, "canEdit:", canEdit);
+
+  // Guard: Wait for user to be loaded
+  if (user === undefined) {
+    return null; // or a loading spinner if you prefer
+  }
+
   useEffect(() => {
-    // Check user role first for authorization
-    const checkUserRole = async () => {
-      try {
-        const response = await fetch("/api/auth/me");
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.user) {
-            setUserRole(data.user.role);
-            
-            // Only admins can edit departments
-            if (data.user.role !== "admin") {
-              setError("You don't have permission to edit departments");
-              setLoading(false);
-              return false;
-            }
-            return true;
-          }
-        }
-        setError("Unauthorized access");
-        setLoading(false);
-        return false;
-      } catch (error) {
-        console.error("Error checking authorization:", error);
-        setError("Authentication error");
-        setLoading(false);
-        return false;
-      }
-    };
+    if (!user) return; // Wait for user to load
 
     const fetchDepartmentData = async () => {
       try {
         setLoading(true);
-        
         const response = await fetch(`/api/departments/${id}`);
-        
         if (!response.ok) {
           // Try to get the error message
           let errorMsg = "Failed to fetch department data";
@@ -93,10 +73,8 @@ export default function EditDepartmentPage({
           } catch (e) {
             // If we can't parse the error, use the default message
           }
-          
           throw new Error(errorMsg);
         }
-        
         const data = await response.json();
         setDepartmentData(data);
       } catch (error) {
@@ -108,12 +86,8 @@ export default function EditDepartmentPage({
       }
     };
 
-    checkUserRole().then(authorized => {
-      if (authorized) {
-        fetchDepartmentData();
-      }
-    });
-  }, [id]);
+    fetchDepartmentData();
+  }, [id, user]);
 
   const handleClose = () => {
     router.push("/departments");
@@ -171,6 +145,18 @@ export default function EditDepartmentPage({
               </Button>
             </div>
           </div>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Access control logic
+  if (!canEdit) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto py-8 px-4">
+          <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+          <p className="mt-4">You do not have permission to edit this department.</p>
         </div>
       </MainLayout>
     );
