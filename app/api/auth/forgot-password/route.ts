@@ -16,9 +16,9 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get('host') || 'localhost:3001';
     // Use appropriate protocol based on environment and host
     let protocol = 'http';
-    if (process.env.NODE_ENV === 'production') {
-      protocol = 'https';
-    }
+    //if (process.env.NODE_ENV === 'production') {
+    //  protocol = 'https';
+    //}
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
     
     console.log('Email Config in forgot-password route:');

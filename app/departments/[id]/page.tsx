@@ -9,6 +9,8 @@ import { ArrowLeft, Edit, Globe, Mail, Phone, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getDepartmentStyle } from "@/app/lib/theme";
 import Link from "next/link";
+import { use } from "react";
+import { useAuth } from "@/app/providers/auth-provider";
 
 interface Department {
   Department_ID: number;
@@ -32,16 +34,29 @@ interface Department {
   } | null;
 }
 
-export default function DepartmentDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function DepartmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { id } = use(params);
+  const { user } = useAuth();
   const [department, setDepartment] = useState<Department | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Restrict department users to only their own department
+  if (user && user.role === "department" && user.departmentId !== Number(id)) {
+    return (
+      <MainLayout>
+        <div className="container mx-auto py-8 px-4">
+          <div className="max-w-2xl mx-auto">
+            <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+            <p className="mt-4">You do not have permission to view this department.</p>
+            <Button variant="outline" onClick={() => router.push("/departments")} className="mt-6">Back to Departments</Button>
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   useEffect(() => {
     // First check user's role
@@ -61,12 +76,12 @@ export default function DepartmentDetailPage({
 
     fetchUserRole();
     fetchDepartmentData();
-  }, [params.id]);
+  }, [id]);
 
   const fetchDepartmentData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/departments/${params.id}`);
+      const response = await fetch(`/api/departments/${id}`);
       
       if (!response.ok) {
         const errorData = await response.json();

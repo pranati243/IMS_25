@@ -16,7 +16,8 @@ export type UserRole =
   | "faculty"
   | "staff"
   | "student"
-  | "guest";
+  | "guest"
+  | "department";
 
 export interface User {
   id: number;
@@ -63,11 +64,11 @@ const publicRoutes = [
 
 // Define role-based route access with more specific paths
 const roleAccess: Record<string, UserRole[]> = {
-  "/dashboard": ["admin", "hod", "faculty", "staff", "student"],
-  "/faculty": ["admin", "hod", "faculty", "staff", "student"],
-  "/faculty/add": ["admin", "hod", "faculty"],
-  "/faculty/edit": ["admin", "hod", "faculty"],
-  "/faculty/details": ["admin", "hod", "faculty"],
+  "/dashboard": ["admin", "hod", "faculty", "staff", "student" , "department"],
+  "/faculty": ["admin", "hod", "faculty", "staff", "student" , "department" ],
+  "/faculty/add": ["admin", "hod", "faculty" , "department"],
+  "/faculty/edit": ["admin", "hod", "faculty" , "department"],
+  "/faculty/details": ["admin", "hod", "faculty" , "department"],
   "/faculty/modules": ["faculty"],
   "/faculty/contributions": ["admin", "hod", "faculty"],
   "/faculty/publications": ["admin", "hod", "faculty"],
@@ -75,10 +76,10 @@ const roleAccess: Record<string, UserRole[]> = {
   "/faculty/achievements": ["admin", "hod", "faculty"],
   "/student": ["admin", "hod", "faculty", "staff"],
   "/courses": ["admin", "hod", "faculty", "staff", "student"],
-  "/departments": ["admin", "hod"],
+  "/departments": ["admin", "hod" , "department"],
   "/admin": ["admin"],
-  "/settings": ["admin", "hod"],
-  "/profile": ["admin", "hod", "faculty", "staff", "student"],
+  "/settings": ["admin", "hod" , "department"],
+  "/profile": ["admin", "hod", "faculty", "staff", "student", "department"],
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -182,7 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Allow access to public routes
     const isPublicRoute = publicRoutes.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`)
+      (route) => (pathname ?? "") === route || (pathname ?? "").startsWith(`${route}/`)
     );
 
     if (isPublicRoute) return;
@@ -253,7 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Delay the redirect slightly to avoid race conditions
         setTimeout(() => {
           window.location.href = `${baseUrl}/login?redirect=${encodeURIComponent(
-            pathname
+            pathname ?? ""
           )}`;
         }, 300);
       }
@@ -261,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Check access permissions based on path segments
-    const pathParts = pathname.split("/").filter(Boolean);
+    const pathParts = (pathname ?? "").split("/").filter(Boolean);
     const basePath = `/${pathParts[0]}`;
     const subPath =
       pathParts.length > 1 ? `/${pathParts[0]}/${pathParts[1]}` : null;
@@ -294,7 +295,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      console.log("Login attempt for:", username);
+      // Clear any old user data before login
+      sessionStorage.removeItem("authUser");
 
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -332,11 +334,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear any old error state
       setError(null);
 
-      // Set the user data from response
-      setUser(data.user);
-
-      // Ensure auth state is stored in sessionStorage as well for redundancy
-      sessionStorage.setItem("authUser", JSON.stringify(data.user));
+      // Instead of setting user from response, force a re-fetch from /api/auth/me
+      setTimeout(async () => {
+        const meResponse = await fetch("/api/auth/me", {
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+        });
+        if (meResponse.ok) {
+          const meData = await meResponse.json();
+          if (meData.success && meData.user) {
+            setUser(meData.user);
+            sessionStorage.setItem("authUser", JSON.stringify(meData.user));
+            // Force a hard reload to the home page with cache-busting param
+            window.location.assign(`/?cb=${Date.now()}`);
+          }
+        }
+      }, 500);
 
       // Set a flag to prevent redirect loops
       sessionStorage.setItem("loginSuccessful", "true");
@@ -381,25 +398,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear all auth data
       setUser(null);
-      sessionStorage.removeItem("authUser");
-      localStorage.removeItem("session_token");
+      sessionStorage.clear();
+      localStorage.clear();
 
-      // Clear cookies manually as well
-      document.cookie =
-        "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-      document.cookie =
-        "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;"; // Use window.location.origin for reliable base URL in all environments
-      const baseUrl = window.location.origin;
+      // Clear cookies for root and subpaths
+      document.cookie = "session_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;";
+      document.cookie = "auth_status=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT; path=/;";
 
-      // Redirect to login page
-      window.location.href = `${baseUrl}/login`;
+      // Force a hard reload to the login page with cache-busting param
+      // Unregister service workers to prevent PWA cache issues
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      window.location.assign(`/login?cb=${Date.now()}`);
     } catch (err) {
-      console.error("Logout failed:", err);
-      // Even if the API call fails, clear auth data on the client
       setUser(null);
-      sessionStorage.removeItem("authUser"); // Redirect to login page anyway using origin
-      const baseUrl = window.location.origin;
-      window.location.href = `${baseUrl}/login`;
+      sessionStorage.clear();
+      localStorage.clear();
+      window.location.replace(`/login?cb=${Date.now()}`);
     } finally {
       setLoading(false);
     }

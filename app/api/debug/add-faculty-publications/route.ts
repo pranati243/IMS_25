@@ -4,12 +4,12 @@ import { query } from "@/app/lib/db";
 export async function GET(request: NextRequest) {
   try {
     // Make sure this endpoint is only accessible in development
-    if (process.env.NODE_ENV === "production") {
-      return NextResponse.json(
-        { success: false, message: "Not available in production" },
-        { status: 403 }
-      );
-    }
+    //if (process.env.NODE_ENV === "production") {
+      //return NextResponse.json(
+        //{ success: false, message: "Not available in production" },
+        //{ status: 403 }
+      //);
+    //}
 
     // Create the table if it doesn't exist
     await query(`

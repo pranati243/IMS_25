@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 
 export async function GET() {
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { success: false, message: "Debug routes are disabled in production" },
-      { status: 403 }
-    );
-  }
+  //if (process.env.NODE_ENV === 'production') {
+    //return NextResponse.json(
+      //{ success: false, message: "Debug routes are disabled in production" },
+      //{ status: 403 }
+    //);
+  //}
   
   const results: Record<string, any> = {};
   

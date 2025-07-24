@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/app/lib/db";
 import { OkPacket } from "mysql2";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/lib/auth-options";
 
 export async function GET(request: NextRequest) {
   const diagnosticMode = request.url.includes("diagnostic=true");
   const diagnosticInfo: Record<string, any> = {};
-  
+
+  // Get user info
+  const session = await getServerSession(authOptions);
+  const user = session?.user;
+  console.log("[DEPT API] Session user:", user);
+
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
@@ -152,6 +159,12 @@ export async function GET(request: NextRequest) {
     if (search) {
       conditions.push("d.Department_Name LIKE ?");
       params.push(`%${search}%`);
+    }
+
+    // Restrict department users to only their own department
+    if (user && user.role === "department" && user.departmentId) {
+      conditions.push("d.Department_ID = ?");
+      params.push(user.departmentId);
     }
 
     if (conditions.length > 0) {

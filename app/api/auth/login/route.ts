@@ -14,6 +14,7 @@ type User = {
   role: string;
   name?: string;
   is_active?: number;
+  department_id?: number; // Added department_id to User type
 };
 
 type Permission = {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     const users = (await query(
       `
       SELECT 
-        u.id, u.username, u.email, u.password, u.role, u.name, u.is_active
+        u.id, u.username, u.email, u.password, u.role, u.name, u.is_active, u.department_id
       FROM users u
       WHERE u.username = ?
       LIMIT 1
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest) {
       success: true,
       user: {
         ...userWithoutPassword,
+        departmentId: userWithoutPassword.department_id || null,
         permissions: permissionNames,
       },
     }); // Set cookie in the response with more explicit settings - IMPORTANT: domain must not be set for Vercel deployment

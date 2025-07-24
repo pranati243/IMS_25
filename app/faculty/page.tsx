@@ -81,6 +81,10 @@ export default function FacultyPage() {
             if (data.user.role === "hod" && data.user.department) {
               setDepartment(data.user.department);
             }
+            // For department users, automatically filter to their department
+            if (data.user.role === "department" && data.user.department) {
+              setDepartment(data.user.department);
+            }
           }
         }
       } catch (error) {
@@ -100,7 +104,11 @@ export default function FacultyPage() {
       setLoading(true);
 
       // Add a cache-busting parameter to prevent browser caching
-      const response = await fetch(`/api/faculty?t=${Date.now()}`);
+      let url = `/api/faculty?t=${Date.now()}`;
+      if (userRole === "department" && userDepartment) {
+        url += `&department=${encodeURIComponent(userDepartment)}`;
+      }
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -138,6 +146,10 @@ export default function FacultyPage() {
     // Filter by department
     if (department && department !== "all") {
       result = result.filter((f) => f.F_dept === department);
+    }
+    // For department users, always filter to their department
+    if (userRole === "department" && userDepartment) {
+      result = result.filter((f) => f.F_dept === userDepartment);
     }
 
     // Filter by search term
@@ -188,7 +200,7 @@ export default function FacultyPage() {
     (experienceFilter !== "" && experienceFilter !== "all");
 
   // Check if user has permission to add/edit faculty
-  const canManageFaculty = userRole === "admin" || userRole === "hod";
+  const canManageFaculty = userRole === "admin" || userRole === "hod" || userRole === "department";
 
   // If the user is a faculty member, show the faculty modules view
   if (userRole === "faculty") {
@@ -236,156 +248,82 @@ export default function FacultyPage() {
             </Link>
           )}
         </div>
-
-        {/* Search and filters */}
-        <Card className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search by name, email, or designation..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 w-full"
-              />
-            </div>
-
-            {/* Department filter as a prominent select */}
-            <div className="w-full sm:w-auto">
-              <Select value={department} onValueChange={setDepartment}>
-                <SelectTrigger className="w-full sm:w-[200px]">
-                  <SelectValue placeholder="All Departments" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept} value={dept}>
-                      {dept}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Advanced filters in a popover */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <SlidersHorizontal className="h-4 w-4 mr-2" />
-                  Advanced Filters
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="space-y-4">
-                  <h4 className="font-medium">Filter by</h4>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Designation</label>
-                    <Select value={designation} onValueChange={setDesignation}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Designation" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Any Designation</SelectItem>
-                        {designations.map((d) => (
-                          <SelectItem key={d} value={d}>
-                            {d}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Experience</label>
-                    <Select
-                      value={experienceFilter}
-                      onValueChange={setExperienceFilter}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Any Experience" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Any Experience</SelectItem>
-                        <SelectItem value="0-5">0-5 years</SelectItem>
-                        <SelectItem value="6-10">6-10 years</SelectItem>
-                        <SelectItem value="11-15">11-15 years</SelectItem>
-                        <SelectItem value="15+">15+ years</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+        <div className="flex flex-col sm:flex-row gap-4 mt-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search by name, email, or designation..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 w-full"
+            />
           </div>
+        </div>
 
-          {/* Active filters display */}
-          {hasActiveFilters && (
-            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
-              <span className="text-sm text-gray-500 mt-1">
-                Active filters:
-              </span>
+        {/* Active filters display */}
+        <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
+          <span className="text-sm text-gray-500 mt-1">
+            Active filters:
+          </span>
 
-              {search && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  Search:{" "}
-                  {search.length > 15 ? search.slice(0, 15) + "..." : search}
-                  <X
-                    className="h-3 w-3 ml-1 cursor-pointer"
-                    onClick={() => setSearch("")}
-                  />
-                </Badge>
-              )}
-
-              {department && department !== "all" && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  Department: {department}
-                  <X
-                    className="h-3 w-3 ml-1 cursor-pointer"
-                    onClick={() => setDepartment("")}
-                  />
-                </Badge>
-              )}
-
-              {designation && designation !== "all" && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  Designation: {designation}
-                  <X
-                    className="h-3 w-3 ml-1 cursor-pointer"
-                    onClick={() => setDesignation("all")}
-                  />
-                </Badge>
-              )}
-
-              {experienceFilter && experienceFilter !== "all" && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  Experience:{" "}
-                  {experienceFilter === "15+"
-                    ? "15+ years"
-                    : `${experienceFilter} years`}
-                  <X
-                    className="h-3 w-3 ml-1 cursor-pointer"
-                    onClick={() => setExperienceFilter("all")}
-                  />
-                </Badge>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                className="ml-auto text-xs"
-                onClick={() => {
-                  setSearch("");
-                  setDepartment("all");
-                  setDesignation("all");
-                  setExperienceFilter("all");
-                }}
-              >
-                Clear All
-              </Button>
-            </div>
+          {search && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              Search: {" "}
+              {search.length > 15 ? search.slice(0, 15) + "..." : search}
+              <X
+                className="h-3 w-3 ml-1 cursor-pointer"
+                onClick={() => setSearch("")}
+              />
+            </Badge>
           )}
-        </Card>
+
+          {department && department !== "all" && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              Department: {department}
+              <X
+                className="h-3 w-3 ml-1 cursor-pointer"
+                onClick={() => setDepartment("")}
+              />
+            </Badge>
+          )}
+
+          {designation && designation !== "all" && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              Designation: {designation}
+              <X
+                className="h-3 w-3 ml-1 cursor-pointer"
+                onClick={() => setDesignation("all")}
+              />
+            </Badge>
+          )}
+
+          {experienceFilter && experienceFilter !== "all" && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              Experience: {" "}
+              {experienceFilter === "15+"
+                ? "15+ years"
+                : `${experienceFilter} years`}
+              <X
+                className="h-3 w-3 ml-1 cursor-pointer"
+                onClick={() => setExperienceFilter("all")}
+              />
+            </Badge>
+          )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto text-xs"
+            onClick={() => {
+              setSearch("");
+              setDepartment("all");
+              setDesignation("all");
+              setExperienceFilter("all");
+            }}
+          >
+            Clear All
+          </Button>
+        </div>
 
         {/* Faculty list with department color indicators */}
         <div className="min-h-[300px]">
@@ -472,8 +410,8 @@ export default function FacultyPage() {
                     showEditButton={
                       canManageFaculty &&
                       (userRole === "admin" ||
-                        (userRole === "hod" &&
-                          userDepartment === member.F_dept))
+                        (userRole === "hod" && userDepartment === member.F_dept) ||
+                        (userRole === "department" && userDepartment === member.F_dept))
                     }
                   />
                 ))}
