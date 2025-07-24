@@ -31,6 +31,8 @@ const publicApiPaths = [
   "/api/debug/diagnostic",
   "/api/debug/direct-login",
   "/api/debug/fix-database",
+  "/api/debug/enhance-citations-schema",
+  "/api/doi",
   "/api/faculty/check-exists",
   "/api/departments",
   "/api/faculty/autocomplete",

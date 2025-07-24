@@ -4,6 +4,17 @@
  */
 
 /**
+ * Interface for citation data from different sources
+ */
+export interface CitationData {
+  crossref?: number;
+  semanticScholar?: number; // Free alternative to Google Scholar
+  googleScholar?: number; // Requires scraping or unofficial APIs
+  webOfScience?: number; // Requires institutional access
+  scopus?: number; // Requires API key
+}
+
+/**
  * Interface for publication metadata from a DOI
  */
 export interface DoiMetadata {
@@ -19,7 +30,8 @@ export interface DoiMetadata {
     | "other";
   publicationVenue?: string;
   url?: string;
-  citationCount?: number;
+  citationCount?: number; // Keep for backward compatibility
+  citations?: CitationData; // New structured citation data
   doi: string;
 }
 
@@ -162,8 +174,13 @@ export async function getDoiMetadata(doi: string): Promise<{
       publicationType,
       publicationVenue: publicationVenue || undefined,
       url: metadata.URL || undefined,
+      citationCount: metadata["is-referenced-by-count"] || undefined, // Backward compatibility
+      citations: {
+        crossref: metadata["is-referenced-by-count"] || undefined,
+        // Note: Google Scholar and Web of Science require separate API calls
+        // These would need additional API integrations with proper authentication
+      },
       doi: cleanDoi,
-      citationCount: metadata["is-referenced-by-count"] || undefined,
     };
 
     return {
@@ -178,6 +195,103 @@ export async function getDoiMetadata(doi: string): Promise<{
         error instanceof Error
           ? error.message
           : "Failed to retrieve DOI metadata",
+    };
+  }
+}
+
+/**
+ * Fetch citation count from Semantic Scholar (free alternative to Google Scholar API)
+ * @param doi The DOI to lookup
+ * @returns Citation count from Semantic Scholar or undefined
+ */
+async function getSemanticScholarCitations(
+  doi: string
+): Promise<number | undefined> {
+  try {
+    const response = await fetch(
+      `https://api.semanticscholar.org/graph/v1/paper/DOI:${encodeURIComponent(
+        doi
+      )}?fields=citationCount`,
+      {
+        headers: {
+          "User-Agent": "IMS-Faculty-System",
+        },
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.citationCount || undefined;
+    }
+  } catch (error) {
+    console.warn("Failed to fetch Semantic Scholar citations:", error);
+  }
+  return undefined;
+}
+
+/**
+ * Mock function for Web of Science citations
+ * Note: Web of Science API requires institutional access and authentication
+ * @param doi The DOI to lookup
+ * @returns Placeholder citation count
+ */
+async function getWebOfScienceCitations(
+  doi: string
+): Promise<number | undefined> {
+  // This is a mock implementation
+  // In a real scenario, you would need:
+  // 1. Web of Science API credentials
+  // 2. Institutional access
+  // 3. Proper authentication headers
+
+  console.log(
+    "Web of Science API integration would require institutional access"
+  );
+  return undefined;
+}
+
+/**
+ * Enhanced DOI metadata retrieval with multiple citation sources
+ * @param doi The Digital Object Identifier to lookup
+ * @returns Publication metadata with citations from multiple sources
+ */
+export async function getEnhancedDoiMetadata(doi: string): Promise<{
+  success: boolean;
+  data?: DoiMetadata;
+  message?: string;
+}> {
+  try {
+    // First get basic metadata from Crossref
+    const basicResult = await getDoiMetadata(doi);
+    if (!basicResult.success || !basicResult.data) {
+      return basicResult;
+    }
+
+    // Enhance with additional citation sources
+    const enhancedData = { ...basicResult.data };
+
+    // Add Semantic Scholar citations (free alternative to Google Scholar)
+    const semanticScholarCitations = await getSemanticScholarCitations(doi);
+
+    // Enhanced citations object
+    enhancedData.citations = {
+      crossref: enhancedData.citationCount,
+      semanticScholar: semanticScholarCitations,
+      // webOfScience: await getWebOfScienceCitations(doi), // Requires institutional access
+    };
+
+    return {
+      success: true,
+      data: enhancedData,
+    };
+  } catch (error) {
+    console.error("Error fetching enhanced DOI metadata:", error);
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to retrieve enhanced DOI metadata",
     };
   }
 }
