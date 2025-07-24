@@ -77,6 +77,13 @@ interface PublicationFormData {
   doi?: string;
   url?: string;
   citation_count?: string;
+  // New citation fields
+  citations_crossref?: number | null;
+  citations_semantic_scholar?: number | null;
+  citations_google_scholar?: number | null;
+  citations_web_of_science?: number | null;
+  citations_scopus?: number | null;
+  citations_last_updated?: string | null;
 }
 
 interface Faculty {
@@ -175,6 +182,13 @@ export default function FacultyPublicationsPage() {
           metadata.citationCount !== undefined
             ? String(metadata.citationCount)
             : prev.citation_count,
+        // Update citation source fields
+        citations_crossref: metadata.citations?.crossref || null,
+        citations_semantic_scholar: metadata.citations?.semanticScholar || null,
+        citations_google_scholar: metadata.citations?.googleScholar || null,
+        citations_web_of_science: metadata.citations?.webOfScience || null,
+        citations_scopus: metadata.citations?.scopus || null,
+        citations_last_updated: new Date().toISOString(),
       }));
 
       // Show enhanced citation info if available
@@ -300,6 +314,13 @@ export default function FacultyPublicationsPage() {
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
+        // Include new citation fields
+        citations_crossref: formData.citations_crossref || null,
+        citations_semantic_scholar: formData.citations_semantic_scholar || null,
+        citations_google_scholar: formData.citations_google_scholar || null,
+        citations_web_of_science: formData.citations_web_of_science || null,
+        citations_scopus: formData.citations_scopus || null,
+        citations_last_updated: formData.citations_last_updated || null,
       };
 
       const response = await fetch("/api/faculty/publications", {
@@ -364,6 +385,13 @@ export default function FacultyPublicationsPage() {
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
+        // Include new citation fields
+        citations_crossref: formData.citations_crossref || null,
+        citations_semantic_scholar: formData.citations_semantic_scholar || null,
+        citations_google_scholar: formData.citations_google_scholar || null,
+        citations_web_of_science: formData.citations_web_of_science || null,
+        citations_scopus: formData.citations_scopus || null,
+        citations_last_updated: formData.citations_last_updated || null,
       };
 
       const response = await fetch(`/api/faculty/publications`, {
@@ -465,6 +493,26 @@ export default function FacultyPublicationsPage() {
   };
 
   const handleEdit = () => {
+    if (selectedPublication) {
+      setFormData({
+        title: selectedPublication.title,
+        authors: selectedPublication.authors,
+        publication_date: selectedPublication.publication_date,
+        publication_type: selectedPublication.publication_type,
+        publication_venue: selectedPublication.publication_venue,
+        doi: selectedPublication.doi || "",
+        url: selectedPublication.url || "",
+        citation_count: selectedPublication.citation_count?.toString() || "",
+        // Include citation fields
+        citations_crossref: selectedPublication.citations_crossref,
+        citations_semantic_scholar:
+          selectedPublication.citations_semantic_scholar,
+        citations_google_scholar: selectedPublication.citations_google_scholar,
+        citations_web_of_science: selectedPublication.citations_web_of_science,
+        citations_scopus: selectedPublication.citations_scopus,
+        citations_last_updated: selectedPublication.citations_last_updated,
+      });
+    }
     setViewDialogOpen(false);
     setEditDialogOpen(true);
   };
