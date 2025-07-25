@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDoiMetadata } from "@/app/lib/doi";
+import { getDoiMetadata, getEnhancedDoiMetadata } from "@/app/lib/doi";
 
 export async function GET(request: NextRequest) {
   try {
     // Extract DOI from query parameters
     const doi = request.nextUrl.searchParams.get("doi");
+    const enhanced = request.nextUrl.searchParams.get("enhanced") === "true";
 
     if (!doi) {
       return NextResponse.json(
@@ -13,8 +14,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Call the DOI metadata retrieval function
-    const result = await getDoiMetadata(doi);
+    // Call the appropriate DOI metadata retrieval function
+    const result = enhanced
+      ? await getEnhancedDoiMetadata(doi)
+      : await getDoiMetadata(doi);
 
     if (!result.success) {
       return NextResponse.json(

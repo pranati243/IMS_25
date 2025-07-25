@@ -54,6 +54,13 @@ interface Publication {
   doi: string | null;
   url: string | null;
   citation_count: number | null;
+  // New citation fields
+  citations_crossref?: number | null;
+  citations_semantic_scholar?: number | null;
+  citations_google_scholar?: number | null;
+  citations_web_of_science?: number | null;
+  citations_scopus?: number | null;
+  citations_last_updated?: string | null;
 }
 
 interface PublicationFormData {
@@ -70,6 +77,13 @@ interface PublicationFormData {
   doi?: string;
   url?: string;
   citation_count?: string;
+  // New citation fields
+  citations_crossref?: number | null;
+  citations_semantic_scholar?: number | null;
+  citations_google_scholar?: number | null;
+  citations_web_of_science?: number | null;
+  citations_scopus?: number | null;
+  citations_last_updated?: string | null;
 }
 
 interface Faculty {
@@ -144,7 +158,7 @@ export default function FacultyPublicationsPage() {
       setDoiLookupLoading(true);
 
       const response = await fetch(
-        `/api/doi?doi=${encodeURIComponent(doiValue.trim())}`
+        `/api/doi?doi=${encodeURIComponent(doiValue.trim())}&enhanced=true`
       );
       const data = await response.json();
 
@@ -168,9 +182,49 @@ export default function FacultyPublicationsPage() {
           metadata.citationCount !== undefined
             ? String(metadata.citationCount)
             : prev.citation_count,
+        // Update citation source fields
+        citations_crossref: metadata.citations?.crossref || null,
+        citations_semantic_scholar: metadata.citations?.semanticScholar || null,
+        citations_google_scholar: metadata.citations?.googleScholar || null,
+        citations_web_of_science: metadata.citations?.webOfScience || null,
+        citations_scopus: metadata.citations?.scopus || null,
+        citations_last_updated: new Date().toISOString(),
       }));
 
-      toast.success("DOI metadata retrieved successfully");
+      // Show enhanced citation info if available
+      if (metadata.citations) {
+        const citationSources = [];
+        if (metadata.citations.crossref) {
+          citationSources.push(`Crossref: ${metadata.citations.crossref}`);
+        }
+        if (metadata.citations.semanticScholar) {
+          citationSources.push(
+            `Semantic Scholar: ${metadata.citations.semanticScholar}`
+          );
+        }
+        if (metadata.citations.googleScholar) {
+          citationSources.push(
+            `Google Scholar: ${metadata.citations.googleScholar}`
+          );
+        }
+        if (metadata.citations.webOfScience) {
+          citationSources.push(
+            `Web of Science: ${metadata.citations.webOfScience}`
+          );
+        }
+
+        if (citationSources.length > 0) {
+          toast.success(
+            `DOI metadata retrieved successfully! Citations found: ${citationSources.join(
+              ", "
+            )}`
+          );
+        } else {
+          toast.success("DOI metadata retrieved successfully");
+        }
+      } else {
+        toast.success("DOI metadata retrieved successfully");
+      }
     } catch (err) {
       console.error("Error looking up DOI:", err);
       toast.error(
@@ -260,6 +314,13 @@ export default function FacultyPublicationsPage() {
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
+        // Include new citation fields
+        citations_crossref: formData.citations_crossref || null,
+        citations_semantic_scholar: formData.citations_semantic_scholar || null,
+        citations_google_scholar: formData.citations_google_scholar || null,
+        citations_web_of_science: formData.citations_web_of_science || null,
+        citations_scopus: formData.citations_scopus || null,
+        citations_last_updated: formData.citations_last_updated || null,
       };
 
       const response = await fetch("/api/faculty/publications", {
@@ -324,6 +385,13 @@ export default function FacultyPublicationsPage() {
         citation_count: formData.citation_count
           ? parseInt(formData.citation_count)
           : null,
+        // Include new citation fields
+        citations_crossref: formData.citations_crossref || null,
+        citations_semantic_scholar: formData.citations_semantic_scholar || null,
+        citations_google_scholar: formData.citations_google_scholar || null,
+        citations_web_of_science: formData.citations_web_of_science || null,
+        citations_scopus: formData.citations_scopus || null,
+        citations_last_updated: formData.citations_last_updated || null,
       };
 
       const response = await fetch(`/api/faculty/publications`, {
@@ -425,6 +493,26 @@ export default function FacultyPublicationsPage() {
   };
 
   const handleEdit = () => {
+    if (selectedPublication) {
+      setFormData({
+        title: selectedPublication.title,
+        authors: selectedPublication.authors,
+        publication_date: selectedPublication.publication_date,
+        publication_type: selectedPublication.publication_type,
+        publication_venue: selectedPublication.publication_venue,
+        doi: selectedPublication.doi || "",
+        url: selectedPublication.url || "",
+        citation_count: selectedPublication.citation_count?.toString() || "",
+        // Include citation fields
+        citations_crossref: selectedPublication.citations_crossref,
+        citations_semantic_scholar:
+          selectedPublication.citations_semantic_scholar,
+        citations_google_scholar: selectedPublication.citations_google_scholar,
+        citations_web_of_science: selectedPublication.citations_web_of_science,
+        citations_scopus: selectedPublication.citations_scopus,
+        citations_last_updated: selectedPublication.citations_last_updated,
+      });
+    }
     setViewDialogOpen(false);
     setEditDialogOpen(true);
   };
@@ -484,6 +572,58 @@ export default function FacultyPublicationsPage() {
       default:
         return "bg-gray-100 text-gray-800";
     }
+  };
+
+  // Helper function to render citation sources
+  const renderCitationSources = (publication: Publication) => {
+    const sources = [];
+
+    if (publication.citations_crossref) {
+      sources.push({
+        name: "Crossref",
+        count: publication.citations_crossref,
+        color: "bg-blue-50 text-blue-700",
+      });
+    }
+    if (publication.citations_semantic_scholar) {
+      sources.push({
+        name: "Semantic Scholar",
+        count: publication.citations_semantic_scholar,
+        color: "bg-green-50 text-green-700",
+      });
+    }
+    if (publication.citations_google_scholar) {
+      sources.push({
+        name: "Google Scholar",
+        count: publication.citations_google_scholar,
+        color: "bg-red-50 text-red-700",
+      });
+    }
+    if (publication.citations_web_of_science) {
+      sources.push({
+        name: "Web of Science",
+        count: publication.citations_web_of_science,
+        color: "bg-purple-50 text-purple-700",
+      });
+    }
+    if (publication.citations_scopus) {
+      sources.push({
+        name: "Scopus",
+        count: publication.citations_scopus,
+        color: "bg-orange-50 text-orange-700",
+      });
+    }
+
+    // Fallback to legacy citation_count if no specific sources
+    if (sources.length === 0 && publication.citation_count) {
+      sources.push({
+        name: "Citations",
+        count: publication.citation_count,
+        color: "bg-amber-50 text-amber-700",
+      });
+    }
+
+    return sources;
   };
 
   return (
@@ -546,14 +686,18 @@ export default function FacultyPublicationsPage() {
                       >
                         {getPublicationTypeLabel(publication.publication_type)}
                       </div>
-                      {publication.citation_count && (
-                        <span className="text-xs bg-amber-50 text-amber-700 px-2 py-1 rounded-full">
-                          {publication.citation_count}{" "}
-                          {publication.citation_count === 1
-                            ? "citation"
-                            : "citations"}
-                        </span>
-                      )}
+                      <div className="flex gap-1 flex-wrap">
+                        {renderCitationSources(publication).map(
+                          (source, index) => (
+                            <span
+                              key={index}
+                              className={`text-xs px-2 py-1 rounded-full ${source.color}`}
+                            >
+                              {source.name}: {source.count}
+                            </span>
+                          )
+                        )}
+                      </div>
                     </div>
                     <h3 className="font-medium">{publication.title}</h3>
                     <p className="text-sm text-gray-600 mt-1">
@@ -906,16 +1050,39 @@ export default function FacultyPublicationsPage() {
             </div>
             <div className="space-y-2">
               <Label>Citation Count</Label>
-              <p className="text-sm">
-                {selectedPublication.citation_count !== null &&
-                selectedPublication.citation_count !== undefined
-                  ? `${selectedPublication.citation_count} ${
-                      selectedPublication.citation_count === 1
-                        ? "citation"
-                        : "citations"
-                    }`
-                  : "Not provided"}
-              </p>
+              <div className="space-y-2">
+                {renderCitationSources(selectedPublication).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {renderCitationSources(selectedPublication).map(
+                      (source, index) => (
+                        <div
+                          key={index}
+                          className={`px-3 py-2 rounded-lg ${source.color}`}
+                        >
+                          <div className="font-medium text-sm">
+                            {source.name}
+                          </div>
+                          <div className="text-lg font-bold">
+                            {source.count}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No citation data available
+                  </p>
+                )}
+                {selectedPublication.citations_last_updated && (
+                  <p className="text-xs text-gray-400">
+                    Last updated:{" "}
+                    {new Date(
+                      selectedPublication.citations_last_updated
+                    ).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}

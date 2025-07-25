@@ -95,7 +95,13 @@ export async function GET(request: NextRequest) {
           publication_venue,
           doi,
           url,
-          citation_count
+          citation_count,
+          citations_crossref,
+          citations_semantic_scholar,
+          citations_google_scholar,
+          citations_web_of_science,
+          citations_scopus,
+          citations_last_updated
         FROM 
           faculty_publications
         WHERE 
@@ -293,6 +299,13 @@ export async function POST(request: NextRequest) {
       citation_count,
       faculty_id: requestFacultyId,
       co_authors, // Array of co-author faculty IDs
+      // New citation fields
+      citations_crossref,
+      citations_semantic_scholar,
+      citations_google_scholar,
+      citations_web_of_science,
+      citations_scopus,
+      citations_last_updated,
     } = await request.json();
 
     // For faculty role, ensure they can only add their own publications
@@ -372,8 +385,9 @@ export async function POST(request: NextRequest) {
     // Insert the publication
     const result = await query(
       `INSERT INTO faculty_publications 
-        (faculty_id, title, abstract, authors, publication_date, publication_type, publication_venue, doi, url, citation_count) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (faculty_id, title, abstract, authors, publication_date, publication_type, publication_venue, doi, url, citation_count, 
+         citations_crossref, citations_semantic_scholar, citations_google_scholar, citations_web_of_science, citations_scopus, citations_last_updated) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         publicationFacultyId,
         title,
@@ -385,6 +399,17 @@ export async function POST(request: NextRequest) {
         doi || null,
         url || null,
         citation_count || null,
+        citations_crossref || null,
+        citations_semantic_scholar || null,
+        citations_google_scholar || null,
+        citations_web_of_science || null,
+        citations_scopus || null,
+        citations_last_updated
+          ? new Date(citations_last_updated)
+              .toISOString()
+              .slice(0, 19)
+              .replace("T", " ")
+          : null,
       ]
     );
 
@@ -492,6 +517,13 @@ export async function PUT(request: NextRequest) {
       url,
       citation_count,
       faculty_id: requestFacultyId,
+      // New citation fields
+      citations_crossref,
+      citations_semantic_scholar,
+      citations_google_scholar,
+      citations_web_of_science,
+      citations_scopus,
+      citations_last_updated,
     } = await request.json();
 
     // Check if ID is provided
@@ -593,7 +625,13 @@ export async function PUT(request: NextRequest) {
         doi = ?,
         url = ?,
         citation_count = ?,
-        faculty_id = ?
+        faculty_id = ?,
+        citations_crossref = ?,
+        citations_semantic_scholar = ?,
+        citations_google_scholar = ?,
+        citations_web_of_science = ?,
+        citations_scopus = ?,
+        citations_last_updated = ?
        WHERE id = ?`,
       [
         title,
@@ -606,6 +644,17 @@ export async function PUT(request: NextRequest) {
         url || null,
         citation_count || null,
         publicationFacultyId,
+        citations_crossref || null,
+        citations_semantic_scholar || null,
+        citations_google_scholar || null,
+        citations_web_of_science || null,
+        citations_scopus || null,
+        citations_last_updated
+          ? new Date(citations_last_updated)
+              .toISOString()
+              .slice(0, 19)
+              .replace("T", " ")
+          : null,
         id,
       ]
     );
