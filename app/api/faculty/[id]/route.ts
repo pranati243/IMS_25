@@ -324,3 +324,59 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    // Get user info from auth system
+    const authResponse = await fetch(`${request.nextUrl.origin}/api/auth/me`, {
+      headers: {
+        cookie: request.headers.get("cookie") || "",
+      },
+    });
+
+    if (!authResponse.ok) {
+      return NextResponse.json(
+        { success: false, message: "Authentication failed" },
+        { status: 401 }
+      );
+    }
+
+    const authData = await authResponse.json();
+
+    if (!authData.success || !authData.user) {
+      return NextResponse.json(
+        { success: false, message: "User not authenticated" },
+        { status: 401 }
+      );
+    }
+
+    // Only admin, hod, or department users can delete faculty
+    if (!["admin", "hod", "department"].includes(authData.user.role)) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized to delete faculty" },
+        { status: 403 }
+      );
+    }
+
+    const facultyId = params.id;
+    if (!facultyId) {
+      return NextResponse.json(
+        { success: false, message: "Faculty ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Delete from faculty_details first (if exists)
+    await query("DELETE FROM faculty_details WHERE F_ID = ?", [facultyId]);
+    // Delete from faculty table
+    await query("DELETE FROM faculty WHERE F_id = ?", [facultyId]);
+
+    return NextResponse.json({ success: true, message: "Faculty deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting faculty:", error);
+    return NextResponse.json(
+      { success: false, message: "Failed to delete faculty" },
+      { status: 500 }
+    );
+  }
+}

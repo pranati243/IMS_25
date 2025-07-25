@@ -56,6 +56,8 @@ export default function DepartmentsPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
+    setDepartments([]);
+    setFilteredDepartments([]);
     if (!loading && user) {
       fetchDepartments();
     }
@@ -120,7 +122,7 @@ export default function DepartmentsPage() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000); // 10 seconds
 
-      const response = await fetch("/api/departments", {
+      const response = await fetch(`/api/departments?t=${Date.now()}`, {
         credentials: "include",
         signal: controller.signal,
       });
