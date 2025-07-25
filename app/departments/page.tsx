@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/app/providers/auth-provider";
 import MainLayout from "@/app/components/layout/MainLayout";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/popover";
 import { getDepartmentStyle } from "@/app/lib/theme";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 interface Department {
   Department_ID: number;
@@ -45,6 +46,7 @@ interface Department {
 }
 
 export default function DepartmentsPage() {
+  // All hooks at the top
   const router = useRouter();
   const { user, loading } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -54,6 +56,60 @@ export default function DepartmentsPage() {
   const [establishmentYearFilter, setEstablishmentYearFilter] = useState<string>("");
   const [sortOrder, setSortOrder] = useState<string>("name");
   const [userRole, setUserRole] = useState<string | null>(null);
+  const prevDeptId = useRef<number | undefined>(undefined);
+  const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+  const cb = searchParams?.get("cb");
+
+  // Calculate visibleDepartments with safe defaults
+  const visibleDepartments =
+    user && user.role === "department"
+      ? departments.filter((d) => d.Department_ID === Number(user.departmentId))
+      : filteredDepartments;
+
+  // Spinner and reload logic at the very top
+  if (
+    user &&
+    user.role === "department" &&
+    (visibleDepartments.length !== 1 || Number(sessionStorage.getItem("deptPageReloadCount") || "0") < 2)
+  ) {
+    const reloadCount = Number(sessionStorage.getItem("deptPageReloadCount") || "0");
+    if (reloadCount < 2) {
+      sessionStorage.setItem("deptPageReloadCount", String(reloadCount + 1));
+      window.location.replace(`/departments?cb=${Date.now()}`);
+      return (
+        <MainLayout>
+          <div className="flex justify-center items-center min-h-[300px]">
+            <span className="text-gray-500 text-lg">Loading...</span>
+          </div>
+        </MainLayout>
+      );
+    }
+  }
+
+  // All useEffect and function definitions here
+  const fetchDepartments = async () => {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 seconds
+      const response = await fetch(`/api/departments?t=${Date.now()}`, {
+        credentials: "include",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error("Failed to fetch departments");
+      const data = await response.json();
+      if (!data.success) throw new Error(data.message);
+      setDepartments(data.data);
+      setFilteredDepartments(data.data);
+      setError(null);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch department data"
+      );
+    } finally {
+      // loading is managed by useAuth; do nothing here
+    }
+  };
 
   useEffect(() => {
     setDepartments([]);
@@ -62,6 +118,36 @@ export default function DepartmentsPage() {
       fetchDepartments();
     }
   }, [user, loading]);
+
+  useEffect(() => {
+    if (
+      user &&
+      user.role === "department" &&
+      prevDeptId.current !== undefined && // skip first render
+      user.departmentId !== prevDeptId.current
+    ) {
+      window.location.replace(`/departments?cb=${Date.now()}`);
+    }
+    prevDeptId.current = user?.departmentId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.departmentId]);
+
+  useEffect(() => {
+    if (user && user.role === "department" && !cb) {
+      window.location.replace(`/departments?cb=${Date.now()}`);
+    }
+  }, [user]);
+
+  // Force up to 2 hard reloads for department users, always show loading spinner before reload
+  useEffect(() => {
+    if (user && (user.role === "department" || user.role === "admin")) {
+      const reloadCount = Number(sessionStorage.getItem("deptPageReloadCount") || "0");
+      if (reloadCount < 2) {
+        sessionStorage.setItem("deptPageReloadCount", String(reloadCount + 1));
+        window.location.replace(`/departments?cb=${Date.now()}`);
+      }
+    }
+  }, [user]);
 
   // Apply filters locally
   useEffect(() => {
@@ -117,34 +203,6 @@ export default function DepartmentsPage() {
     });
   };
 
-  const fetchDepartments = async () => {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 10000); // 10 seconds
-
-      const response = await fetch(`/api/departments?t=${Date.now()}`, {
-        credentials: "include",
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (!response.ok) throw new Error("Failed to fetch departments");
-      const data = await response.json();
-
-      if (!data.success) throw new Error(data.message);
-
-      setDepartments(data.data);
-      setFilteredDepartments(data.data);
-      setError(null);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch department data"
-      );
-    } finally {
-      // loading is managed by useAuth; do nothing here
-    }
-  };
-
   // Get unique establishment years from department data
   const establishmentYears = Array.from(
     new Set(
@@ -162,16 +220,34 @@ export default function DepartmentsPage() {
   // Check if user has permission to add/edit departments
   const canManageDepartments = userRole === "admin" || (user && user.role === "admin");
 
-  // Filter departments for department users
-  const visibleDepartments = user && user.role === "department"
-    ? departments.filter((d) => d.Department_ID === user.departmentId)
-    : filteredDepartments;
-
   if (loading || !user) {
     return (
       <MainLayout>
         <div className="flex justify-center items-center min-h-[300px]">
           <span className="text-gray-500 text-lg">Loading...</span>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (user && user.role === "department" && !cb) {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center min-h-[300px]">
+          <span className="text-gray-500 text-lg">Loading...</span>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  if (user && user.role === "faculty") {
+    return (
+      <MainLayout>
+        <div className="flex justify-center items-center min-h-[300px]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
+            <p className="mt-4">You do not have permission to view the department directory.</p>
+          </div>
         </div>
       </MainLayout>
     );

@@ -349,9 +349,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (meData.success && meData.user) {
             setUser(meData.user);
             sessionStorage.setItem("authUser", JSON.stringify(meData.user));
+            sessionStorage.removeItem("deptPageReloadCount");
             // If department user, force a hard reload to the department directory
             if (meData.user.role === "department") {
-              window.location.assign(`/departments?cb=${Date.now()}`);
+              window.location.replace(`/departments?cb=${Date.now()}`);
               return;
             }
             window.location.assign(`/?cb=${Date.now()}`);
@@ -402,6 +403,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Clear all auth data
       setUser(null);
+      sessionStorage.removeItem("deptPageRefreshCount");
       sessionStorage.clear();
       localStorage.clear();
 
@@ -421,6 +423,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.assign(`/login?cb=${Date.now()}`);
     } catch (err) {
       setUser(null);
+      sessionStorage.removeItem("deptPageRefreshCount");
       sessionStorage.clear();
       localStorage.clear();
       window.location.replace(`/login?cb=${Date.now()}`);
