@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 // import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/date-picker";
+import { CustomDatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 
 // Form validation schema
@@ -49,6 +49,15 @@ const facultyFormSchema = z.object({
 });
 
 type FacultyFormValues = z.infer<typeof facultyFormSchema>;
+
+// Department mapping for faculty ID prefixes
+const departmentPrefixes: Record<string, number> = {
+  "Computer Engineering": 1,
+  "Mechanical Engineering": 2,
+  "Electronics and Telecommunication Engineering": 3,
+  "Electrical Engineering": 4,
+  "Information Technology": 5,
+};
 
 const departments = [
   "Computer Engineering",
@@ -84,7 +93,17 @@ export function AddFacultyForm() {
     try {
       setIsSubmitting(true);
 
-      // First insert into faculty table
+      // Get the department prefix for the faculty ID
+      const deptPrefix = departmentPrefixes[data.F_dept];
+      if (!deptPrefix) {
+        throw new Error("Invalid department selected");
+      }
+
+      // First, get the next available faculty ID for this department
+      const nextIdResponse = await fetch(`/api/faculty?department=${encodeURIComponent(data.F_dept)}`);
+      const facultyData = await nextIdResponse.json();
+      
+      // Insert into faculty table with custom faculty ID
       const facultyResponse = await fetch("/api/faculty", {
         method: "POST",
         headers: {
@@ -93,6 +112,7 @@ export function AddFacultyForm() {
         body: JSON.stringify({
           F_name: data.F_name,
           F_dept: data.F_dept,
+          deptPrefix: deptPrefix, // Send the department prefix to the API
         }),
       });
 
@@ -100,8 +120,10 @@ export function AddFacultyForm() {
         throw new Error("Failed to add faculty");
       }
 
-      const facultyData = await facultyResponse.json();
-      const F_id = facultyData.F_id;
+      const responseData = await facultyResponse.json();
+      const F_id = responseData.F_id;
+      
+      console.log("Faculty created with ID:", F_id);
 
       // Then insert into faculty_details table
       const detailsResponse = await fetch("/api/faculty/details", {
@@ -111,19 +133,33 @@ export function AddFacultyForm() {
         },
         body: JSON.stringify({
           F_ID: F_id,
-          ...data,
+          Email: data.Email,
+          Phone_Number: data.Phone_Number,
+          PAN_Number: data.PAN_Number,
+          Aadhaar_Number: data.Aadhaar_Number,
+          Highest_Degree: data.Highest_Degree,
+          Area_of_Certification: data.Area_of_Certification || "",
+          Date_of_Joining: data.Date_of_Joining,
+          Experience: data.Experience,
+          Past_Experience: data.Past_Experience || "",
+          Age: data.Age,
+          Current_Designation: data.Current_Designation,
+          Date_of_Birth: data.Date_of_Birth,
+          Nature_of_Association: data.Nature_of_Association
         }),
       });
 
       if (!detailsResponse.ok) {
-        throw new Error("Failed to add faculty details");
+        const errorData = await detailsResponse.json();
+        console.error("Faculty details error:", errorData);
+        throw new Error(`Failed to add faculty details: ${errorData.message || errorData.error || "Unknown error"}`);
       }
 
       toast.success("Faculty added successfully");
       form.reset();
     } catch (error) {
       console.error("Error adding faculty:", error);
-      toast.error("Failed to add faculty");
+      toast.error(error instanceof Error ? error.message : "Failed to add faculty");
     } finally {
       setIsSubmitting(false);
     }
@@ -168,6 +204,9 @@ export function AddFacultyForm() {
                     ))}
                   </SelectContent>
                 </Select>
+                <FormDescription>
+                  Faculty ID will be auto-generated based on department
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -264,7 +303,7 @@ export function AddFacultyForm() {
               <FormItem>
                 <FormLabel>Date of Joining</FormLabel>
                 <FormControl>
-                  <DatePicker
+                  <CustomDatePicker
                     date={field.value}
                     setDate={field.onChange}
                   />
@@ -333,7 +372,7 @@ export function AddFacultyForm() {
               <FormItem>
                 <FormLabel>Date of Birth</FormLabel>
                 <FormControl>
-                  <DatePicker
+                  <CustomDatePicker
                     date={field.value}
                     setDate={field.onChange}
                   />

@@ -277,7 +277,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { F_name, F_dept } = body;
+    const { F_name, F_dept, deptPrefix } = body;
 
     if (!F_name || !F_dept) {
       return NextResponse.json(
@@ -290,19 +290,57 @@ export async function POST(request: Request) {
     }
 
     try {
-      // Insert into faculty table
-      const result = (await query(
-        `
-        INSERT INTO faculty (F_name, F_dept)
-        VALUES (?, ?)
-      `,
-        [F_name, F_dept]
-      )) as OkPacket;
+      // If a department prefix is provided, we need to generate a custom faculty ID
+      if (deptPrefix) {
+        // Get the highest faculty ID with this prefix
+        const prefixStr = deptPrefix.toString();
+        const prefixPattern = `${prefixStr}%`;
+        
+        const maxIdResult = await query(
+          `SELECT MAX(F_id) as maxId FROM faculty WHERE F_id LIKE ?`,
+          [prefixPattern]
+        );
+        
+        let nextId = 1;
+        const maxIdRow = (maxIdResult as any[])[0];
+        
+        if (maxIdRow && maxIdRow.maxId) {
+          // Extract the numeric part after the prefix
+          const currentMaxId = maxIdRow.maxId.toString();
+          if (currentMaxId.startsWith(prefixStr)) {
+            const numericPart = parseInt(currentMaxId.substring(prefixStr.length));
+            nextId = numericPart + 1;
+          }
+        }
+        
+        // Generate the new ID by combining prefix with next number
+        const newFacultyId = parseInt(`${prefixStr}${nextId.toString().padStart(3, '0')}`);
+        
+        // Insert with the custom ID
+        const result = await query(
+          `INSERT INTO faculty (F_id, F_name, F_dept) VALUES (?, ?, ?)`,
+          [newFacultyId, F_name, F_dept]
+        );
+        
+        return NextResponse.json({
+          success: true,
+          F_id: newFacultyId,
+        });
+      } else {
+        // Insert into faculty table using auto-increment
+        const result = (await query(
+          `
+          INSERT INTO faculty (F_name, F_dept)
+          VALUES (?, ?)
+        `,
+          [F_name, F_dept]
+        )) as OkPacket;
 
-      return NextResponse.json({
-        success: true,
-        F_id: result.insertId,
-      });
+        return NextResponse.json({
+          success: true,
+          F_id: result.insertId,
+        });
+      }
     } catch (insertError) {
       // If the error is related to auto_increment not set up, try to fix it
       if (

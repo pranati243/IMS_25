@@ -1,36 +1,38 @@
 "use client";
 
 import * as React from "react";
-import DatePicker from "react-datepicker";
+import ReactDatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-interface CustomDatePickerProps {
+interface DatePickerProps {
   date?: Date;
   setDate: (date?: Date) => void;
 }
 
-export function CustomDatePicker({ date, setDate }: CustomDatePickerProps) {
-  const CustomInput = React.forwardRef(({ value, onClick }: any, ref: any) => (
-    <Button
-      variant={"outline"}
-      className={cn(
-        "w-full justify-start text-left font-normal",
-        !value && "text-muted-foreground"
-      )}
-      onClick={onClick}
-      ref={ref}
-    >
-      <CalendarIcon className="mr-2 h-4 w-4" />
-      {value || <span>Pick a date</span>}
-    </Button>
-  ));
+// Create the base date picker component
+const BaseDatePicker = ({ date, setDate }: DatePickerProps) => {
+  const CustomInput = React.forwardRef<HTMLButtonElement, { value?: string; onClick?: () => void }>(
+    ({ value, onClick }, ref) => (
+      <Button
+        variant={"outline"}
+        className={cn(
+          "w-full justify-start text-left font-normal",
+          !value && "text-muted-foreground"
+        )}
+        onClick={onClick}
+        ref={ref}
+      >
+        <CalendarIcon className="mr-2 h-4 w-4" />
+        {value || <span>Pick a date</span>}
+      </Button>
+    )
+  );
 
   return (
-    <DatePicker
+    <ReactDatePicker
       selected={date}
       onChange={(date: Date | null) => setDate(date || undefined)}
       customInput={<CustomInput />}
@@ -54,7 +56,8 @@ export function CustomDatePicker({ date, setDate }: CustomDatePickerProps) {
           options: {
             offset: [0, 8],
           },
-          fn: (state) => ({
+          // @ts-ignore - the type definitions for react-datepicker are not complete
+          fn: (state: any) => ({
             ...state,
             x: state.x,
             y: state.y + 8
@@ -63,7 +66,11 @@ export function CustomDatePicker({ date, setDate }: CustomDatePickerProps) {
       ]}
     />
   );
-}
+};
+
+// Export both DatePicker and CustomDatePicker for compatibility
+export const DatePicker = BaseDatePicker;
+export const CustomDatePicker = BaseDatePicker;
 
 // Add custom CSS to improve the look and feel
 const styles = `
