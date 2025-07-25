@@ -349,7 +349,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (meData.success && meData.user) {
             setUser(meData.user);
             sessionStorage.setItem("authUser", JSON.stringify(meData.user));
-            // Force a hard reload to the home page with cache-busting param
+            // If department user, force a hard reload to the department directory
+            if (meData.user.role === "department") {
+              window.location.assign(`/departments?cb=${Date.now()}`);
+              return;
+            }
             window.location.assign(`/?cb=${Date.now()}`);
           }
         }
