@@ -30,21 +30,21 @@ import { format } from "date-fns";
 // Form validation schema
 const facultyFormSchema = z.object({
   // Faculty table fields
-  F_name: z.string().min(2, "Name must be at least 2 characters"),
+  F_name: z.string().min(1, "Name is required"),
   F_dept: z.string().min(1, "Department is required"),
 
   // Faculty details fields
   Email: z.string().email("Invalid email address"),
-  Phone_Number: z.string().regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
-  PAN_Number: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN number"),
-  Aadhaar_Number: z.string().regex(/^[0-9]{12}$/, "Aadhaar number must be 12 digits"),
+  Phone_Number: z.string().min(10, "Phone number must be at least 10 digits"),
+  PAN_Number: z.string().length(10, "PAN must be exactly 10 characters"),
+  Aadhaar_Number: z.string().length(12, "Aadhaar must be exactly 12 digits"),
   Highest_Degree: z.string().min(1, "Highest degree is required"),
   Area_of_Certification: z.string().optional(),
   Date_of_Joining: z.date(),
-  Experience: z.number().min(0, "Experience cannot be negative"),
+  Experience: z.number().min(0, "Experience is required"),
   Past_Experience: z.string().optional(),
   Age: z.number().min(18, "Age must be at least 18"),
-  Current_Designation: z.string().min(1, "Current designation is required"),
+  Current_Designation: z.string().min(1, "Designation is required"),
   Date_of_Birth: z.date(),
   Nature_of_Association: z.string().min(1, "Nature of association is required"),
 });

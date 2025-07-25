@@ -64,6 +64,26 @@ export default function EditFacultyPage({
     }
   };
 
+  // Delete faculty handler
+  const handleDelete = async () => {
+    if (!facultyData) return;
+    if (!window.confirm(`Are you sure you want to delete faculty: ${facultyData.F_name}? This action cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/faculty/${facultyData.F_id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        toast.success('Faculty deleted successfully');
+        router.push('/faculty');
+      } else {
+        const data = await response.json();
+        toast.error(data.message || 'Failed to delete faculty');
+      }
+    } catch (err) {
+      toast.error('Failed to delete faculty');
+    }
+  };
+
   useEffect(() => {
     const fetchFacultyData = async () => {
       try {
@@ -203,6 +223,9 @@ export default function EditFacultyPage({
                 {debugMode ? "Hide Debug" : "Debug Mode"}
               </Button>
             )}
+            <Button onClick={handleDelete} className="ml-2 bg-black text-white hover:bg-gray-900">
+              Delete Faculty
+            </Button>
             <Button variant="outline" onClick={handleClose} className="flex items-center">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List

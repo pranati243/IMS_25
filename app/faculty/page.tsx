@@ -137,7 +137,9 @@ export default function FacultyPage() {
     }
   };
 
-  // Apply filters locally
+  // Sorting and filtering logic
+  const [sortOrder, setSortOrder] = useState("name");
+
   useEffect(() => {
     if (faculty.length === 0) return;
 
@@ -181,8 +183,17 @@ export default function FacultyPage() {
       }
     }
 
+    // Sorting
+    if (sortOrder === "name") {
+      result.sort((a, b) => a.F_name.localeCompare(b.F_name));
+    } else if (sortOrder === "experience-desc") {
+      result.sort((a, b) => (b.Experience || 0) - (a.Experience || 0));
+    } else if (sortOrder === "experience-asc") {
+      result.sort((a, b) => (a.Experience || 0) - (b.Experience || 0));
+    }
+
     setFilteredFaculty(result);
-  }, [faculty, search, department, designation, experienceFilter]);
+  }, [faculty, search, department, designation, experienceFilter, sortOrder]);
 
   // Get unique departments from faculty data
   const departments = Array.from(new Set(faculty.map((f) => f.F_dept))).sort();
@@ -383,15 +394,17 @@ export default function FacultyPage() {
                   members
                 </p>
 
-                <Select defaultValue="name">
+                <Select value={sortOrder} onValueChange={setSortOrder}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="name">Sort by Name</SelectItem>
-                    <SelectItem value="department">
-                      Sort by Department
-                    </SelectItem>
+                    {(userRole === "admin" || userRole === "hod") && (
+                      <SelectItem value="department">
+                        Sort by Department
+                      </SelectItem>
+                    )}
                     <SelectItem value="experience-desc">
                       Experience (High to Low)
                     </SelectItem>
